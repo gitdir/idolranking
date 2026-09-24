@@ -132,6 +132,16 @@ utf8mb4_0900_ai_ci
 
 Database schema must be managed using SQL files rather than Laravel migrations.
 
+### Database Naming Rules
+
+- Every single-column AUTO_INCREMENT primary key must be named `idx`.
+- Every foreign key column must use the `_idx` suffix and reference the target table's `idx` column.
+- Role-specific foreign keys follow the same rule, such as `actor_member_idx`, `created_by_member_idx`, `approved_idol_idx`, `approved_fan_post_idx`, `reviewed_by_member_idx`, and `reversal_of_history_idx`.
+- Relationship tables without an AUTO_INCREMENT primary key must use their foreign key columns as the composite primary key. Do not add an unnecessary standalone `idx` column.
+- Examples: `idol_group_members` uses `PRIMARY KEY (individual_idx, group_idx)`; `fan_post_likes` uses `PRIMARY KEY (fan_post_idx, member_idx)`.
+- Keep foreign key, UNIQUE, and INDEX names and column references consistent with these column names. Update SQL comments when column names change.
+- External identifiers that are not foreign keys, such as `provider_user_id`, are not subject to the `_idx` suffix rule.
+
 When database work begins, use the following project structure:
 
 ```text
