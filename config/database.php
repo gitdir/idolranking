@@ -17,7 +17,7 @@ return [
     |
     */
 
-    'default' => env('DB_CONNECTION', 'sqlite'),
+    'default' => env('DB_CONNECTION', 'mysql'),
 
     /*
     |--------------------------------------------------------------------------
@@ -49,12 +49,12 @@ return [
             'url' => env('DB_URL'),
             'host' => env('DB_HOST', '127.0.0.1'),
             'port' => env('DB_PORT', '3306'),
-            'database' => env('DB_DATABASE', 'laravel'),
-            'username' => env('DB_USERNAME', 'root'),
+            'database' => env('DB_DATABASE', 'idolranking'),
+            'username' => env('DB_USERNAME', ''),
             'password' => env('DB_PASSWORD', ''),
             'unix_socket' => env('DB_SOCKET', ''),
             'charset' => env('DB_CHARSET', 'utf8mb4'),
-            'collation' => env('DB_COLLATION', 'utf8mb4_unicode_ci'),
+            'collation' => env('DB_COLLATION', 'utf8mb4_0900_ai_ci'),
             'prefix' => '',
             'prefix_indexes' => true,
             'strict' => true,
@@ -127,6 +127,8 @@ return [
     |
     */
 
+    // Framework command metadata only. Manage schemas in /sql/schema and
+    // changes in /sql/patches; do not run Laravel migration commands.
     'migrations' => [
         'table' => 'migrations',
         'update_date_on_publish' => true,
