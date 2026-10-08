@@ -1,2 +1,17 @@
 import './bootstrap';
+import './image-fallback';
 import './header';
+import './search';
+import './country-select';
+import './sign-in-modal';
+import './global-notification';
+import './heart-vote-modal';
+import './register';
+import './my-page';
+import './fan-post-recommendation';
+import './fan-post-report';
+import './fan-post-comments';
+import './fan-post-create';
+import './fan-post-masonry';
+import './idol-registration-request';
+import './get-hearts';

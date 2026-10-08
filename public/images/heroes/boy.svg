@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 480 230" width="480" height="230">
+<title>Original fictional male solo idol illustration</title>
+<ellipse cx="292" cy="114" rx="182" ry="137" fill="#d6e2f9"/>
+<circle cx="385" cy="15" r="114" fill="#e6e3fa"/>
+<path d="m72 84 5 16 16 5-16 5-5 16-5-16-16-5 16-5Zm348 62 4 12 12 4-12 4-4 12-4-12-12-4 12-4ZM194 20l3 9 9 3-9 3-3 9-3-9-9-3 9-3Z" fill="#fff" opacity=".85"/>
+<g fill="#fff" opacity=".7"><circle cx="28" cy="48" r="3"/><circle cx="42" cy="48" r="3"/><circle cx="28" cy="62" r="3"/><circle cx="42" cy="62" r="3"/></g>
+<g transform="translate(292 94) scale(1.18)"><g transform="rotate(5)">
+
+<path d="M-18 29h36v31l-18 20-18-20Z" fill="#f0d6cf"/>
+<path d="M-84 144c4-57 27-89 65-91L0 70l19-17c40 5 64 35 67 91" fill="#8eabd0"/>
+<path d="m-19 54 19 16 19-16-8 90h-22Z" fill="#fcf8f8"/>
+<path d="m-23 52-16 21 18 17-13 15 19 39M23 52l16 21-18 17 13 15-19 39" fill="none" stroke="#fff" stroke-opacity=".4" stroke-width="3"/>
+<ellipse rx="35" ry="44" fill="#fae7df"/>
+<path d="M-37 2c-8-30 0-53 29-54l-5-9 24 8c26 2 35 25 27 56L22-14l-2 13L3-26C-8-9-19-1-37 2Z" fill="#50627e"/>
+<path d="M-26-28q16-21 39-11" fill="none" stroke="#fff" stroke-opacity=".18" stroke-width="3" stroke-linecap="round"/>
+
+</g></g>
+</svg>

@@ -403,15 +403,55 @@ Authorization must always be checked server-side.
 
 ## 11. Authentication Rules
 
-Do not automatically assume Laravel's default `users` table or default authentication structure will be used.
+### Authentication Approach
 
-The IdolRanking project may use a custom member table and custom authentication flow.
+- Implement authentication directly with the DB Facade / Query Builder and file sessions (`SESSION_DRIVER=file`).
+- Use the `members` table and its `idx` primary key, not a separate `users` table.
+- Do not use an Eloquent User model, Laravel Auth facade authentication, or Laravel's default UserProvider implementations.
+- Do not generate Laravel starter-kit authentication unless explicitly requested.
+- These rules define the implementation requirements; do not implement signup or login until requested.
 
-Do not generate Laravel starter-kit authentication unless explicitly requested.
+### Login Session and Logout
 
-Session-based authentication is preferred unless requirements later change.
+- The login session identifier is `member_idx`, containing `members.idx`.
+- On successful login, regenerate the session ID and store the member identifier, for example `session(['member_idx' => $member->idx]);`.
+- Logout must use POST with CSRF protection.
+- On logout, invalidate the session and regenerate the CSRF token using `session()->invalidate()` and `session()->regenerateToken()`.
+- Do not store permission levels or `is_dummy` as fixed session values. Determine them from the current member record in `members`.
 
-Authentication structure must be designed according to IdolRanking requirements before implementation.
+### Current Member Validation and Middleware
+
+At login and whenever resolving the current member, require all of:
+
+```text
+member_level > 0
+status = active
+deleted_at IS NULL
+```
+
+- An administrator is a valid current member with `member_level = 10`.
+- A dummy account has `is_dummy = 1`; this does not grant administrator privileges.
+- `ResolveMember` middleware reads `member_idx` from the session and queries `members.idx` using Query Builder.
+- If the member is valid, make the current member record reusable within the same request to avoid repeated queries.
+- If the session member no longer exists or fails validation, invalidate the login session and regenerate the CSRF token.
+- `RequireMember` permits only valid logged-in members.
+- `RequireAdmin` permits only valid logged-in members with `member_level = 10`.
+- Resolve the current member before running member or administrator authorization checks.
+
+### Login Histories
+
+Record both successful and failed login attempts in `member_login_histories`.
+
+- Success: `member_idx` is required, `result = success`, and `failure_reason` is NULL. Update `members.last_login_at` and insert the success history in the same transaction.
+- Failure: `result = failed` and `failure_reason` contains an internal failure code. `member_idx` may be NULL when the member cannot be identified.
+- Never record plaintext passwords, authentication tokens, or session IDs in login histories.
+
+### Blade and Password Handling
+
+- Actual IdolRanking Blade views must use the resolved current member and must not depend on Laravel's default `@auth`, `@guest`, or `Auth::user()`.
+- Verify passwords with `Hash::check()` against `members.password_hash`.
+- Hash passwords with `Hash::make()` before storing them in `members.password_hash`.
+- Do not use Laravel's default password broker. Implement password reset separately using the project's SQL-defined `password_reset_tokens` structure.
 
 ---
 

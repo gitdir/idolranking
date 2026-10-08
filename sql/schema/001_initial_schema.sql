@@ -9,6 +9,7 @@
 
 CREATE TABLE members (
     idx BIGINT UNSIGNED NOT NULL AUTO_INCREMENT COMMENT '회원 ID',
+    member_code VARCHAR(12) CHARACTER SET ascii COLLATE ascii_bin NOT NULL COMMENT 'Public immutable member identifier',
     email VARCHAR(254) NULL COMMENT '이메일 로그인 주소; 탈퇴 시 NULL',
     password_hash VARCHAR(255) NULL COMMENT '비밀번호 해시; Google 전용 또는 탈퇴 회원은 NULL',
     nickname VARCHAR(50) NULL COMMENT '공개 닉네임; 탈퇴 시 NULL',
@@ -16,6 +17,7 @@ CREATE TABLE members (
     is_dummy TINYINT UNSIGNED NOT NULL DEFAULT 0 COMMENT '0 일반 계정, 1 관리자 생성 더미계정',
     status VARCHAR(16) NOT NULL DEFAULT 'active' COMMENT 'active, suspended, inactive',
     country_code CHAR(2) NULL COMMENT '사용자 선택 ISO 3166-1 alpha-2 대문자 코드; 탈퇴 시 NULL 가능',
+    profile_image_path VARCHAR(1024) NULL COMMENT '회원 프로필 이미지 공개 저장 경로',
     heart_balance BIGINT UNSIGNED NOT NULL DEFAULT 0 COMMENT '현재 하트 잔액; 하트 이력 합계와 일치해야 함',
     email_verified_at DATETIME(6) NULL COMMENT '현재 이메일 확인 완료 시각',
     last_login_at DATETIME(6) NULL COMMENT '최근 정상 로그인 시각',
@@ -25,6 +27,7 @@ CREATE TABLE members (
     created_at DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6) COMMENT '가입 시각',
     updated_at DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6) COMMENT '최근 수정 시각',
     PRIMARY KEY (idx),
+    UNIQUE KEY uq_members_member_code (member_code),
     UNIQUE KEY uq_members_email (email),
     UNIQUE KEY uq_members_nickname (nickname),
     KEY idx_members_is_dummy_member_level_status_idx (is_dummy, member_level, status, idx),
@@ -78,6 +81,18 @@ CREATE TABLE idols (
     type VARCHAR(16) NOT NULL COMMENT 'individual 개인, group 그룹',
     gender VARCHAR(8) NOT NULL COMMENT 'male 남자/남자그룹, female 여자/여자그룹',
     name VARCHAR(200) NOT NULL COMMENT '공식 표시 이름; 동명이인 허용',
+    english_name VARCHAR(200) NULL COMMENT '공식 영문 표시 이름',
+    agency VARCHAR(200) NULL COMMENT '소속사',
+    debut_date DATE NULL COMMENT '데뷔일',
+    birth_date DATE NULL COMMENT '개인 생년월일; 그룹은 NULL',
+    nationality VARCHAR(100) NULL COMMENT '개인은 국적, 그룹은 국가',
+    height_cm DECIMAL(5,2) NULL COMMENT '개인 키(cm); 그룹은 NULL',
+    weight_kg DECIMAL(5,2) NULL COMMENT '개인 몸무게(kg); 그룹은 NULL',
+    blood_type VARCHAR(8) NULL COMMENT '개인 혈액형; 그룹은 NULL',
+    position VARCHAR(200) NULL COMMENT '개인 포지션; 그룹은 NULL',
+    sns VARCHAR(1000) NULL COMMENT '공개 SNS 주소 또는 계정',
+    image_path VARCHAR(1024) NULL COMMENT '대표 프로필 이미지 경로',
+    content TEXT NULL COMMENT '공개 짧은 소개',
     status VARCHAR(16) NOT NULL DEFAULT 'active' COMMENT 'active 또는 inactive',
     view_count BIGINT UNSIGNED NOT NULL DEFAULT 0 COMMENT '누적 조회수; 랭킹 점수와 무관',
     created_at DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6) COMMENT '등록 승인으로 생성된 시각',
@@ -111,9 +126,9 @@ CREATE TABLE idol_votes (
 CREATE TABLE heart_histories (
     idx BIGINT UNSIGNED NOT NULL AUTO_INCREMENT COMMENT '하트 증감 이력 ID',
     member_idx BIGINT UNSIGNED NOT NULL COMMENT '하트 잔액 대상 회원',
-    amount BIGINT NOT NULL COMMENT '양수 지급, 음수 차감; 0 금지',
+    amount BIGINT NOT NULL COMMENT '양수 지급, 음수 차감, 0은 활성화된 0하트 액션 기록',
     balance_after BIGINT UNSIGNED NOT NULL COMMENT '해당 처리 직후 잔액',
-    reason VARCHAR(32) NOT NULL COMMENT 'signup_reward/ad_reward/event_reward/comment_reward/vote/admin_adjustment/comment_reward_reversal',
+    reason VARCHAR(32) NOT NULL COMMENT 'Configured rewards, vote spending, admin adjustment, or reward reversal',
     vote_idx BIGINT UNSIGNED NULL COMMENT 'vote일 때만 연결되는 투표 ID',
     comment_idx BIGINT UNSIGNED NULL COMMENT '댓글 보상 및 보상 회수 대상 댓글 ID',
     reversal_of_history_idx BIGINT UNSIGNED NULL COMMENT '전액 회수 대상 원본 댓글 보상 이력 ID; 원본당 1회 회수',
@@ -131,12 +146,38 @@ CREATE TABLE heart_histories (
     KEY idx_hearts_comment_idx (comment_idx)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci COMMENT='추가 기록 방식의 하트 원장; 기존 이력 변경/삭제는 애플리케이션에서 금지';
 
+CREATE TABLE heart_reward_settings (
+    idx BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+    action_code VARCHAR(64) CHARACTER SET ascii COLLATE ascii_bin NOT NULL,
+    action_name VARCHAR(100) NOT NULL,
+    heart_amount BIGINT UNSIGNED NOT NULL DEFAULT 0,
+    daily_limit INT UNSIGNED NOT NULL DEFAULT 0 COMMENT '0 means unlimited; fixed one-time rules use operation_key',
+    is_enabled TINYINT(1) NOT NULL DEFAULT 1,
+    created_at DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
+    updated_at DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
+    PRIMARY KEY (idx),
+    UNIQUE KEY uq_heart_reward_settings_action_code (action_code)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
+INSERT INTO heart_reward_settings (action_code, action_name, heart_amount, daily_limit, is_enabled) VALUES
+('signup', '가입 완료', 1000, 0, 1), ('profile_complete', '프로필 완성', 100, 0, 1),
+('daily_attendance', '일일 출석', 100, 1, 1), ('fan_post_create', '팬포스트 작성', 30, 20, 1),
+('comment_create', '댓글 작성', 10, 20, 1), ('fan_post_recommend_received', '팬포스트 추천 받음', 1, 100, 1),
+('idol_registration_approved', '아이돌/그룹 등록 승인', 3000, 0, 1);
+
+INSERT INTO heart_reward_settings (action_code, action_name, heart_amount, daily_limit, is_enabled) VALUES
+('watch_ads', 'Watch Ads', 50, 10, 1),
+('invite_friend', 'Invite Friends', 1000, 0, 1);
+
 CREATE TABLE fan_posts (
     idx BIGINT UNSIGNED NOT NULL AUTO_INCREMENT COMMENT '팬포스트 ID',
     idol_idx BIGINT UNSIGNED NOT NULL COMMENT '대상 개인 또는 그룹',
     member_idx BIGINT UNSIGNED NOT NULL COMMENT '공개 작성자',
     actor_member_idx BIGINT UNSIGNED NOT NULL COMMENT '최초 실제 로그인 작업자; 수정 시 덮어쓰지 않음',
+    media_type VARCHAR(16) NOT NULL DEFAULT 'text' COMMENT 'text, image, or youtube',
+    title VARCHAR(100) NOT NULL COMMENT 'Fan Post title',
     image_path VARCHAR(1024) NULL COMMENT '이미지 1장 저장 경로',
+    youtube_video_id CHAR(11) CHARACTER SET ascii COLLATE ascii_bin NULL COMMENT 'Normalized YouTube video ID',
     content TEXT NULL COMMENT '공개 본문',
     status VARCHAR(16) NOT NULL DEFAULT 'published' COMMENT 'published 또는 hidden',
     view_count BIGINT UNSIGNED NOT NULL DEFAULT 0 COMMENT '조회수; 좋아요/랭킹과 독립',
@@ -149,6 +190,16 @@ CREATE TABLE fan_posts (
     KEY idx_posts_actor_member_idx_created_at_idx (actor_member_idx, created_at, idx)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci COMMENT='아이돌별 팬포스트; 이미지 또는 본문 중 하나 이상 필수';
 
+
+CREATE TABLE fan_post_tags (
+    idx BIGINT UNSIGNED NOT NULL AUTO_INCREMENT COMMENT 'Fan Post tag ID',
+    fan_post_idx BIGINT UNSIGNED NOT NULL COMMENT 'Tagged Fan Post',
+    tag VARCHAR(30) NOT NULL COMMENT 'Display tag without the # prefix',
+    created_at DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6) COMMENT 'Tag creation time',
+    PRIMARY KEY (idx),
+    UNIQUE KEY uq_fan_post_tags_fan_post_idx_tag (fan_post_idx, tag),
+    KEY idx_fan_post_tags_tag_fan_post_idx (tag, fan_post_idx)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci COMMENT='Fan Post display and search tags';
 CREATE TABLE fan_post_likes (
     fan_post_idx BIGINT UNSIGNED NOT NULL COMMENT '좋아요 대상 게시물',
     member_idx BIGINT UNSIGNED NOT NULL COMMENT '직접 로그인한 회원',
@@ -175,6 +226,21 @@ CREATE TABLE fan_post_comments (
     KEY idx_comments_actor_member_idx_created_at_idx (actor_member_idx, created_at, idx)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci COMMENT='팬포스트 댓글; 보상 금액과 지급 여부는 하트 이력에서 확인';
 
+CREATE TABLE fan_post_reports (
+    idx BIGINT UNSIGNED NOT NULL AUTO_INCREMENT COMMENT 'Fan Post report ID',
+    fan_post_idx BIGINT UNSIGNED NOT NULL COMMENT 'Reported Fan Post',
+    member_idx BIGINT UNSIGNED NOT NULL COMMENT 'Reporting member',
+    reason VARCHAR(32) NOT NULL COMMENT 'spam, harassment_hate, inappropriate_content, copyright, misinformation, or other',
+    details TEXT NULL COMMENT 'Optional report details; required by the application for other',
+    status VARCHAR(16) NOT NULL DEFAULT 'pending' COMMENT 'pending, reviewing, reviewed, or rejected',
+    created_at DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
+    updated_at DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
+    PRIMARY KEY (idx),
+    UNIQUE KEY uq_fan_post_reports_fan_post_idx_member_idx (fan_post_idx, member_idx),
+    KEY idx_fan_post_reports_status_created_at_idx (status, created_at, idx),
+    KEY idx_fan_post_reports_member_idx_created_at_idx (member_idx, created_at, idx)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci COMMENT='Member reports for published Fan Posts';
+
 CREATE TABLE idol_registration_requests (
     idx BIGINT UNSIGNED NOT NULL AUTO_INCREMENT COMMENT '아이돌 등록 신청 ID',
     member_idx BIGINT UNSIGNED NOT NULL COMMENT '공개 신청자; 관리자 등록 시 선택한 더미',
@@ -182,7 +248,17 @@ CREATE TABLE idol_registration_requests (
     type VARCHAR(16) NOT NULL COMMENT 'individual 또는 group',
     gender VARCHAR(8) NOT NULL COMMENT 'male 또는 female',
     name VARCHAR(200) NOT NULL COMMENT '신청 아이돌 이름',
+    english_name VARCHAR(200) NOT NULL COMMENT 'English display name supplied with the request',
     group_idx BIGINT UNSIGNED NULL COMMENT '개인 신청의 기존 소속 그룹; 그룹 신청은 NULL',
+    birth_date DATE NULL COMMENT 'Date of birth for an individual',
+    nationality VARCHAR(100) NULL COMMENT 'Submitted nationality',
+    height_cm DECIMAL(5,2) NULL COMMENT 'Height in centimeters',
+    weight_kg DECIMAL(5,2) NULL COMMENT 'Weight in kilograms',
+    blood_type VARCHAR(8) NULL COMMENT 'A, B, AB, or O',
+    agency VARCHAR(200) NULL COMMENT 'Submitted agency name',
+    debut_date DATE NULL COMMENT 'Debut date',
+    position VARCHAR(200) NULL COMMENT 'Group position or role',
+    sns VARCHAR(1000) NULL COMMENT 'Public social profile URL or handle',
     image_path VARCHAR(1024) NOT NULL COMMENT '필수 신청 이미지; 승인 팬포스트에 그대로 사용',
     content TEXT NOT NULL COMMENT '필수 공개 본문; 승인 팬포스트에 그대로 사용',
     reference_url VARCHAR(2048) NULL COMMENT '아이돌 확인용 참고 주소',
@@ -194,6 +270,7 @@ CREATE TABLE idol_registration_requests (
     reviewed_by_member_idx BIGINT UNSIGNED NULL COMMENT '승인/반려 관리자; 원래 작업자와 별개',
     reviewed_at DATETIME(6) NULL COMMENT '승인 또는 반려 시각',
     review_note TEXT NULL COMMENT '검토 기록; 반려 시 필수',
+    rejection_reason VARCHAR(1000) NULL COMMENT '신청자에게 공개할 반려 사유',
     created_at DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6) COMMENT '신청 시각',
     updated_at DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6) COMMENT '최근 처리 시각',
     PRIMARY KEY (idx),
@@ -208,14 +285,105 @@ CREATE TABLE idol_registration_requests (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci COMMENT='모든 아이돌 등록의 단일 진입점; 승인 결과와 실제 작업자 보존';
 
 -- 모든 테이블 생성 후 FK 추가. 기본 NO ACTION은 InnoDB에서 즉시 RESTRICT와 동일하다.
+CREATE TABLE admin_activity_logs (
+    idx BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+    actor_member_idx BIGINT UNSIGNED NOT NULL COMMENT 'Administrator who performed the action',
+    action VARCHAR(64) CHARACTER SET ascii COLLATE ascii_bin NOT NULL,
+    target_type VARCHAR(32) CHARACTER SET ascii COLLATE ascii_bin NOT NULL,
+    target_idx BIGINT UNSIGNED NOT NULL,
+    reason VARCHAR(1000) NULL COMMENT 'Internal moderation reason',
+    summary VARCHAR(1000) NULL,
+    created_at DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
+    PRIMARY KEY (idx),
+    KEY idx_admin_activity_actor_created (actor_member_idx, created_at, idx),
+    KEY idx_admin_activity_target_created (target_type, target_idx, created_at, idx),
+    KEY idx_admin_activity_action_created (action, created_at, idx)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci COMMENT='Audit trail for administrator moderation actions';
+
+CREATE TABLE visitor_daily_stats (
+    stat_date DATE NOT NULL,
+    page_views BIGINT UNSIGNED NOT NULL DEFAULT 0,
+    unique_visitors BIGINT UNSIGNED NOT NULL DEFAULT 0,
+    PRIMARY KEY (stat_date)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci COMMENT='Long-term daily page-view and unique-visitor aggregate';
+
+CREATE TABLE visitor_daily_uniques (
+    stat_date DATE NOT NULL,
+    visitor_id CHAR(64) CHARACTER SET ascii COLLATE ascii_bin NOT NULL COMMENT 'Random first-party visitor identifier',
+    created_at DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
+    PRIMARY KEY (stat_date, visitor_id),
+    KEY idx_visitor_daily_uniques_visitor_date (visitor_id, stat_date)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci COMMENT='Long-term visitor/day identities for daily and period UV';
+
+CREATE TABLE member_access_logs (
+    idx BIGINT UNSIGNED NOT NULL AUTO_INCREMENT COMMENT 'Site access log ID',
+    member_idx BIGINT UNSIGNED NULL COMMENT 'Authenticated member; NULL for anonymous visitors',
+    visitor_id CHAR(64) CHARACTER SET ascii COLLATE ascii_bin NULL COMMENT 'Random first-party visitor identifier; NULL for detected bots',
+    is_bot TINYINT UNSIGNED NOT NULL DEFAULT 0 COMMENT '1 when excluded from analytics by User-Agent detection',
+    ip_address VARCHAR(45) CHARACTER SET ascii COLLATE ascii_bin NOT NULL,
+    request_path VARCHAR(1024) NOT NULL COMMENT 'Request path only; query strings are excluded',
+    user_agent VARCHAR(1024) NULL,
+    created_at DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
+    PRIMARY KEY (idx),
+    KEY idx_member_access_created_at_idx (created_at, idx),
+    KEY idx_member_access_member_idx_created_at_idx (member_idx, created_at, idx),
+    KEY idx_member_access_ip_created_at_idx (ip_address, created_at, idx),
+    KEY idx_member_access_bot_created_at_idx (is_bot, created_at, idx)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci COMMENT='Recent public page access records with limited retention';
+
+CREATE TABLE restricted_nicknames (
+    idx BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+    word VARCHAR(50) NOT NULL,
+    match_type VARCHAR(16) CHARACTER SET ascii COLLATE ascii_bin NOT NULL DEFAULT 'exact',
+    is_enabled TINYINT UNSIGNED NOT NULL DEFAULT 1,
+    created_at DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
+    updated_at DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
+    PRIMARY KEY (idx),
+    UNIQUE KEY uq_restricted_nicknames_word_match (word, match_type),
+    KEY idx_restricted_nicknames_enabled_idx (is_enabled, idx)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
+CREATE TABLE blocked_ips (
+    idx BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+    ip_address VARCHAR(45) CHARACTER SET ascii COLLATE ascii_bin NOT NULL,
+    reason VARCHAR(1000) NOT NULL,
+    created_by_member_idx BIGINT UNSIGNED NOT NULL,
+    expires_at DATETIME(6) NULL,
+    is_active TINYINT UNSIGNED NOT NULL DEFAULT 1,
+    created_at DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
+    updated_at DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
+    PRIMARY KEY (idx),
+    KEY idx_blocked_ips_address_active_expires (ip_address, is_active, expires_at),
+    KEY idx_blocked_ips_creator_created (created_by_member_idx, created_at, idx),
+    CONSTRAINT fk_blocked_ips_created_by_member_idx FOREIGN KEY (created_by_member_idx) REFERENCES members (idx)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
+CREATE TABLE site_settings (
+    setting_key VARCHAR(100) CHARACTER SET ascii COLLATE ascii_bin NOT NULL,
+    setting_value MEDIUMTEXT NULL,
+    updated_by_member_idx BIGINT UNSIGNED NOT NULL,
+    updated_at DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
+    PRIMARY KEY (setting_key),
+    KEY idx_site_settings_updated_by (updated_by_member_idx, updated_at),
+    CONSTRAINT fk_site_settings_updated_by_member_idx FOREIGN KEY (updated_by_member_idx) REFERENCES members (idx)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
 ALTER TABLE members
-    ADD CONSTRAINT fk_members_created_by_member_idx FOREIGN KEY (created_by_member_idx) REFERENCES members (idx);
+    ADD COLUMN referred_by_member_idx BIGINT UNSIGNED NULL COMMENT 'Inviting member for this account, if registered through a referral',
+    ADD KEY idx_members_referred_by_member_idx (referred_by_member_idx);
+
+ALTER TABLE members
+    ADD CONSTRAINT fk_members_created_by_member_idx FOREIGN KEY (created_by_member_idx) REFERENCES members (idx),
+    ADD CONSTRAINT fk_members_referred_by_member_idx FOREIGN KEY (referred_by_member_idx) REFERENCES members (idx);
 
 ALTER TABLE member_social_accounts
     ADD CONSTRAINT fk_social_member_idx FOREIGN KEY (member_idx) REFERENCES members (idx);
 
 ALTER TABLE member_login_histories
     ADD CONSTRAINT fk_login_member_idx FOREIGN KEY (member_idx) REFERENCES members (idx);
+
+ALTER TABLE member_access_logs
+    ADD CONSTRAINT fk_member_access_member_idx FOREIGN KEY (member_idx) REFERENCES members (idx);
 
 ALTER TABLE password_reset_tokens
     ADD CONSTRAINT fk_password_reset_member_idx FOREIGN KEY (member_idx) REFERENCES members (idx);
@@ -240,6 +408,9 @@ ALTER TABLE fan_posts
     ADD CONSTRAINT fk_posts_member_idx FOREIGN KEY (member_idx) REFERENCES members (idx),
     ADD CONSTRAINT fk_posts_actor_member_idx FOREIGN KEY (actor_member_idx) REFERENCES members (idx);
 
+ALTER TABLE fan_post_tags
+    ADD CONSTRAINT fk_fan_post_tags_fan_post_idx FOREIGN KEY (fan_post_idx) REFERENCES fan_posts (idx);
+
 ALTER TABLE fan_post_likes
     ADD CONSTRAINT fk_likes_fan_post_idx FOREIGN KEY (fan_post_idx) REFERENCES fan_posts (idx),
     ADD CONSTRAINT fk_likes_member_idx FOREIGN KEY (member_idx) REFERENCES members (idx);
@@ -249,6 +420,10 @@ ALTER TABLE fan_post_comments
     ADD CONSTRAINT fk_comments_member_idx FOREIGN KEY (member_idx) REFERENCES members (idx),
     ADD CONSTRAINT fk_comments_actor_member_idx FOREIGN KEY (actor_member_idx) REFERENCES members (idx);
 
+ALTER TABLE fan_post_reports
+    ADD CONSTRAINT fk_fan_post_reports_fan_post_idx FOREIGN KEY (fan_post_idx) REFERENCES fan_posts (idx),
+    ADD CONSTRAINT fk_fan_post_reports_member_idx FOREIGN KEY (member_idx) REFERENCES members (idx);
+
 ALTER TABLE idol_registration_requests
     ADD CONSTRAINT fk_requests_member_idx FOREIGN KEY (member_idx) REFERENCES members (idx),
     ADD CONSTRAINT fk_requests_actor_member_idx FOREIGN KEY (actor_member_idx) REFERENCES members (idx),
@@ -256,6 +431,9 @@ ALTER TABLE idol_registration_requests
     ADD CONSTRAINT fk_requests_approved_idol_idx FOREIGN KEY (approved_idol_idx) REFERENCES idols (idx),
     ADD CONSTRAINT fk_requests_approved_fan_post_idx FOREIGN KEY (approved_fan_post_idx) REFERENCES fan_posts (idx),
     ADD CONSTRAINT fk_requests_reviewed_by_member_idx FOREIGN KEY (reviewed_by_member_idx) REFERENCES members (idx);
+
+ALTER TABLE admin_activity_logs
+    ADD CONSTRAINT fk_admin_activity_actor_member_idx FOREIGN KEY (actor_member_idx) REFERENCES members (idx);
 
 -- CHECK 제약은 사용하지 않으며 업무 값 검증은 Laravel 애플리케이션에서 수행한다.
 -- 컬럼 COMMENT의 허용값/필수 조건은 업무 규칙이다. DB는 PK/FK/UNIQUE/NOT NULL/타입/DEFAULT/INDEX를 유지한다.

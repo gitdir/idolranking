@@ -2,6 +2,8 @@ const toggle = document.querySelector('.menu-toggle');
 const navigation = document.querySelector('#main-navigation');
 const overlay = document.querySelector('#navigation-overlay');
 const closeButton = navigation?.querySelector('.drawer-close');
+const drawerLogoutDialog = document.querySelector('#drawer-logout-dialog');
+const drawerLogoutTrigger = navigation?.querySelector('[data-drawer-logout-open]');
 
 if (toggle && navigation && overlay && closeButton) {
     const mobile = window.matchMedia('(max-width: 639px)');
@@ -25,11 +27,13 @@ if (toggle && navigation && overlay && closeButton) {
     });
 
     navigation.addEventListener('click', (event) => {
+        if (event.target.closest('[data-drawer-logout-open]')) return;
         if (mobile.matches && event.target.closest('a, button')) setOpen(false);
     });
     overlay.addEventListener('click', () => setOpen(false));
 
     document.addEventListener('keydown', (event) => {
+        if (drawerLogoutDialog?.open) return;
         if (toggle.getAttribute('aria-expanded') !== 'true') return;
         if (event.key === 'Escape') {
             event.preventDefault();
@@ -54,4 +58,127 @@ if (toggle && navigation && overlay && closeButton) {
         }
     });
     setOpen(false, false);
+}
+
+if (drawerLogoutDialog && drawerLogoutTrigger) {
+    const cancelButton = drawerLogoutDialog.querySelector('[data-drawer-logout-cancel]');
+    drawerLogoutTrigger.addEventListener('click', () => {
+        drawerLogoutDialog.showModal();
+        cancelButton.focus();
+    });
+    cancelButton.addEventListener('click', () => drawerLogoutDialog.close());
+    drawerLogoutDialog.addEventListener('click', (event) => {
+        if (event.target === drawerLogoutDialog) drawerLogoutDialog.close();
+    });
+    drawerLogoutDialog.addEventListener('close', () => {
+        if (navigation?.classList.contains('is-open')) drawerLogoutTrigger.focus();
+    });
+}
+
+const inviteTrigger = document.querySelector('[data-invite-friends-open]');
+const inviteDialog = document.querySelector('#invite-friends-dialog');
+const inviteIntentKey = 'idolranking_invite_friends_intent';
+
+if (inviteTrigger) {
+    inviteTrigger.addEventListener('click', () => {
+        if (inviteTrigger.dataset.signedIn !== 'true') {
+            sessionStorage.setItem(inviteIntentKey, 'true');
+            return;
+        }
+
+        inviteDialog?.showModal();
+        document.documentElement.classList.add('invite-friends-open');
+    });
+}
+
+if (inviteDialog) {
+    const referralInput = inviteDialog.querySelector('[data-referral-url]');
+    const copyStatus = inviteDialog.querySelector('[data-referral-copy-status]');
+    const copyButton = inviteDialog.querySelector('[data-referral-copy]');
+    const copyIcon = copyButton.querySelector('[data-referral-copy-icon]');
+    const copiedLabel = copyButton.querySelector('[data-referral-copied]');
+    let copyResetTimer;
+    const closeInvite = () => inviteDialog.close();
+    const showCopiedState = () => {
+        window.clearTimeout(copyResetTimer);
+        copyIcon.hidden = true;
+        copiedLabel.hidden = false;
+        copyButton.setAttribute('aria-label', 'Invite link copied');
+        copyResetTimer = window.setTimeout(() => {
+            copyIcon.hidden = false;
+            copiedLabel.hidden = true;
+            copyButton.setAttribute('aria-label', 'Copy invite link');
+        }, 1800);
+    };
+
+    inviteDialog.querySelector('[data-invite-friends-close]').addEventListener('click', closeInvite);
+    inviteDialog.addEventListener('click', (event) => {
+        if (event.target === inviteDialog) closeInvite();
+    });
+    inviteDialog.addEventListener('close', () => {
+        document.documentElement.classList.remove('invite-friends-open');
+        inviteTrigger?.focus();
+    });
+    copyButton.addEventListener('click', async () => {
+        try {
+            await navigator.clipboard.writeText(referralInput.value);
+            copyStatus.textContent = 'Referral link copied.';
+        } catch {
+            referralInput.select();
+            document.execCommand('copy');
+            copyStatus.textContent = 'Referral link copied.';
+        }
+        copyStatus.hidden = false;
+        showCopiedState();
+    });
+    inviteDialog.querySelector('[data-invite-share="kakao"]').addEventListener('click', async () => {
+        if (navigator.share) {
+            await navigator.share({ title: 'Invite Friends', url: referralInput.value }).catch(() => {});
+        } else {
+            await navigator.clipboard.writeText(referralInput.value).catch(() => {});
+            copyStatus.textContent = 'Referral link copied for KakaoTalk.';
+            copyStatus.hidden = false;
+        }
+    });
+
+    if (sessionStorage.getItem(inviteIntentKey) === 'true') {
+        sessionStorage.removeItem(inviteIntentKey);
+        inviteDialog.showModal();
+        document.documentElement.classList.add('invite-friends-open');
+    }
+}
+
+const headerAccount = document.querySelector('[data-header-account]');
+const accountTrigger = headerAccount?.querySelector('.header-account-trigger');
+const accountMenu = headerAccount?.querySelector('.header-account-menu');
+
+if (headerAccount && accountTrigger && accountMenu) {
+    const desktop = window.matchMedia('(min-width: 640px)');
+    const setAccountOpen = (open, restoreFocus = false) => {
+        const wasOpen = accountTrigger.getAttribute('aria-expanded') === 'true';
+        open = open && desktop.matches;
+        accountTrigger.setAttribute('aria-expanded', String(open));
+        accountMenu.hidden = !open;
+        if (!open && wasOpen && restoreFocus) accountTrigger.focus();
+    };
+
+    accountTrigger.addEventListener('click', () => {
+        setAccountOpen(accountTrigger.getAttribute('aria-expanded') !== 'true');
+    });
+
+    document.addEventListener('click', (event) => {
+        if (accountTrigger.getAttribute('aria-expanded') === 'true' && !headerAccount.contains(event.target)) {
+            setAccountOpen(false);
+        }
+    });
+
+    document.addEventListener('keydown', (event) => {
+        if (event.key === 'Escape' && accountTrigger.getAttribute('aria-expanded') === 'true') {
+            event.preventDefault();
+            setAccountOpen(false, true);
+        }
+    });
+
+    desktop.addEventListener('change', () => setAccountOpen(false));
+    setAccountOpen(false);
 }

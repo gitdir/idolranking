@@ -2,7 +2,7 @@
 
 @section('content')
     @php
-        // Static display fixtures only; no database reads or ranking calculations.
+        // Ranking panel presentation remains unchanged; public ranking data replaces these fallback rows.
         $panels = [
             ['key' => 'boy', 'title' => 'Boy Ranking', 'theme' => 'blue', 'images' => ['portrait-blue', 'portrait-lilac', 'portrait-peach'], 'members' => [
                 ['Jungkook', 2847316, 128], ['V', 2341002, 96], ['Jimin', 1987450, 84], ['Cha Eun-woo', 1654329, 73], ['Lee Know', 1321887, 0],
@@ -17,22 +17,13 @@
                 ['BLACKPINK', 3842661, 224], ['TWICE', 2711522, 128], ['aespa', 2084392, 128], ['IVE', 1688420, 0], ['LE SSERAFIM', 1320115, 128],
             ]],
         ];
-        $posts = [
-            ['portrait-blue', 'golden_army', 'His smile always makes my day brighter ✨', 933115, 12841, 320, 'square'],
-            ['portrait-peach', 'ocean_day', 'A little sunshine by the sea.', 5421, 923, 27, 'landscape'],
-            ['portrait-sage', 'lily_iu', "Spring with IU 🌸 She's so lovely!", 9672, 1245, 86, 'square'],
-            ['portrait-lilac', 'winter_bloom', 'The softest winter mood ❄️', 4882, 781, 36, 'portrait'],
-            ['group-blue', 'bangtan4ever', '7 together, always and forever ✨', 11423, 2341, 102, 'square'],
-            ['group-rose', 'stage_diary', 'Every stage is a new favorite.', 9334, 2115, 72, 'landscape'],
-            ['portrait-rose', 'rubyjane', 'Jennie in pink hits different 🌷', 8311, 1932, 64, 'square'],
-            ['portrait-blue', 'blue_hour', 'This moment deserves a little replay.', 6221, 1054, 41, 'portrait'],
-            ['portrait-lilac', 'thv.world', 'A work of art ✨', 7905, 1122, 65, 'landscape'],
-            ['portrait-sage', 'spring_note', 'A smile to brighten your day.', 7662, 1988, 59, 'square'],
-            ['group-rose', 'blinkarea', 'BLACKPINK forever and always', 10201, 2884, 91, 'square'],
-            ['group-lilac', 'together_7', 'Our favorite kind of group photo.', 8115, 2421, 67, 'landscape'],
-            ['portrait-peach', 'roseverse', 'Rosé and her cat are the cutest 🐱', 6784, 1432, 38, 'square'],
-            ['portrait-blue', 'midnight_fan', 'Keeping this one in my favorites.', 5934, 1331, 33, 'square'],
-        ];
+        foreach ($panels as $panelIndex => $panel) {
+            $visible = $publicRankings[$panel['key']] ?? [];
+            $panels[$panelIndex]['members'] = array_map(fn(array $idol) => [
+                $idol['name'], $idol['hearts'], $idol['posts'], 'idx'=>$idol['idx'], 'group'=>$idol['group'], 'image'=>$idol['image'], 'image_url'=>$idol['image_url'] ?? null,
+            ], array_slice($visible, 0, 5));
+            $panels[$panelIndex]['images'] = array_pad(array_slice(array_column($visible, 'image'), 0, 3), 3, $panel['images'][0]);
+        }
     @endphp
 
     <h1 class="sr-only">Idol rankings and latest fan posts</h1>
@@ -42,12 +33,27 @@
         @endforeach
     </section>
 
-    <section class="fan-posts" aria-labelledby="fan-posts-title">
-        <h2 id="fan-posts-title">Latest Fan Posts</h2>
-        <div class="fan-post-grid">
-            @foreach ($posts as $post)
-                <x-fan-post-card :post="$post" />
-            @endforeach
-        </div>
-    </section>
+    <x-fan-post-list :posts="$posts" heading-id="home-fan-posts-title" empty-message="No fan posts yet.">
+        <x-slot:heading>
+            <div class="member-post-list-heading public-fan-posts-heading">
+                <div><h2 id="home-fan-posts-title">Fan Posts</h2></div>
+                <div class="idol-detail-fan-post-actions member-fan-post-actions fan-post-toolbar">
+                    <form method="get" action="{{ route('home') }}">
+                        <label class="sr-only" for="home-fan-post-sort">Sort fan posts</label>
+                        <select id="home-fan-post-sort" name="sort" onchange="this.form.submit()">
+                            <option value="latest" @selected($fanPostSort === 'latest')>Latest</option>
+                            <option value="liked" @selected($fanPostSort === 'liked')>Most Liked</option>
+                            <option value="commented" @selected($fanPostSort === 'commented')>Most Commented</option>
+                        </select>
+                        <noscript><button type="submit">Apply</button></noscript>
+                    </form>
+                    @if (request()->attributes->get('currentMember'))
+                        <a class="idol-detail-create-post" href="{{ route('fan-post.create') }}">+ Create Fan Post</a>
+                    @else
+                        <button class="idol-detail-create-post" type="button" data-sign-in-open aria-haspopup="dialog" aria-controls="sign-in-modal">+ Create Fan Post</button>
+                    @endif
+                </div>
+            </div>
+        </x-slot:heading>
+    </x-fan-post-list>
 @endsection

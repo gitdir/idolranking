@@ -1,10 +1,32 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
+    @php
+        $publicSettings = \App\Support\SiteSettings::all();
+        $pageSeo = $seo ?? [];
+        $seoTitle = $pageSeo['title'] ?? ($publicSettings['social_title'] ?? null) ?? ($publicSettings['site_title'] ?? 'IDOL RANKING');
+        $seoDescription = $pageSeo['description'] ?? ($publicSettings['social_description'] ?? null) ?? ($publicSettings['site_description'] ?? '');
+        $seoImage = $pageSeo['image'] ?? ($publicSettings['social_image_path'] ?? null);
+        $seoImageUrl = \App\Support\ManagedImageStorage::publicUrl($seoImage);
+        $canonicalUrl = $pageSeo['url'] ?? request()->url();
+    @endphp
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="theme-color" content="#ffffff">
-    <title>@yield('title', 'IdolRanking — Idol rankings & fan posts')</title>
+    <meta name="default-image" content="{{ \App\Support\ManagedImageStorage::defaultUrl() }}">
+    <title>@yield('title', $seoTitle)</title>
+    @if($seoDescription)<meta name="description" content="{{ $seoDescription }}">@endif
+    @if($publicSettings['site_keywords'] ?? null)<meta name="keywords" content="{{ $publicSettings['site_keywords'] }}">@endif
+    @if($pageSeo['robots'] ?? null)<meta name="robots" content="{{ $pageSeo['robots'] }}">@endif
+    <link rel="canonical" href="{{ $canonicalUrl }}">
+    <meta property="og:type" content="{{ $pageSeo['type'] ?? 'website' }}">
+    <meta property="og:title" content="{{ $seoTitle }}">
+    @if($seoDescription)<meta property="og:description" content="{{ $seoDescription }}">@endif
+    <meta property="og:image" content="{{ $seoImageUrl }}">
+    <meta property="og:url" content="{{ $canonicalUrl }}">
+    @if($publicSettings['favicon_path'] ?? null)<link rel="icon" href="{{ asset($publicSettings['favicon_path']) }}">@endif
+    {!! $publicSettings['head_code'] ?? '' !!}
+    @if($publicSettings['custom_css'] ?? null)<style>{!! $publicSettings['custom_css'] !!}</style>@endif
     @vite(['resources/css/app.css', 'resources/js/app.js'])
 </head>
 <body>
@@ -31,5 +53,14 @@
     <main id="main-content" class="page-width main-content">
         @yield('content')
     </main>
+    @include('partials.footer')
+    @php
+        $voteMember = request()->attributes->get('currentMember');
+        $voteSignedIn = $voteMember !== null || session()->has('member_idx');
+    @endphp
+    <x-heart-vote-modal :my-hearts="$voteMember?->heart_balance ?? 12540" :signed-in="$voteSignedIn" />
+    <x-sign-in-modal />
+    <x-global-notification />
+    {!! $publicSettings['body_end_code'] ?? '' !!}
 </body>
 </html>

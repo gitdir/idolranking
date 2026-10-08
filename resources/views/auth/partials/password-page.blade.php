@@ -1,0 +1,63 @@
+@php
+    $title = $reset ? 'Reset Your Password' : 'Forgot Password?';
+    $description = $reset ? 'Create a new password for your account.' : "Enter your email address and we'll send you a link to reset your password.";
+@endphp
+<section class="password-page" aria-labelledby="password-page-title">
+    <header class="password-page-heading">
+        <h1 id="password-page-title">{{ $title }}</h1>
+        <p>{{ $description }}</p>
+        <svg class="password-page-decoration" viewBox="0 0 180 130" aria-hidden="true"><path fill="#f5d5fa" d="m45 30 30 30 28-42 18 52 42-23-28 62-84-24Z"/><path fill="#edd8ff" d="M18 65S-5 50 4 41q7-8 14 1 7-9 14-1 9 9-14 24"/><g fill="#fbe0f6"><circle cx="45" cy="21" r="8"/><circle cx="105" cy="9" r="8"/><circle cx="169" cy="42" r="8"/></g></svg>
+    </header>
+    <div class="password-page-card">
+        <svg class="password-page-art" viewBox="0 0 220 180" aria-hidden="true">
+            <circle cx="110" cy="90" r="84" fill="#fff0fa"/>
+            @if ($reset)
+                <path d="M88 76V53a22 22 0 0 1 44 0v23" fill="none" stroke="#a28aff" stroke-width="11"/>
+                <rect x="71" y="69" width="78" height="65" rx="12" fill="#b9a1ff" stroke="#a98fff"/>
+                <circle cx="110" cy="97" r="10" fill="#fff8ff"/><rect x="105" y="98" width="10" height="19" rx="4" fill="#fff8ff"/>
+            @else
+                <g transform="rotate(-9 110 90)"><path d="m45 84 65-49 65 49v65H45Z" fill="#c9baff" stroke="#a48fff" stroke-width="3"/><rect x="63" y="38" width="96" height="90" rx="7" fill="#fff" stroke="#b8a4ff" stroke-width="4"/><path d="M111 93s-28-16-16-28q9-8 16 2 8-10 17-2 12 12-17 28" fill="#ff70b9"/><path d="m45 84 65 43 65-43v65H45Z" fill="#ede8ff" stroke="#c4b8ff" stroke-width="3"/><path d="m45 149 65-44 65 44" fill="#f6f2ff" stroke="#c4b8ff" stroke-width="3"/></g>
+            @endif
+            <path d="m12 78-6-4m8 21-8 2m199-22 6-5m-6 24 8 2" stroke="#ff70b9" stroke-width="4" stroke-linecap="round"/>
+        </svg>
+        <h2>{{ $title }}</h2>
+        <p class="password-card-description">{{ $reset ? 'Enter your new password below.' : $description }}</p>
+        <div class="password-preview-fields">
+            @if ($reset)
+                @foreach (['new' => 'New Password', 'confirm' => 'Confirm New Password'] as $key => $label)
+                    <div class="password-page-field">
+                        <label for="password-{{ $key }}">{{ $label }} <span>*</span></label>
+                        <div class="password-page-input">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true"><rect x="5" y="10" width="14" height="11" rx="2"/><path d="M8 10V6a4 4 0 0 1 8 0v4"/></svg>
+                            <input id="password-{{ $key }}" type="password" autocomplete="new-password" placeholder="{{ $key === 'new' ? 'Enter new password' : 'Confirm new password' }}">
+                            <button type="button" class="password-page-eye" aria-controls="password-{{ $key }}" aria-label="Show {{ strtolower($label) }}" aria-pressed="false"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true"><path d="M2 12s4-7 10-7 10 7 10 7-4 7-10 7S2 12 2 12Z"/><circle cx="12" cy="12" r="3"/></svg></button>
+                        </div>
+                        @if ($key === 'new')<p class="password-page-hint">Use at least 8 characters with letters, numbers, and symbols.</p>@endif
+                    </div>
+                @endforeach
+            @else
+                <div class="password-page-field">
+                    <label for="password-email">Email Address <span>*</span></label>
+                    <div class="password-page-input"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="m3 6 9 7 9-7"/></svg><input id="password-email" type="email" autocomplete="email" placeholder="Enter your email address"></div>
+                </div>
+            @endif
+            <button type="button" class="password-page-submit" disabled>{{ $reset ? 'Reset Password' : 'Send Reset Link' }}</button>
+        </div>
+        <div class="password-page-divider"><span>Back to</span></div>
+        <button type="button" class="password-page-sign-in" data-sign-in-open aria-haspopup="dialog" aria-controls="sign-in-modal"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M20 12H4m7-7-7 7 7 7"/></svg>Sign In</button>
+    </div>
+    <footer class="password-page-footer"><strong>IDOL RANKING</strong><p>&copy; {{ date('Y') }} IDOL RANKING. All rights reserved.</p></footer>
+</section>
+@if ($reset)
+    <script>
+        document.querySelectorAll('.password-page-eye').forEach((button) => {
+            button.addEventListener('click', () => {
+                const input = document.getElementById(button.getAttribute('aria-controls'));
+                const visible = input.type === 'password';
+                input.type = visible ? 'text' : 'password';
+                button.setAttribute('aria-pressed', String(visible));
+                button.setAttribute('aria-label', `${visible ? 'Hide' : 'Show'} ${input.id === 'password-new' ? 'new password' : 'confirm new password'}`);
+            });
+        });
+    </script>
+@endif
