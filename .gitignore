@@ -23,12 +23,49 @@ Homestead.json
 Homestead.yaml
 Thumbs.db
 
-# Local SQL files and database backups
-/sql/
+# Ignore SQL by default. Re-enable only approved source files below.
+/sql/*
+!/sql/README.md
+!/sql/schema/
+!/sql/patches/
+!/sql/deploy/
+/sql/schema/*
+!/sql/schema/001_initial_schema.sql
+!/sql/schema/partner_banners.sql
+/sql/patches/*
+!/sql/patches/20260927_001_add_member_code.sql
+!/sql/patches/20260927_002_add_fan_post_creation_fields.sql
+!/sql/patches/20260927_003_add_fan_post_media_type.sql
+!/sql/patches/20260927_004_expand_idol_registration_requests.sql
+!/sql/patches/20260927_005_create_fan_post_reports.sql
+!/sql/patches/20260927_006_create_admin_activity_logs.sql
+!/sql/patches/20260927_007_add_admin_operations.sql
+!/sql/patches/20260927_008_create_member_access_logs.sql
+!/sql/patches/20260927_009_add_page_views_and_period_uv.sql
+!/sql/patches/20260927_010_add_access_log_bot_flag.sql
+!/sql/patches/20260927_011_add_idol_review_fields.sql
+!/sql/patches/20260927_013_create_heart_reward_settings.sql
+!/sql/patches/20260929_001_add_member_profile_image.sql
+!/sql/patches/20261005_001_add_get_hearts_reward_settings.sql
+!/sql/patches/20261005_002_add_member_referral_attribution.sql
+!/sql/patches/20261005_003_add_invite_friend_reward_setting.sql
+!/sql/patches/20261009_001_create_partner_banners.sql
+!/sql/patches/20261009_002_create_partner_banner_clicks.sql
+!/sql/patches/20261009_003_create_password_reset_tokens.sql
+!/sql/patches/20261009_004_add_dummy_activity_actor_columns.sql
+!/sql/patches/20261013_001_create_schema_patch_history.sql
+/sql/deploy/*
+!/sql/deploy/mariadb11_schema.sql
+!/sql/deploy/mariadb11_seed.sql
 *.sql.gz
 *.sql.zip
 *.dump
 *.bak
+**/*dump*.sql
+**/*backup*.sql
+**/*export*.sql
+**/*secret*.sql
+**/*credential*.sql
 
 # Additional environment files
 .env.*

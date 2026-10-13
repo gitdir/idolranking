@@ -16,6 +16,9 @@ return [
 
     'default' => env('MAIL_MAILER', 'log'),
 
+    // Password-reset links contain one-time credentials and must never use the log transport.
+    'password_reset_mailer' => env('PASSWORD_RESET_MAILER', 'smtp'),
+
     /*
     |--------------------------------------------------------------------------
     | Mailer Configurations

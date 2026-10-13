@@ -13,7 +13,7 @@ final class DatabaseAvailability
             return false;
         }
 
-        // Test pages without a database fixture should continue to use their public demo data.
+        // Optional visitor tracking can be skipped when isolated tests omit its tables.
         if (app()->environment('testing')) {
             try {
                 return DB::connection()->getSchemaBuilder()->hasTable('members');

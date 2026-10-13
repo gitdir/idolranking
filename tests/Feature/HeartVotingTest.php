@@ -15,7 +15,7 @@ class HeartVotingTest extends TestCase
 
         DB::statement("CREATE TABLE members (idx INTEGER PRIMARY KEY, member_code TEXT, heart_balance INTEGER DEFAULT 0, member_level INTEGER DEFAULT 1, is_dummy INTEGER DEFAULT 0, status TEXT DEFAULT 'active', deleted_at TEXT, updated_at TEXT)");
         DB::statement("CREATE TABLE idols (idx INTEGER PRIMARY KEY, name TEXT, type TEXT, status TEXT DEFAULT 'active')");
-        DB::statement("CREATE TABLE idol_votes (idx INTEGER PRIMARY KEY AUTOINCREMENT, member_idx INTEGER, idol_idx INTEGER, heart_amount INTEGER, request_key TEXT, created_at TEXT, UNIQUE (member_idx, request_key))");
+        DB::statement("CREATE TABLE idol_votes (idx INTEGER PRIMARY KEY AUTOINCREMENT, member_idx INTEGER, actor_member_idx INTEGER, idol_idx INTEGER, heart_amount INTEGER, request_key TEXT, created_at TEXT, UNIQUE (member_idx, request_key))");
         DB::statement("CREATE TABLE heart_histories (idx INTEGER PRIMARY KEY AUTOINCREMENT, member_idx INTEGER, amount INTEGER, balance_after INTEGER, reason TEXT, vote_idx INTEGER UNIQUE, comment_idx INTEGER, reversal_of_history_idx INTEGER, operation_key TEXT, actor_member_idx INTEGER, memo TEXT, created_at TEXT, UNIQUE (member_idx, operation_key))");
 
         DB::table('members')->insert([
@@ -111,5 +111,40 @@ class HeartVotingTest extends TestCase
 
         $this->assertSame(35, (int) DB::table('members')->where('idx', 2)->value('heart_balance'));
         $this->assertSame(25, (int) DB::table('members')->where('idx', 3)->value('heart_balance'));
+        $this->assertDatabaseHas('idol_votes', ['member_idx' => 3, 'actor_member_idx' => 3]);
+    }
+
+    public function test_admin_can_vote_as_selected_dummy_without_changing_admin_identity(): void
+    {
+        $this->database();
+
+        $this->withSession(['member_idx' => 2])->post(route('admin.acting-dummy-member'), [
+            'dummy_member_idx' => 3,
+        ])->assertRedirect(route('home'));
+
+        $response = $this->postJson('/votes', [
+            'idol_idx' => 10,
+            'heart_amount' => 5,
+            'request_key' => 'vote-request-delegated-0001',
+        ])->assertCreated()->assertJsonPath('data.heart_balance', 25);
+
+        $this->assertSame(40, (int) DB::table('members')->where('idx', 2)->value('heart_balance'));
+        $this->assertSame(25, (int) DB::table('members')->where('idx', 3)->value('heart_balance'));
+        $this->assertDatabaseHas('idol_votes', ['idx' => $response->json('data.vote_idx'), 'member_idx' => 3, 'actor_member_idx' => 2]);
+        $this->assertDatabaseHas('heart_histories', ['member_idx' => 3, 'actor_member_idx' => 2, 'amount' => -5]);
+        $this->assertSame(2, (int) session('member_idx'));
+    }
+
+    public function test_admin_cannot_select_a_normal_member_or_another_admin(): void
+    {
+        $this->database();
+
+        foreach ([1, 2] as $memberIdx) {
+            $this->withSession(['member_idx' => 2])->post(route('admin.acting-dummy-member'), [
+                'dummy_member_idx' => $memberIdx,
+            ])->assertStatus(422);
+        }
+
+        $this->assertSame(40, (int) DB::table('members')->where('idx', 2)->value('heart_balance'));
     }
 }

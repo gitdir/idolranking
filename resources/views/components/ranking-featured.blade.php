@@ -5,8 +5,11 @@
     <h2 id="ranking-featured-name" class="sr-only"><a href="{{ $detailUrl }}">{{ $idol['name'] }}</a></h2>
     <a class="ranking-featured-images" href="{{ $detailUrl }}" aria-label="View {{ $idol['name'] }} details">
         @foreach ($images as $image)
-            <img src="{{ $idol['image_url'] ?? \App\Support\ManagedImageStorage::defaultUrl() }}" width="320" height="320" alt="{{ $idol['name'] }} fan post placeholder {{ $loop->iteration }}">
+            <img src="{{ $image }}" width="320" height="320" alt="Fan Post image for {{ $idol['name'] }}" loading="lazy">
         @endforeach
+        @if (count($images) === 0)
+            <span class="top-post-images-empty">No Fan Post images yet.</span>
+        @endif
     </a>
     <dl class="ranking-featured-stats">
         <div>

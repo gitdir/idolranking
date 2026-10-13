@@ -4,7 +4,6 @@ namespace App\Http\Controllers;
 
 use App\Support\ManagedImageStorage;
 use App\Support\PublicFanPostList;
-use App\Support\DatabaseAvailability;
 use Illuminate\Database\Query\Builder;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -24,7 +23,7 @@ class SearchController extends Controller
         $idols = $groups = $postResults = [];
         $paginator = null;
 
-        if ($query !== '' && DatabaseAvailability::isAvailable()) {
+        if ($query !== '') {
             $counts['idol'] = $this->entityQuery('individual', $query)->count('i.idx');
             $counts['group'] = $this->entityQuery('group', $query)->count('i.idx');
             $counts['fan-posts'] = $fanPosts->searchCount($query);
@@ -58,11 +57,15 @@ class SearchController extends Controller
     private function entityQuery(string $type, string $keyword): Builder
     {
         $monthStart = now()->startOfMonth();
-        $votes = DB::table('idol_votes')->selectRaw('idol_idx, SUM(heart_amount) hearts')
-            ->where('created_at', '>=', $monthStart)->where('created_at', '<', $monthStart->copy()->addMonth())
-            ->groupBy('idol_idx');
-        $posts = DB::table('fan_posts')->selectRaw('idol_idx, COUNT(*) posts')
-            ->where('status', 'published')->whereNull('deleted_at')->groupBy('idol_idx');
+        $votes = DB::table('idol_votes as iv')->join('members as vm', 'vm.idx', '=', 'iv.member_idx')
+            ->selectRaw('iv.idol_idx, SUM(iv.heart_amount) hearts')
+            ->where('iv.created_at', '>=', $monthStart)->where('iv.created_at', '<', $monthStart->copy()->addMonth())
+            ->where('vm.member_level', '>', 0)->where('vm.status', 'active')->whereNull('vm.deleted_at')
+            ->groupBy('iv.idol_idx');
+        $posts = DB::table('fan_posts as fp')->join('members as pm', 'pm.idx', '=', 'fp.member_idx')
+            ->selectRaw('fp.idol_idx, COUNT(*) posts')->where('fp.status', 'published')->whereNull('fp.deleted_at')
+            ->where('pm.member_level', '>', 0)->where('pm.status', 'active')->whereNull('pm.deleted_at')
+            ->groupBy('fp.idol_idx');
         $like = '%'.$keyword.'%';
 
         return DB::table('idols as i')

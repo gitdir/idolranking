@@ -1,14 +1,23 @@
     @php
         $headerMember = request()->attributes->get('currentMember');
+        $headerActivityMember = request()->attributes->get('activityMember') ?? $headerMember;
+        $isHeaderAdmin = $headerMember !== null && (int) $headerMember->member_level === 10;
+        $dummyMembers = $isHeaderAdmin
+            ? \Illuminate\Support\Facades\DB::table('members')->where('member_level', 1)->where('is_dummy', 1)
+                ->where('status', 'active')->whereNull('deleted_at')->orderBy('nickname')->orderBy('idx')
+                ->get(['idx', 'nickname'])
+            : collect();
+        $selectedDummyIdx = $isHeaderAdmin && (int) $headerActivityMember->idx !== (int) $headerMember->idx
+            ? (int) $headerActivityMember->idx : null;
         $headerAvatar = \App\Support\ManagedImageStorage::publicUrl($headerMember?->profile_image_path);
-        $inviteRewardAmount = $headerMember
+        $inviteRewardAmount = $headerActivityMember
             ? number_format(app(\App\Support\HeartRewardManager::class)->configuredAmount('invite_friend'))
             : '0';
         $drawerStats = $headerMember ? [
             'ranking_rate' => '12.5%',
             'fan_posts' => 28,
             'comments' => 56,
-            'hearts' => number_format((int) ($headerMember->heart_balance ?? 0)),
+            'hearts' => number_format((int) ($headerActivityMember->heart_balance ?? 0)),
         ] : null;
     @endphp
     <header class="site-header">
@@ -110,6 +119,9 @@
                                     Log Out
                                 </button>
                             </div>
+                            @if ($isHeaderAdmin)
+                                @include('partials.acting-dummy-selector', ['location' => 'drawer', 'dummyMembers' => $dummyMembers, 'selectedDummyIdx' => $selectedDummyIdx])
+                            @endif
                         </div>
                     </section>
                     <section class="drawer-stats" aria-label="Account statistics">
@@ -144,12 +156,15 @@
                                 <div class="header-account-identity">
                                     <strong title="{{ $headerMember->nickname }}"><x-member-link :member-code="$headerMember->member_code">{{ $headerMember->nickname }}</x-member-link></strong>
                                     <span title="{{ $headerMember->email }}">{{ $headerMember->email }}</span>
-                                    <div class="header-account-hearts" aria-label="{{ number_format((int) $headerMember->heart_balance) }} Hearts">
-                                        <span class="header-account-heart-icon" aria-hidden="true">♥</span>
-                                        <span>{{ number_format((int) $headerMember->heart_balance) }} Hearts</span>
+                                    <div class="header-account-hearts" aria-label="{{ number_format((int) ($headerActivityMember->heart_balance ?? 0)) }} Hearts">
+                                        <span class="header-account-heart-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><use href="#icon-heart"/></svg></span>
+                                        <span>{{ number_format((int) ($headerActivityMember->heart_balance ?? 0)) }} Hearts</span>
                                     </div>
                                 </div>
                             </div>
+                            @if ($isHeaderAdmin)
+                                @include('partials.acting-dummy-selector', ['location' => 'desktop', 'dummyMembers' => $dummyMembers, 'selectedDummyIdx' => $selectedDummyIdx])
+                            @endif
                             <a class="header-account-action" href="{{ route('my-page') }}" role="menuitem">
                                 <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="8" r="4"/><path d="M4 21c.7-4.2 3.4-6.3 8-6.3s7.3 2.1 8 6.3"/></svg>
                                 <span>My Page</span>
@@ -177,7 +192,7 @@
             </nav>
         </div>
         @if ($headerMember)
-            @php($referralUrl = url('/?ref='.rawurlencode($headerMember->member_code)))
+            @php($referralUrl = url('/?ref='.rawurlencode($headerActivityMember->member_code)))
             <dialog id="invite-friends-dialog" class="invite-friends-dialog" aria-labelledby="invite-friends-title">
                 <button class="invite-friends-close" type="button" data-invite-friends-close aria-label="Close Invite Friends"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m6 6 12 12M18 6 6 18"/></svg></button>
                 <h2 id="invite-friends-title">Invite Friends</h2>

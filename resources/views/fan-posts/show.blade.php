@@ -11,7 +11,7 @@
                     <x-member-link :member-code="$post['author']['member_code'] ?? null" :label="isset($post['author']['member_code']) ? 'View '.$post['author']['nickname'].' Fan Posts' : null">
                         <img src="{{ \App\Support\ManagedImageStorage::publicUrl($post['author']['image_url'] ?? null) }}" width="42" height="42" alt="">
                     </x-member-link>
-                    <div><x-member-link :member-code="$post['author']['member_code'] ?? null"><span>{{ $post['author']['nickname'] }}</span></x-member-link><small class="fan-detail-time">2 hours ago</small></div>
+                    <div><x-member-link :member-code="$post['author']['member_code'] ?? null"><span>{{ $post['author']['nickname'] }}</span></x-member-link><small class="fan-detail-time">{{ $post['time'] }}</small></div>
                 </div>
                 <h1>{{ $post['title'] }}</h1>
                 @if (($post['media_type'] ?? (!empty($post['youtube_video_id']) ? 'youtube' : 'image')) === 'youtube')

@@ -11,6 +11,7 @@ class ResolveMember
     public function handle(Request $request, Closure $next)
     {
         $member = null;
+        $hadMemberSession = $request->session()->has('member_idx');
         if ($request->session()->has('member_idx')) {
             $idx = $request->session()->get('member_idx');
             if (is_scalar($idx) && ctype_digit((string) $idx)) {
@@ -28,9 +29,13 @@ class ResolveMember
                     ]);
             }
             if ($member === null) {
+                $request->attributes->set('invalidMemberSession', true);
                 $request->session()->invalidate();
                 $request->session()->regenerateToken();
             }
+        }
+        if (!$hadMemberSession) {
+            $request->attributes->set('invalidMemberSession', false);
         }
         $request->attributes->set('currentMember', $member);
 

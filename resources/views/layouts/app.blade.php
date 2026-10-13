@@ -55,8 +55,8 @@
     </main>
     @include('partials.footer')
     @php
-        $voteMember = request()->attributes->get('currentMember');
-        $voteSignedIn = $voteMember !== null || session()->has('member_idx');
+        $voteMember = request()->attributes->get('activityMember') ?? request()->attributes->get('currentMember');
+        $voteSignedIn = request()->attributes->get('currentMember') !== null || session()->has('member_idx');
     @endphp
     <x-heart-vote-modal :my-hearts="$voteMember?->heart_balance ?? 12540" :signed-in="$voteSignedIn" />
     <x-sign-in-modal />

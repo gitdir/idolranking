@@ -22,34 +22,82 @@
         </svg>
         <h2>{{ $title }}</h2>
         <p class="password-card-description">{{ $reset ? 'Enter your new password below.' : $description }}</p>
-        <div class="password-preview-fields">
+        <form class="password-preview-fields password-page-form" data-password-page-form method="post"
+              action="{{ $reset ? route('password.update') : route('password.email') }}">
+            @csrf
             @if ($reset)
-                @foreach (['new' => 'New Password', 'confirm' => 'Confirm New Password'] as $key => $label)
+                <input type="hidden" name="email" value="{{ $resetEmail ?? '' }}">
+                <input type="hidden" name="token" data-reset-token>
+                @foreach (['password' => 'New Password', 'password_confirmation' => 'Confirm New Password'] as $key => $label)
+                    @php($inputId = $key === 'password' ? 'password-new' : 'password-confirm')
                     <div class="password-page-field">
-                        <label for="password-{{ $key }}">{{ $label }} <span>*</span></label>
+                        <label for="{{ $inputId }}">{{ $label }} <span>*</span></label>
                         <div class="password-page-input">
                             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true"><rect x="5" y="10" width="14" height="11" rx="2"/><path d="M8 10V6a4 4 0 0 1 8 0v4"/></svg>
-                            <input id="password-{{ $key }}" type="password" autocomplete="new-password" placeholder="{{ $key === 'new' ? 'Enter new password' : 'Confirm new password' }}">
-                            <button type="button" class="password-page-eye" aria-controls="password-{{ $key }}" aria-label="Show {{ strtolower($label) }}" aria-pressed="false"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true"><path d="M2 12s4-7 10-7 10 7 10 7-4 7-10 7S2 12 2 12Z"/><circle cx="12" cy="12" r="3"/></svg></button>
+                            <input id="{{ $inputId }}" name="{{ $key }}" type="password" autocomplete="new-password" placeholder="{{ $key === 'password' ? 'Enter new password' : 'Confirm new password' }}" minlength="8" maxlength="64" required disabled>
+                            <button type="button" class="password-page-eye" aria-controls="{{ $inputId }}" aria-label="Show {{ strtolower($label) }}" aria-pressed="false"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true"><path d="M2 12s4-7 10-7 10 7 10 7-4 7-10 7S2 12 2 12Z"/><circle cx="12" cy="12" r="3"/></svg></button>
                         </div>
-                        @if ($key === 'new')<p class="password-page-hint">Use at least 8 characters with letters, numbers, and symbols.</p>@endif
+                        @if ($key === 'password')<p class="password-page-hint">Use at least 8 characters with letters, numbers, and symbols.</p>@endif
                     </div>
                 @endforeach
             @else
                 <div class="password-page-field">
                     <label for="password-email">Email Address <span>*</span></label>
-                    <div class="password-page-input"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="m3 6 9 7 9-7"/></svg><input id="password-email" type="email" autocomplete="email" placeholder="Enter your email address"></div>
+                    <div class="password-page-input"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="m3 6 9 7 9-7"/></svg><input id="password-email" name="email" type="email" autocomplete="email" maxlength="254" placeholder="Enter your email address" required></div>
                 </div>
             @endif
-            <button type="button" class="password-page-submit" disabled>{{ $reset ? 'Reset Password' : 'Send Reset Link' }}</button>
-        </div>
+            <p class="password-page-message" data-password-page-message role="status" aria-live="polite">@if(!$reset && session('status')){{ session('status') }}@endif</p>
+            <button type="submit" class="password-page-submit" @if($reset) disabled @endif>{{ $reset ? 'Reset Password' : 'Send Reset Link' }}</button>
+        </form>
         <div class="password-page-divider"><span>Back to</span></div>
         <button type="button" class="password-page-sign-in" data-sign-in-open aria-haspopup="dialog" aria-controls="sign-in-modal"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M20 12H4m7-7-7 7 7 7"/></svg>Sign In</button>
     </div>
     <footer class="password-page-footer"><strong>IDOL RANKING</strong><p>&copy; {{ date('Y') }} IDOL RANKING. All rights reserved.</p></footer>
 </section>
-@if ($reset)
-    <script>
+<script>
+    (() => {
+        const form = document.querySelector('[data-password-page-form]');
+        const message = form?.querySelector('[data-password-page-message]');
+        if (!form || !message) return;
+
+        const resetTokenInput = form.querySelector('[data-reset-token]');
+        if (resetTokenInput) {
+            const token = new URLSearchParams(window.location.hash.slice(1)).get('token') || '';
+            resetTokenInput.value = token;
+            form.querySelectorAll('input[type="password"], button[type="submit"]').forEach((control) => {
+                control.disabled = !/^[a-fA-F0-9]{64}$/.test(token);
+            });
+            if (!token) message.textContent = 'This password reset link is invalid or has expired. Please request a new one.';
+        }
+
+        form.addEventListener('submit', async (event) => {
+            event.preventDefault();
+            if (!form.reportValidity()) return;
+            const submit = form.querySelector('[type="submit"]');
+            submit.disabled = true;
+            message.textContent = '';
+            try {
+                const response = await fetch(form.action, {
+                    method: 'POST',
+                    body: new FormData(form),
+                    headers: { 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
+                });
+                const result = await response.json();
+                message.textContent = result.message || 'The request could not be completed. Please try again.';
+                if (result.success && resetTokenInput) {
+                    form.querySelectorAll('input').forEach((input) => { input.disabled = true; });
+                    window.history.replaceState(null, '', window.location.pathname + window.location.search);
+                } else if (!resetTokenInput || resetTokenInput.value) {
+                    submit.disabled = false;
+                }
+            } catch {
+                message.textContent = 'The request could not be completed. Please try again later.';
+                submit.disabled = false;
+            }
+        });
+    })();
+
+    @if ($reset)
         document.querySelectorAll('.password-page-eye').forEach((button) => {
             button.addEventListener('click', () => {
                 const input = document.getElementById(button.getAttribute('aria-controls'));
@@ -59,5 +107,5 @@
                 button.setAttribute('aria-label', `${visible ? 'Hide' : 'Show'} ${input.id === 'password-new' ? 'new password' : 'confirm new password'}`);
             });
         });
-    </script>
-@endif
+    @endif
+</script>

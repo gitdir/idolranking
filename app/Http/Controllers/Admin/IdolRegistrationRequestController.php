@@ -167,7 +167,8 @@ class IdolRegistrationRequestController extends Controller
         try {
             // The approved Idol/Group stays committed if the separate Heart award fails.
             DB::transaction(fn () => app(HeartRewardManager::class)->award(
-                $applicantIdx, 'idol_registration_approved', 'idol_registration_approved:'.$idx
+                $applicantIdx, 'idol_registration_approved', 'idol_registration_approved:'.$idx,
+                ['actor_member_idx' => (int) $admin->idx, 'memo' => 'Registration approval reward']
             ));
         } catch (\Throwable $exception) {
             report($exception);

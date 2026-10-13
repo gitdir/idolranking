@@ -9,9 +9,11 @@ class GetHeartsTest extends TestCase
 {
     private function database(): void
     {
-        DB::statement('CREATE TABLE members (idx INTEGER PRIMARY KEY, member_code TEXT, email TEXT, nickname TEXT, country_code TEXT, profile_image_path TEXT, heart_balance INTEGER DEFAULT 0, member_level INTEGER DEFAULT 1, status TEXT DEFAULT \'active\', deleted_at TEXT, updated_at TEXT)');
+        DB::statement('CREATE TABLE members (idx INTEGER PRIMARY KEY, member_code TEXT, email TEXT, nickname TEXT, country_code TEXT, profile_image_path TEXT, heart_balance INTEGER DEFAULT 0, member_level INTEGER DEFAULT 1, is_dummy INTEGER DEFAULT 0, status TEXT DEFAULT \'active\', deleted_at TEXT, updated_at TEXT)');
         DB::statement('CREATE TABLE heart_reward_settings (idx INTEGER PRIMARY KEY AUTOINCREMENT, action_code TEXT UNIQUE, heart_amount INTEGER, daily_limit INTEGER DEFAULT 0, is_enabled INTEGER DEFAULT 1)');
         DB::statement('CREATE TABLE heart_histories (idx INTEGER PRIMARY KEY AUTOINCREMENT, member_idx INTEGER, amount INTEGER, balance_after INTEGER, reason TEXT, vote_idx INTEGER, comment_idx INTEGER, reversal_of_history_idx INTEGER, operation_key TEXT, actor_member_idx INTEGER, memo TEXT, created_at TEXT, UNIQUE (member_idx, operation_key))');
+        DB::statement('CREATE TABLE partner_banners (idx INTEGER PRIMARY KEY AUTOINCREMENT, title TEXT, image_path TEXT, target_url TEXT, heart_reward INTEGER DEFAULT 10, reward_enabled INTEGER DEFAULT 0, is_active INTEGER DEFAULT 1, display_order INTEGER DEFAULT 0, starts_at TEXT, ends_at TEXT, created_at TEXT, updated_at TEXT)');
+        DB::statement('CREATE TABLE partner_banner_clicks (idx INTEGER PRIMARY KEY AUTOINCREMENT, banner_idx INTEGER NOT NULL, member_idx INTEGER NULL, clicked_at TEXT NOT NULL)');
 
         foreach ([
             ['daily_attendance', 100, 1], ['watch_ads', 50, 10], ['fan_post_create', 30, 20],
@@ -35,6 +37,7 @@ class GetHeartsTest extends TestCase
             ->assertSee('Invite Friends')->assertSee('+ 1,000')->assertSee('No daily limit')
             ->assertSee('Sign in to see your Hearts')->assertDontSee('data-watch-ad-open', false)
             ->assertSee('<link rel="canonical" href="'.route('get-hearts').'">', false);
+        $this->assertSame(0, DB::table('partner_banner_clicks')->count());
     }
 
     public function test_member_summary_and_progress_use_today_positive_history_records(): void

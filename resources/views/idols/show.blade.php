@@ -10,9 +10,11 @@
         <div class="idol-detail-columns">
             <div class="idol-detail-main">
                 <div class="idol-detail-images" aria-label="Top three fan-post images by recommendations">
-                    @for ($slot = 0; $slot < 3; $slot++)
-                        <img src="{{ \App\Support\ManagedImageStorage::publicUrl($idol['image_url'] ?? null) }}" width="320" height="320" alt="{{ $idol['name'] }} popular fan post {{ $slot + 1 }} placeholder">
-                    @endfor
+                    @forelse ($idol['popular_images'] as $image)
+                        <img src="{{ $image }}" width="320" height="320" alt="Popular Fan Post for {{ $idol['name'] }}" loading="lazy">
+                    @empty
+                        <p class="fan-post-empty">No public Fan Post images yet.</p>
+                    @endforelse
                 </div>
                 <div class="idol-detail-summary">
                     <dl class="idol-detail-metrics">
@@ -61,6 +63,9 @@
                             </li>
                         @endforeach
                     </ol>
+                    @if (count($voters) === 0)
+                        <p class="fan-post-empty">No votes have been recorded this month.</p>
+                    @endif
                 </section>
                 <section class="idol-detail-box voting-trend" aria-labelledby="trend-title">
                     <h2 id="trend-title">Voting Trend</h2>

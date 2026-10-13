@@ -55,7 +55,7 @@
                         @forelse ($heartHistories as $history)
                             <div class="my-heart-history-row" role="row">
                                 <time role="cell" datetime="{{ $history->created_at }}">{{ \Illuminate\Support\Carbon::parse($history->created_at)->format('Y-m-d H:i') }}</time>
-                                <span class="my-heart-history-activity" role="cell"><span class="my-heart-history-icon my-heart-history-icon--{{ $history->icon }}" aria-hidden="true">{{ ['post' => '✎', 'comment' => '◌', 'people' => '♧', 'vote' => '♡'][$history->icon] ?? '♥' }}</span>{{ $history->activity }}</span>
+                                <span class="my-heart-history-activity" role="cell"><span class="my-heart-history-icon my-heart-history-icon--{{ $history->icon }}" aria-hidden="true">@if($history->icon === 'heart')<svg viewBox="0 0 24 24"><use href="#icon-heart"/></svg>@else{{ ['post' => '✎', 'comment' => '◌', 'people' => '♧', 'vote' => '♡'][$history->icon] ?? '♥' }}@endif</span>{{ $history->activity }}</span>
                                 <strong @class(['my-heart-history-amount', 'is-positive' => $history->amount > 0, 'is-negative' => $history->amount < 0]) role="cell">{{ $history->amount > 0 ? '+' : '' }}{{ number_format($history->amount) }}</strong>
                             </div>
                         @empty

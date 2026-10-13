@@ -167,6 +167,7 @@ class MyPageController extends Controller
                     'comment_reward_reversal' => ['Comment Reward Reversed', 'comment'],
                     'fan_post_recommend_received' => ['Get Recommended', 'heart'],
                     'invite_friend_reward' => ['Invite Friends', 'people'],
+                    HeartRewardManager::PARTNER_BANNER_REASON => ['Partner Banner', 'heart'],
                     'idol_registration_approved' => ['Register Idol / Group', 'heart'],
                     'vote' => [match ($history->voted_idol_type) {
                         'group' => 'Vote for Group',

@@ -17,6 +17,23 @@ final class PublicFanPostList
             ->all();
     }
 
+    public function byAuthor(int $memberIdx, int $excludeIdx, int $limit = 3): array
+    {
+        return $this->baseQuery()
+            ->where('p.member_idx', $memberIdx)->where('p.idx', '<>', $excludeIdx)
+            ->orderByDesc('p.created_at')->orderByDesc('p.idx')->limit($limit)
+            ->get(['p.idx', 'p.title', 'p.media_type', 'p.image_path', 'p.youtube_video_id', 'p.created_at'])
+            ->map(fn (object $post): array => [
+                'idx' => (int) $post->idx,
+                'title' => $post->title,
+                'image_url' => $post->media_type === 'youtube' && $post->youtube_video_id
+                    ? 'https://i.ytimg.com/vi/'.$post->youtube_video_id.'/hqdefault.jpg'
+                    : ManagedImageStorage::publicUrl($post->image_path),
+                'time' => \Illuminate\Support\Carbon::parse($post->created_at)->diffForHumans(),
+            ])
+            ->all();
+    }
+
     public function paginate(string $sort, int $perPage = 20): LengthAwarePaginator
     {
         $posts = $this->query($sort)->paginate($perPage)->withQueryString();

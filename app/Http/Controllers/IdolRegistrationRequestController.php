@@ -24,7 +24,8 @@ class IdolRegistrationRequestController extends Controller
 
     public function store(Request $request)
     {
-        $member = $request->attributes->get('currentMember');
+        $member = $request->attributes->get('activityMember');
+        $actor = $request->attributes->get('activityActor');
         $requestType = $request->string('request_type')->toString();
         $isGroup = in_array($requestType, ['boy_group', 'girl_group'], true);
         $request->merge(['request_type' => $requestType]);
@@ -67,10 +68,16 @@ class IdolRegistrationRequestController extends Controller
         }
 
         $existingRequest = DB::table('idol_registration_requests')
-            ->where('actor_member_idx', $member->idx)
+            ->where('actor_member_idx', $actor->idx)
             ->where('request_key', $validated['request_key'])
-            ->exists();
+            ->first(['idx', 'member_idx']);
         if ($existingRequest) {
+            if ((int) $existingRequest->member_idx !== (int) $member->idx) {
+                return back()->withInput()->withErrors([
+                    'request' => 'This submission key was already used for another account.',
+                ]);
+            }
+
             return redirect()->route('idol-registration.create')
                 ->with('success', 'Your idol registration request has been submitted for review.');
         }
@@ -84,9 +91,9 @@ class IdolRegistrationRequestController extends Controller
         $stored = $request->file('profile_image')->store('idol-registration-requests', 'public');
         $imagePath = 'storage/'.$stored;
         try {
-            DB::transaction(function () use ($member, $isGroup, $gender, $validated, $imagePath): void {
+            DB::transaction(function () use ($member, $actor, $isGroup, $gender, $validated, $imagePath): void {
                 DB::table('idol_registration_requests')->insert([
-                    'member_idx' => $member->idx, 'actor_member_idx' => $member->idx,
+                    'member_idx' => $member->idx, 'actor_member_idx' => $actor->idx,
                     'type' => $isGroup ? 'group' : 'individual', 'gender' => $gender,
                     'name' => $validated['name'], 'english_name' => $validated['english_name'],
                     'group_idx' => $isGroup ? null : ($validated['group_idx'] ?? null),
@@ -103,7 +110,8 @@ class IdolRegistrationRequestController extends Controller
         } catch (QueryException $exception) {
             Storage::disk('public')->delete($stored);
             if ((string) $exception->getCode() === '23000' && DB::table('idol_registration_requests')
-                ->where('actor_member_idx', $member->idx)->where('request_key', $validated['request_key'])->exists()) {
+                ->where('actor_member_idx', $actor->idx)->where('request_key', $validated['request_key'])
+                ->where('member_idx', $member->idx)->exists()) {
                 return redirect()->route('idol-registration.create')
                     ->with('success', 'Your idol registration request has been submitted for review.');
             }

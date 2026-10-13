@@ -16,7 +16,7 @@ class IdolDetailTest extends TestCase
         }
 
         DB::statement("CREATE TABLE idols (idx INTEGER PRIMARY KEY, type TEXT, gender TEXT, name TEXT, english_name TEXT, agency TEXT, debut_date TEXT, birth_date TEXT, nationality TEXT, height_cm REAL, weight_kg REAL, blood_type TEXT, position TEXT, sns TEXT, image_path TEXT, content TEXT, status TEXT, view_count INTEGER DEFAULT 0, created_at TEXT, updated_at TEXT)");
-        DB::statement("CREATE TABLE members (idx INTEGER PRIMARY KEY, member_code TEXT, email TEXT, nickname TEXT, country_code TEXT, profile_image_path TEXT, heart_balance INTEGER DEFAULT 0, member_level INTEGER DEFAULT 1, status TEXT DEFAULT 'active', deleted_at TEXT)");
+        DB::statement("CREATE TABLE members (idx INTEGER PRIMARY KEY, member_code TEXT, email TEXT, nickname TEXT, country_code TEXT, profile_image_path TEXT, heart_balance INTEGER DEFAULT 0, member_level INTEGER DEFAULT 1, is_dummy INTEGER DEFAULT 0, status TEXT DEFAULT 'active', deleted_at TEXT)");
         DB::statement("CREATE TABLE idol_group_members (individual_idx INTEGER, group_idx INTEGER, PRIMARY KEY (individual_idx, group_idx))");
         DB::statement("CREATE TABLE idol_votes (idx INTEGER PRIMARY KEY, member_idx INTEGER, idol_idx INTEGER, heart_amount INTEGER, created_at TEXT)");
         DB::statement("CREATE TABLE fan_posts (idx INTEGER PRIMARY KEY, idol_idx INTEGER, member_idx INTEGER, media_type TEXT, image_path TEXT, youtube_video_id TEXT, content TEXT, view_count INTEGER DEFAULT 0, status TEXT, deleted_at TEXT, created_at TEXT)");
@@ -48,44 +48,34 @@ class IdolDetailTest extends TestCase
         ]);
     }
 
-    public function test_static_detail_has_three_images_five_voters_and_thirty_daily_points(): void
+    public function test_missing_fixture_idol_is_not_served_and_database_detail_uses_empty_states(): void
     {
-        $response = $this->get('/idol/1');
-        $response->assertOk()->assertSee('Vote for Jungkook')->assertSee('Fan Posts')
-            ->assertSee('Most Liked')->assertSee('Most Commented')
-            ->assertSee('+ Create Fan Post')->assertSee('data-sign-in-open', false);
+        $this->database();
+        $this->get('/idol/1')->assertNotFound();
 
-        $document = new DOMDocument;
-        $previous = libxml_use_internal_errors(true);
-        try {
-            $document->loadHTML($response->getContent());
-        } finally {
-            libxml_clear_errors();
-            libxml_use_internal_errors($previous);
-        }
-        $xpath = new DOMXPath($document);
-        $this->assertSame(3, $xpath->query('//div[@class="idol-detail-images"]/img')->length);
-        $this->assertSame(5, $xpath->query('//ol[@class="top-voters-list"]/li')->length);
-        $this->assertSame(30, $xpath->query('//*[local-name()="circle" and @class="trend-point"]')->length);
-        $this->assertSame(1, $xpath->query('//*[local-name()="polyline" and @class="trend-line"]')->length);
-        $this->assertSame(14, $xpath->query('//article[@class="fan-post-card"]')->length);
+        $this->get('/idol/101')->assertOk()
+            ->assertSee('Test Idol')->assertSee('No votes have been recorded this month.')
+            ->assertSee('No voting activity has been recorded in the last 30 days.')
+            ->assertDontSee('Jungkook')->assertDontSee('golden_army');
     }
 
     public function test_fan_post_section_sorting_uses_the_requested_metric(): void
     {
-        $this->get('/idol/1?sort=liked')->assertOk()
+        $this->database();
+        $this->get('/idol/101?sort=liked')->assertOk()
             ->assertViewHas('fanPostSort', 'liked')
-            ->assertViewHas('posts', fn ($posts) => $posts[0]['fan_post_idx'] === 1);
+            ->assertViewHas('posts', fn ($posts) => $posts[0]['fan_post_idx'] === 1001);
 
-        $this->get('/idol/1?sort=commented')->assertOk()
+        $this->get('/idol/101?sort=commented')->assertOk()
             ->assertViewHas('fanPostSort', 'commented')
-            ->assertViewHas('posts', fn ($posts) => $posts[0]['fan_post_idx'] === 1);
+            ->assertViewHas('posts', fn ($posts) => $posts[0]['fan_post_idx'] === 1002);
 
-        $this->get('/idol/1?sort=invalid')->assertOk()->assertViewHas('fanPostSort', 'latest');
+        $this->get('/idol/101?sort=invalid')->assertOk()->assertViewHas('fanPostSort', 'latest');
     }
 
     public function test_unavailable_demo_idols_return_not_found(): void
     {
+        $this->database();
         $this->get('/idol/99999')->assertNotFound();
         $this->get('/idol/not-an-id')->assertNotFound();
     }

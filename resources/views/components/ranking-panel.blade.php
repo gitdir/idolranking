@@ -11,11 +11,14 @@
             @php($voteImage = $member['image_url'] ?? \App\Support\ManagedImageStorage::defaultUrl())
             <li class="ranking-entry {{ $loop->first ? 'ranking-entry--first' : '' }}">
                 @if ($loop->first)
-                    {{-- Exactly three independent popular fan-post images, ordered by recommendations. --}}
+                    {{-- Only real public Fan Post media is shown in this image strip. --}}
                     <a class="top-post-images" href="{{ $detailUrl }}" aria-label="View {{ $member[0] }} details">
                         @foreach ($panel['images'] as $image)
-                            <img src="{{ $member['image_url'] ?? \App\Support\ManagedImageStorage::defaultUrl() }}" width="320" height="320" alt="{{ $member[0] }} fan post placeholder {{ $loop->iteration }}">
+                            <img src="{{ $image }}" width="320" height="320" alt="Fan Post image for {{ $member[0] }}" loading="lazy">
                         @endforeach
+                        @if (count($panel['images']) === 0)
+                            <span class="top-post-images-empty">No Fan Post images yet.</span>
+                        @endif
                         <x-ranking-badge :rank="$loop->iteration" />
                     </a>
                 @else
@@ -41,4 +44,7 @@
             </li>
         @endforeach
     </ol>
+    @if (count($panel['members']) === 0)
+        <p class="fan-post-empty">No active records are available for this ranking yet.</p>
+    @endif
 </section>

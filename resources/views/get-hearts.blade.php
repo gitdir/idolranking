@@ -25,7 +25,7 @@
                 <span>My Hearts<strong data-get-hearts-balance>{{ number_format((int) $member->heart_balance) }}</strong></span>
             </div>
             <div class="get-hearts-summary-item get-hearts-summary-item--today">
-                <span class="get-hearts-calendar" aria-hidden="true">♥</span>
+                <span class="get-hearts-calendar" aria-hidden="true"><svg viewBox="0 0 24 24"><use href="#icon-heart"/></svg></span>
                 <span>Today Earned<strong data-get-hearts-today-earned>+ {{ number_format($todayEarned) }}</strong><small>{{ now()->format('Y. m. d (D)') }}</small></span>
             </div>
             <p>Complete various fan activities and collect Hearts!</p>
@@ -101,24 +101,29 @@
         </div>
     </section>
 
-    @php($sponsorBanners = [
-        ['Travel Now', 'Special deals for your next trip', 'travel'],
-        ['Natural Beauty', 'Glow every day', 'beauty'],
-        ['Delicious Food', 'Fresh ingredients, better life', 'food'],
-        ['Fashion Style', 'Find your look', 'fashion'],
-        ['Premium Sound', 'Feel the difference', 'sound'],
-        ['Better Home', 'A more comfortable space', 'home'],
-    ])
     <section class="get-hearts-sponsors" aria-labelledby="sponsor-banners-title">
-        <header><h2 id="sponsor-banners-title">Partner Banners</h2><p>Partner rewards are not available yet.</p></header>
-        <div class="get-hearts-sponsor-grid">
-            @foreach($sponsorBanners as [$title, $description, $theme])
-                <div class="get-hearts-sponsor get-hearts-sponsor--{{ $theme }}">
-                    <span><strong>{{ $title }}</strong><small>{{ $description }}</small></span>
-                    <span aria-hidden="true">↗</span>
-                </div>
-            @endforeach
+        <header><h2 id="sponsor-banners-title">Partner Banners</h2><p>Discover our partner pages.</p></header>
+        <div class="get-hearts-sponsor-grid{{ $partnerBanners->isNotEmpty() ? ' has-banners' : '' }}">
+            @forelse($partnerBanners as $banner)
+                <a class="get-hearts-sponsor" href="{{ $banner->click_url }}" target="_blank" rel="noopener noreferrer"
+                   @if($banner->claim_url) data-partner-banner-reward data-claim-url="{{ $banner->claim_url }}" data-banner-title="{{ $banner->title }}" data-heart-amount="{{ (int) $banner->heart_reward }}" @endif>
+                    @if($banner->show_reward_badge)
+                        <span class="get-hearts-sponsor-badge{{ $banner->completed_today ? ' is-complete' : '' }}" data-partner-banner-badge>
+                            @if($banner->completed_today)
+                                ✓ 완료
+                            @else
+                                <svg width="16" height="16" viewBox="0 0 24 24" aria-hidden="true"><use href="#icon-heart"/></svg>
+                                <span>+{{ number_format((int) $banner->heart_reward) }}</span>
+                            @endif
+                        </span>
+                    @endif
+                    <img src="{{ $banner->image_url }}" alt="{{ $banner->title }}" loading="lazy">
+                </a>
+            @empty
+                <p class="get-hearts-sponsor-empty">No partner banners are available yet.</p>
+            @endforelse
         </div>
+        <p class="get-hearts-sponsor-note"><svg width="14" height="14" viewBox="0 0 24 24" aria-hidden="true"><use href="#icon-heart"/></svg> Heart rewards are available to eligible signed-in members only. Each banner can earn Hearts once per day.</p>
     </section>
 
     <aside class="get-hearts-notes" aria-label="Heart reward notes"><strong>ⓘ Notes</strong><ul><li>Hearts are given automatically when you complete each activity.</li><li>Daily limits may vary by activity.</li><li>Abuse or fraudulent activities may result in reward cancellation.</li></ul></aside>
@@ -133,6 +138,16 @@
             <p class="watch-ad-notice">No Hearts are granted from this preview. Rewarded-ad integration will be added separately.</p>
             <button type="button" disabled>Watch Ad</button>
         </dialog>
+
+        @if($partnerBanners->contains(fn ($banner) => $banner->claim_url !== null || $banner->completed_today))
+        <dialog id="partner-banner-reward-dialog" class="partner-banner-reward-dialog" aria-labelledby="partner-banner-reward-title">
+            <button class="watch-ad-close" type="button" data-partner-banner-close aria-label="Close">×</button>
+            <h2 id="partner-banner-reward-title">Partner Banner</h2>
+            <p><strong data-partner-banner-amount></strong> Hearts are available for this banner.</p>
+            <p class="partner-banner-reward-message">The partner page opened in a new tab. Confirm below to request the reward.</p>
+            <button type="button" data-partner-banner-claim data-csrf="{{ csrf_token() }}">하트 받기</button>
+        </dialog>
+        @endif
     @endif
 </div>
 @endsection

@@ -31,4 +31,7 @@
             </li>
         @endforeach
     </ol>
+    @if (count($voters) === 0)
+        <p class="fan-post-empty">No votes have been recorded for this month.</p>
+    @endif
 </aside>

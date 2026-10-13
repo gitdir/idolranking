@@ -6,6 +6,7 @@
         ['admin.groups.index', '아이돌 그룹 관리', 'groups'],
         ['admin.fan-posts.index', '팬포스트 관리', 'document'],
         ['admin.fan-post-reports.index', '팬포스트 신고', 'shield'],
+        ['admin.partner-banners.index', '파트너 배너 관리', 'document'],
         ['admin.members.index', '회원 관리', 'people', [], [
             ['admin.members.index', '회원 목록'],
             ['admin.member-access-logs.index', '회원 접속 로그'],
@@ -19,6 +20,30 @@
         ['admin.activity-logs.index', '관리자 활동 로그', 'clock'],
         ['admin.settings.edit', '관리 설정', 'settings', ['section' => 'general']],
     ];
+    $adminRoutePatterns = [
+        'admin.index' => ['admin.index'],
+        'admin.idol-requests.index' => ['admin.idol-requests.*'],
+        'admin.idols.index' => ['admin.idols.*'],
+        'admin.groups.index' => ['admin.groups.*'],
+        'admin.fan-posts.index' => ['admin.fan-posts.*'],
+        'admin.fan-post-reports.index' => ['admin.fan-post-reports.*'],
+        'admin.partner-banners.index' => ['admin.partner-banners.*'],
+        'admin.members.index' => ['admin.members.*', 'admin.member-access-logs.*'],
+        'admin.member-access-logs.index' => ['admin.member-access-logs.*'],
+        'admin.hearts.index' => ['admin.hearts.index', 'admin.hearts.show', 'admin.hearts.settings*'],
+        'admin.hearts.settings' => ['admin.hearts.settings*'],
+        'admin.restricted-nicknames.index' => ['admin.restricted-nicknames.*'],
+        'admin.ip-access.index' => ['admin.ip-access.*'],
+        'admin.activity-logs.index' => ['admin.activity-logs.*'],
+        'admin.settings.edit' => ['admin.settings.*'],
+    ];
+    $isAdminMenuRouteActive = fn (string $routeName): bool => request()->routeIs(...($adminRoutePatterns[$routeName] ?? [$routeName]));
+    $activeAdminChildPatterns = [
+        'admin.members.index' => ['admin.members.index', 'admin.members.show'],
+        'admin.member-access-logs.index' => ['admin.member-access-logs.*'],
+        'admin.hearts.index' => ['admin.hearts.index', 'admin.hearts.show'],
+        'admin.hearts.settings' => ['admin.hearts.settings*'],
+    ];
 @endphp
 <aside class="admin-sidebar" aria-label="관리자 메뉴">
     <nav>
@@ -28,34 +53,23 @@
             @endphp
             @if ($children)
                 @php
-                    $groupIsOpen = match ($routeName) {
-                        'admin.members.index' => request()->routeIs('admin.members.index', 'admin.members.show', 'admin.member-access-logs.index'),
-                        'admin.hearts.index' => request()->routeIs('admin.hearts.index', 'admin.hearts.show', 'admin.hearts.settings'),
-                        default => false,
-                    };
+                    $groupIsOpen = $isAdminMenuRouteActive($routeName);
                 @endphp
                 <div class="admin-sidebar-group" data-sidebar-group data-open="{{ $groupIsOpen ? 'true' : 'false' }}" @if($groupIsOpen) data-active="true" @endif>
-                    <button type="button" class="admin-sidebar-group-title" data-sidebar-group-toggle aria-expanded="{{ $groupIsOpen ? 'true' : 'false' }}">
+                    <button type="button" class="admin-sidebar-group-title" data-sidebar-group-toggle aria-expanded="{{ $groupIsOpen ? 'true' : 'false' }}" aria-controls="admin-sidebar-submenu-{{ str_replace('.', '-', $routeName) }}">
                         <svg viewBox="0 0 24 24" aria-hidden="true">@if($icon === 'heart')<path d="M12 21S3 15.5 3 9.5A5 5 0 0 1 12 6a5 5 0 0 1 9 3.5C21 15.5 12 21 12 21Z"/>@else<circle cx="8" cy="8" r="4"/><circle cx="17" cy="9" r="3"/><path d="M2 21c.5-5 2.5-7 6-7s5.5 2 6 7m1-6c4 0 6 2 7 6"/>@endif</svg>
                         <span>{{ $label }}</span>
+                        <svg class="admin-sidebar-chevron" viewBox="0 0 24 24" aria-hidden="true"><path d="m7 10 5 5 5-5"/></svg>
                     </button>
-                    <div class="admin-sidebar-submenu" @if(!$groupIsOpen) hidden @endif>
+                    <div id="admin-sidebar-submenu-{{ str_replace('.', '-', $routeName) }}" class="admin-sidebar-submenu" @if(!$groupIsOpen) hidden @endif>
                         @foreach($children as [$childRoute, $childLabel])
-                            @php
-                                $childIsActive = match ($childRoute) {
-                                    'admin.members.index' => request()->routeIs('admin.members.index', 'admin.members.show'),
-                                    'admin.member-access-logs.index' => request()->routeIs('admin.member-access-logs.index'),
-                                    'admin.hearts.index' => request()->routeIs('admin.hearts.index', 'admin.hearts.show'),
-                                    'admin.hearts.settings' => request()->routeIs('admin.hearts.settings'),
-                                    default => request()->routeIs($childRoute),
-                                };
-                            @endphp
+                            @php($childIsActive = request()->routeIs(...($activeAdminChildPatterns[$childRoute] ?? [$childRoute])))
                             <a href="{{ route($childRoute) }}" @if($childIsActive) aria-current="page" @endif>{{ $childLabel }}</a>
                         @endforeach
                     </div>
                 </div>
             @else
-                <a href="{{ route($routeName, $parameters) }}" @if (request()->routeIs($routeName)) aria-current="page" @endif>
+                <a href="{{ route($routeName, $parameters) }}" @if ($isAdminMenuRouteActive($routeName)) aria-current="page" @endif>
                     <svg viewBox="0 0 24 24" aria-hidden="true">
                         @if ($icon === 'home')
                             <path d="M3 11 12 3l9 8v10h-6v-7H9v7H3Z"/>

@@ -1,19 +1,24 @@
 @props(['days'])
 
 @php
-    // Presentation coordinates only; values are daily UI fixtures, not aggregated totals.
-    $ceiling = max(50000, ceil(max(array_column($days, 'votes')) / 50000) * 50000);
-    $points = [];
-    foreach ($days as $index => $day) {
-        $points[] = [
-            'x' => 58 + $index * 498 / max(1, count($days) - 1),
-            'y' => 202 - $day['votes'] / $ceiling * 164,
-            'label' => (new DateTimeImmutable($day['date']))->format('F j, Y').': Daily Votes '.number_format($day['votes']),
-        ];
+    $hasVotes = count($days) > 0 && array_sum(array_column($days, 'votes')) > 0;
+    if ($hasVotes) {
+        $ceiling = max(50000, ceil(max(array_column($days, 'votes')) / 50000) * 50000);
+        $points = [];
+        foreach ($days as $index => $day) {
+            $points[] = [
+                'x' => 58 + $index * 498 / max(1, count($days) - 1),
+                'y' => 202 - $day['votes'] / $ceiling * 164,
+                'label' => (new DateTimeImmutable($day['date']))->format('F j, Y').': Daily Votes '.number_format($day['votes']),
+            ];
+        }
+        $line = implode(' ', array_map(fn ($point) => $point['x'].','.$point['y'], $points));
     }
-    $line = implode(' ', array_map(fn ($point) => $point['x'].','.$point['y'], $points));
 @endphp
 
+@if (!$hasVotes)
+    <p class="fan-post-empty" role="status">No voting activity has been recorded in the last 30 days.</p>
+@else
 <svg class="voting-trend-chart" viewBox="0 0 576 260" role="group" aria-label="Daily votes over the last 30 days. Each point includes its date and vote count.">
     <text x="58" y="18" class="trend-axis-label">Daily Votes</text>
     @for ($tick = 0; $tick <= 3; $tick++)
@@ -30,3 +35,4 @@
     @endforeach
     <text class="trend-axis-label" x="307" y="250" text-anchor="middle">Date</text>
 </svg>
+@endif

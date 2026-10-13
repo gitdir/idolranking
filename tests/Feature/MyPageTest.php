@@ -125,7 +125,7 @@ class MyPageTest extends TestCase
         for ($idx = 1; $idx <= 21; $idx++) {
             DB::table('heart_histories')->insert([
                 'idx' => $idx, 'member_idx' => 1, 'amount' => $idx === 21 ? -100 : 10,
-                'reason' => $idx === 21 ? 'vote' : 'comment_reward',
+                'reason' => $idx === 21 ? 'vote' : ($idx === 20 ? 'partner_banner_reward' : 'comment_reward'),
                 'vote_idx' => $idx === 21 ? 4 : null,
                 'created_at' => $recentDate,
             ]);
@@ -152,6 +152,7 @@ class MyPageTest extends TestCase
                 return true;
             })
             ->assertSee('Vote for Group')
+            ->assertSee('Partner Banner')
             ->assertSee('-100')
             ->assertSee('Heart history from the last 3 months.')
             ->assertDontSee('+8,000')
@@ -318,9 +319,7 @@ class MyPageTest extends TestCase
             ->assertOk()->assertDontSee('+ Create Fan Post');
 
         DB::table('members')->where('idx', 2)->update(['is_dummy' => 1]);
-        $this->get('/member/memberCodeB2/fan-posts')->assertOk()
-            ->assertSee('No fan posts yet.')
-            ->assertSee(route('member.fan-posts', ['member_code' => 'memberCodeB2']), false);
+        $this->get('/member/memberCodeB2/fan-posts')->assertOk()->assertSee('public_member');
 
         foreach ([['member_level' => 0], ['status' => 'suspended'], ['deleted_at' => '2026-09-01 00:00:00']] as $changes) {
             DB::table('members')->where('idx', 2)->update(array_replace([
@@ -332,9 +331,7 @@ class MyPageTest extends TestCase
         }
         $this->get('/member/unknownCode1/fan-posts')->assertNotFound()->assertSee('Member Not Found');
         $this->get('/member/1/fan-posts')->assertNotFound()->assertSee('Member Not Found');
-        $this->get('/member/demoMemberA1/fan-posts')->assertOk()
-            ->assertSee('golden_army')
-            ->assertSee('/member/demoMemberA1/fan-posts', false);
+        $this->get('/member/demoMemberA1/fan-posts')->assertNotFound();
     }
 
     public function test_member_fan_post_sorting_uses_like_and_published_comment_counts(): void
@@ -361,7 +358,7 @@ class MyPageTest extends TestCase
         $this->get('/member/memberCodeA1/fan-posts?sort=commented')
             ->assertOk()->assertViewHas('fanPosts', fn ($posts) => $posts->items()[0][2] === 'Sorted post 3')
             ->assertViewHas('memberSummary', fn ($summary) => $summary['fan_post_count'] === 3
-                && $summary['comment_count'] === 2 && $summary['like_ranking'] === 'Top 5%');
+                && $summary['comment_count'] === 2 && $summary['like_ranking'] === '—');
     }
 
     public function test_password_attempts_are_throttled(): void

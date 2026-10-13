@@ -3,17 +3,15 @@
 namespace App\Http\Controllers;
 
 use App\Support\Countries;
-use App\Support\DatabaseAvailability;
 use Illuminate\Http\Request;
 use Illuminate\Http\RedirectResponse;
-use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Facades\DB;
 
 class MemberFanPostController extends Controller
 {
     public function mine(Request $request): RedirectResponse
     {
-        $member = $request->attributes->get('currentMember');
+        $member = $request->attributes->get('activityMember');
 
         return redirect()->route('member.fan-posts', [
             'member_code' => $member->member_code,
@@ -30,12 +28,7 @@ class MemberFanPostController extends Controller
             ->first(['idx', 'member_code', 'nickname', 'country_code', 'profile_image_path']);
 
         if ($member === null) {
-            $fixtureMember = $this->fixtureMember($member_code);
-            if ($fixtureMember === null) {
-                return response()->view('members.not-found', [], 404);
-            }
-
-            return $this->showFixture($request, $fixtureMember);
+            return response()->view('members.not-found', [], 404);
         }
 
         $sort = $request->string('sort')->toString();
@@ -114,87 +107,16 @@ class MemberFanPostController extends Controller
             'country_code' => $member->country_code,
             'bio' => null,
             // Replace this presentation value when the percentile query is introduced.
-            'like_ranking' => 'Top 5%',
+            'like_ranking' => '—',
             'fan_post_count' => $postCount,
             'comment_count' => $commentCount,
         ];
 
         $showSamplePagination = false;
-        $currentMember = $request->attributes->get('currentMember');
+        $currentMember = $request->attributes->get('activityMember');
         $canCreateFanPost = $currentMember !== null && (int) $currentMember->idx === (int) $member->idx;
 
         return view('members.fan-posts', compact('memberSummary', 'fanPosts', 'sort', 'showSamplePagination', 'member_code', 'canCreateFanPost'));
-    }
-
-    private function fixtureMember(string $memberCode): ?array
-    {
-        $fixtures = require resource_path('data/fan-posts.php');
-
-        foreach ($fixtures as $post) {
-            if (($post['author']['member_code'] ?? null) === $memberCode) {
-                return $post['author'];
-            }
-        }
-
-        return null;
-    }
-
-    private function showFixture(Request $request, array $member)
-    {
-        $sort = $request->string('sort')->toString();
-        if (! in_array($sort, ['latest', 'liked', 'commented'], true)) {
-            $sort = 'latest';
-        }
-
-        $fixtures = collect(require resource_path('data/fan-posts.php'))
-            ->filter(fn (array $post): bool => ($post['author']['member_code'] ?? null) === $member['member_code']);
-        if (DatabaseAvailability::isAvailable()) {
-            $inactiveIds = DB::table('idols')->where('status','inactive')->pluck('idx')->map(fn($idx)=>(int)$idx)->all();
-            $fixtures = $fixtures->reject(fn(array $post) => in_array((int)$post['idol_idx'], $inactiveIds, true));
-        }
-
-        $fixtures = (match ($sort) {
-            'liked' => $fixtures->sortByDesc('recommendations'),
-            'commented' => $fixtures->sortByDesc(fn (array $post): int => count($post['comments'])),
-            default => $fixtures->sortByDesc('idx'),
-        })->values();
-
-        $page = max(1, filter_var($request->query('page', 1), FILTER_VALIDATE_INT) ?: 1);
-        $fanPosts = new LengthAwarePaginator(
-            $fixtures->forPage($page, 20)->map(fn (array $post): array => [
-                $post['author']['image'], $post['author']['nickname'], $post['title'],
-                $post['views'], $post['recommendations'], count($post['comments']), $post['shape'],
-                'member_code' => $member['member_code'], 'fan_post_idx' => $post['idx'],
-            ]),
-            $fixtures->count(),
-            20,
-            $page,
-            ['path' => $request->url(), 'query' => $request->query()]
-        );
-
-        $memberSummary = [
-            'member_code' => $member['member_code'],
-            'profile_image_url' => \App\Support\ManagedImageStorage::defaultUrl(),
-            'nickname' => $member['nickname'],
-            'country' => $this->countryName($member['country_code'] ?? null),
-            'country_code' => $member['country_code'] ?? null,
-            'bio' => $member['bio'] ?? null,
-            'like_ranking' => 'Top 5%',
-            'fan_post_count' => $fixtures->count(),
-            'comment_count' => $fixtures->sum(fn (array $post): int => count($post['comments'])),
-        ];
-        $member_code = $member['member_code'];
-        $showSamplePagination = false;
-        $canCreateFanPost = false;
-
-        return view('members.fan-posts', compact('memberSummary', 'fanPosts', 'sort', 'showSamplePagination', 'member_code', 'canCreateFanPost'));
-    }
-
-    private function profilePlaceholder(int|string $memberIdx): string
-    {
-        $placeholders = ['portrait-rose', 'portrait-blue', 'portrait-sage'];
-
-        return $placeholders[((int) $memberIdx - 1) % count($placeholders)];
     }
 
     private function countryName(?string $countryCode): string

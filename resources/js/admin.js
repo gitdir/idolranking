@@ -118,7 +118,7 @@ sidebarGroups.forEach((group) => {
     if (!toggle || !submenu) return;
 
     toggle.addEventListener('click', () => {
-        const shouldOpen = group.dataset.open !== 'true';
+        const shouldOpen = submenu.hidden;
 
         sidebarGroups.forEach((otherGroup) => {
             const otherToggle = otherGroup.querySelector('[data-sidebar-group-toggle]');

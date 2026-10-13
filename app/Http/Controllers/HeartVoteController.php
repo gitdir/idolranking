@@ -22,12 +22,13 @@ class HeartVoteController extends Controller
             'request_key.regex' => 'Unable to submit the vote. Please try again.',
         ]);
 
-        $memberIdx = (int) $request->attributes->get('currentMember')->idx;
+        $memberIdx = (int) $request->attributes->get('activityMember')->idx;
+        $actorMemberIdx = (int) $request->attributes->get('activityActor')->idx;
         $idolIdx = (int) $validated['idol_idx'];
         $heartAmount = (int) $validated['heart_amount'];
         $requestKey = $validated['request_key'];
 
-        $result = DB::transaction(function () use ($memberIdx, $idolIdx, $heartAmount, $requestKey): array {
+        $result = DB::transaction(function () use ($memberIdx, $actorMemberIdx, $idolIdx, $heartAmount, $requestKey): array {
             // Serialize all balance changes for this member so concurrent votes cannot overspend.
             $member = DB::table('members')->where('idx', $memberIdx)
                 ->where('member_level', '>', 0)->where('status', 'active')->whereNull('deleted_at')
@@ -69,6 +70,7 @@ class HeartVoteController extends Controller
             $createdAt = now();
             $voteIdx = DB::table('idol_votes')->insertGetId([
                 'member_idx' => $memberIdx,
+                'actor_member_idx' => $actorMemberIdx,
                 'idol_idx' => $idolIdx,
                 'heart_amount' => $heartAmount,
                 'request_key' => $requestKey,
@@ -89,7 +91,7 @@ class HeartVoteController extends Controller
                 'comment_idx' => null,
                 'reversal_of_history_idx' => null,
                 'operation_key' => 'vote:'.$voteIdx,
-                'actor_member_idx' => $memberIdx,
+                'actor_member_idx' => $actorMemberIdx,
                 'memo' => null,
                 'created_at' => $createdAt,
             ]);

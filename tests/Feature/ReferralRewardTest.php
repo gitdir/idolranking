@@ -44,13 +44,15 @@ class ReferralRewardTest extends TestCase
             ip_address TEXT, user_agent TEXT, failure_reason TEXT, created_at TEXT
         )");
         DB::statement("CREATE TABLE idols (idx INTEGER PRIMARY KEY, name TEXT, gender TEXT, type TEXT, status TEXT, image_path TEXT)");
-        DB::statement("CREATE TABLE idol_votes (idx INTEGER PRIMARY KEY, idol_idx INTEGER, heart_amount INTEGER, created_at TEXT)");
+        DB::statement("CREATE TABLE idol_votes (idx INTEGER PRIMARY KEY, idol_idx INTEGER, member_idx INTEGER, heart_amount INTEGER, created_at TEXT)");
+        DB::statement('CREATE TABLE idol_group_members (individual_idx INTEGER, group_idx INTEGER)');
         DB::statement("CREATE TABLE fan_posts (
             idx INTEGER PRIMARY KEY, member_idx INTEGER, idol_idx INTEGER, media_type TEXT, image_path TEXT,
             youtube_video_id TEXT, content TEXT, view_count INTEGER DEFAULT 0, status TEXT, deleted_at TEXT, created_at TEXT
         )");
         DB::statement('CREATE TABLE fan_post_likes (fan_post_idx INTEGER, member_idx INTEGER)');
         DB::statement("CREATE TABLE fan_post_comments (idx INTEGER PRIMARY KEY, fan_post_idx INTEGER, status TEXT, deleted_at TEXT)");
+        DB::statement('CREATE TABLE partner_banners (idx INTEGER PRIMARY KEY AUTOINCREMENT, title TEXT, image_path TEXT, target_url TEXT, heart_reward INTEGER DEFAULT 10, reward_enabled INTEGER DEFAULT 0, is_active INTEGER DEFAULT 1, display_order INTEGER DEFAULT 0, starts_at TEXT, ends_at TEXT, created_at TEXT, updated_at TEXT)');
 
         DB::table('heart_reward_settings')->insert([
             ['action_code' => 'signup', 'heart_amount' => 5, 'daily_limit' => 0, 'is_enabled' => 1],

@@ -5,6 +5,7 @@ namespace App\Support;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Str;
+use Illuminate\Database\QueryException;
 
 final class HeartRewardManager
 {
@@ -21,6 +22,7 @@ final class HeartRewardManager
     ];
 
     public const REFERRAL_SESSION_KEY = 'referral_member_code';
+    public const PARTNER_BANNER_REASON = 'partner_banner_reward';
 
     public function eligibleInviterIdx(mixed $memberCode): ?int
     {
@@ -29,7 +31,7 @@ final class HeartRewardManager
         }
 
         $idx = DB::table('members')->where('member_code', $memberCode)
-            ->where('member_level', '>', 0)->where('is_dummy', 0)
+            ->where('member_level', '>', 0)
             ->where('status', 'active')->whereNull('deleted_at')->value('idx');
 
         return $idx === null ? null : (int) $idx;
@@ -58,7 +60,7 @@ final class HeartRewardManager
 
             $inviterIdx = (int) $newMember->referred_by_member_idx;
             $inviterIsEligible = DB::table('members')->where('idx', $inviterIdx)
-                ->where('member_level', '>', 0)->where('is_dummy', 0)
+                ->where('member_level', '>', 0)
                 ->where('status', 'active')->whereNull('deleted_at')->exists();
 
             if (!$inviterIsEligible) {
@@ -120,6 +122,72 @@ final class HeartRewardManager
             'memo' => $references['memo'] ?? null, 'created_at' => now(),
         ]);
         return $amount;
+    }
+
+    public function awardPartnerBanner(int $memberIdx, int $bannerIdx): array
+    {
+        $now = now();
+        $operationKey = 'partner_banner:'.$bannerIdx.':'.$memberIdx.':'.$now->format('Ymd');
+
+        try {
+            return DB::transaction(function () use ($memberIdx, $bannerIdx, $now, $operationKey): array {
+                $member = DB::table('members')->where('idx', $memberIdx)->where('member_level', 1)
+                    ->where('is_dummy', 0)->where('status', 'active')->whereNull('deleted_at')->lockForUpdate()
+                    ->first(['idx', 'heart_balance']);
+                if ($member === null) {
+                    return ['status' => 'ineligible'];
+                }
+
+                $banner = DB::table('partner_banners')->where('idx', $bannerIdx)->lockForUpdate()
+                    ->first(['idx', 'heart_reward', 'reward_enabled', 'is_active', 'starts_at', 'ends_at']);
+                if ($banner === null) {
+                    return ['status' => 'not_found'];
+                }
+
+                if (!(bool) $banner->is_active || !(bool) $banner->reward_enabled || (int) $banner->heart_reward <= 0
+                    || ($banner->starts_at !== null && $now->lt($banner->starts_at))
+                    || ($banner->ends_at !== null && $now->gt($banner->ends_at))) {
+                    return ['status' => 'unavailable'];
+                }
+
+                if (DB::table('heart_histories')->where('member_idx', $memberIdx)
+                    ->where('operation_key', $operationKey)->exists()) {
+                    return ['status' => 'already_claimed', 'heart_balance' => (int) $member->heart_balance];
+                }
+
+                $amount = (int) $banner->heart_reward;
+                $balance = (int) $member->heart_balance + $amount;
+                DB::table('members')->where('idx', $memberIdx)->update([
+                    'heart_balance' => $balance,
+                    'updated_at' => $now,
+                ]);
+                DB::table('heart_histories')->insert([
+                    'member_idx' => $memberIdx,
+                    'amount' => $amount,
+                    'balance_after' => $balance,
+                    'reason' => self::PARTNER_BANNER_REASON,
+                    'vote_idx' => null,
+                    'comment_idx' => null,
+                    'reversal_of_history_idx' => null,
+                    'operation_key' => $operationKey,
+                    'actor_member_idx' => null,
+                    'memo' => 'Partner banner reward',
+                    'created_at' => $now,
+                ]);
+
+                return ['status' => 'awarded', 'amount' => $amount, 'heart_balance' => $balance];
+            });
+        } catch (QueryException $exception) {
+            // The unique member/operation-key index is the final guard if requests race past the row lock.
+            if (!DB::table('heart_histories')->where('member_idx', $memberIdx)->where('operation_key', $operationKey)->exists()) {
+                throw $exception;
+            }
+
+            return [
+                'status' => 'already_claimed',
+                'heart_balance' => (int) DB::table('members')->where('idx', $memberIdx)->value('heart_balance'),
+            ];
+        }
     }
 
     public function creditManually(int $memberIdx, int $amount, string $reason, int $adminIdx): void

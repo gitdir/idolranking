@@ -3,6 +3,8 @@
 namespace Tests\Feature;
 
 use Illuminate\Support\Facades\DB;
+use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\Storage;
 use Tests\TestCase;
 
 class AdminIdolRegistrationRequestTest extends TestCase
@@ -14,10 +16,10 @@ class AdminIdolRegistrationRequestTest extends TestCase
         }
 
         DB::statement("CREATE TABLE members (idx INTEGER PRIMARY KEY, member_code TEXT, email TEXT, nickname TEXT, country_code TEXT, profile_image_path TEXT, heart_balance INTEGER DEFAULT 0, member_level INTEGER DEFAULT 1, is_dummy INTEGER DEFAULT 0, status TEXT DEFAULT 'active', deleted_at TEXT, created_at TEXT, updated_at TEXT)");
-        DB::statement("CREATE TABLE fan_posts (idx INTEGER PRIMARY KEY, idol_idx INTEGER, member_idx INTEGER, media_type TEXT, image_path TEXT, youtube_video_id TEXT, content TEXT, view_count INTEGER, status TEXT, deleted_at TEXT, created_at TEXT)");
+        DB::statement("CREATE TABLE fan_posts (idx INTEGER PRIMARY KEY, idol_idx INTEGER, member_idx INTEGER, title TEXT, media_type TEXT, image_path TEXT, youtube_video_id TEXT, content TEXT, view_count INTEGER, status TEXT, deleted_at TEXT, created_at TEXT)");
         DB::statement("CREATE TABLE fan_post_comments (idx INTEGER PRIMARY KEY, fan_post_idx INTEGER, status TEXT, deleted_at TEXT, created_at TEXT)");
         DB::statement("CREATE TABLE fan_post_likes (fan_post_idx INTEGER, member_idx INTEGER)");
-        DB::statement("CREATE TABLE idol_votes (idx INTEGER PRIMARY KEY, idol_idx INTEGER, heart_amount INTEGER, created_at TEXT)");
+        DB::statement("CREATE TABLE idol_votes (idx INTEGER PRIMARY KEY, member_idx INTEGER, idol_idx INTEGER, heart_amount INTEGER, created_at TEXT)");
         DB::statement("CREATE TABLE heart_histories (idx INTEGER PRIMARY KEY AUTOINCREMENT, member_idx INTEGER, amount INTEGER, balance_after INTEGER, reason TEXT, vote_idx INTEGER, comment_idx INTEGER, reversal_of_history_idx INTEGER, operation_key TEXT, actor_member_idx INTEGER, memo TEXT, created_at TEXT, UNIQUE (member_idx, operation_key))");
         DB::statement("CREATE TABLE heart_reward_settings (action_code TEXT PRIMARY KEY, heart_amount INTEGER, daily_limit INTEGER DEFAULT 0, is_enabled INTEGER DEFAULT 1)");
         DB::statement("CREATE TABLE fan_post_reports (idx INTEGER PRIMARY KEY, reason TEXT, status TEXT, created_at TEXT)");
@@ -108,6 +110,42 @@ class AdminIdolRegistrationRequestTest extends TestCase
         $this->withSession(['member_idx' => 1])->post('/admin/idol-requests/12/approve', $payload)
             ->assertSessionHasErrors('status');
         $this->assertSame(1, DB::table('heart_histories')->where('operation_key', 'idol_registration_approved:12')->count());
+    }
+
+    public function test_admin_can_submit_registration_request_as_a_dummy_member(): void
+    {
+        $this->database();
+        DB::table('members')->insert([
+            'idx' => 3, 'member_code' => 'dummyMember03', 'email' => 'dummy@example.test',
+            'nickname' => 'dummy_member', 'heart_balance' => 50, 'member_level' => 1, 'is_dummy' => 1, 'status' => 'active',
+        ]);
+        Storage::fake('public');
+
+        $this->withSession(['member_idx' => 1])->post(route('admin.acting-dummy-member'), [
+            'dummy_member_idx' => 3,
+        ])->assertRedirect(route('home'));
+        $this->get('/idol-registration/request')->assertOk();
+        $requestKey = session('idol_registration_request_key');
+
+        $this->post('/idol-registration/request', [
+            'request_type' => 'boy', 'name' => 'Test Idol', 'english_name' => 'Test Idol',
+            'profile_image' => UploadedFile::fake()->image('idol.jpg'),
+            'content' => 'A real request from the dummy member.', 'request_key' => $requestKey,
+        ])->assertRedirect(route('idol-registration.create'));
+
+        $this->assertDatabaseHas('idol_registration_requests', [
+            'member_idx' => 3, 'actor_member_idx' => 1, 'status' => 'pending',
+        ]);
+        $requestIdx = (int) DB::table('idol_registration_requests')->where('member_idx', 3)->value('idx');
+        $this->post('/admin/idol-requests/'.$requestIdx.'/approve', [
+            'name' => 'Test Idol', 'english_name' => 'Test Idol', 'content' => 'Approved dummy request.',
+        ])->assertRedirect('/admin/idol-requests/'.$requestIdx);
+        $this->assertSame(4371, (int) DB::table('members')->where('idx', 3)->value('heart_balance'));
+        $this->assertDatabaseHas('heart_histories', [
+            'member_idx' => 3, 'actor_member_idx' => 1, 'amount' => 4321,
+            'reason' => 'idol_registration_approved', 'operation_key' => 'idol_registration_approved:'.$requestIdx,
+        ]);
+        $this->assertSame(1, (int) session('member_idx'));
     }
 
     public function test_disabled_approval_reward_does_not_block_approval(): void
@@ -210,6 +248,7 @@ class AdminIdolRegistrationRequestTest extends TestCase
 
     public function test_guest_is_sent_to_existing_sign_in_flow(): void
     {
+        $this->database();
         $this->get('/')->assertOk()->assertDontSee('href="'.route('admin.index').'"', false);
 
         $this->get('/admin')

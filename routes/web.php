@@ -8,6 +8,7 @@ use App\Http\Controllers\FanPostController;
 use App\Http\Controllers\MyPageController;
 use App\Http\Controllers\MemberFanPostController;
 use App\Http\Controllers\AuthController;
+use App\Http\Controllers\PasswordResetController;
 use App\Http\Controllers\GoogleAuthController;
 use App\Http\Controllers\IdolRegistrationRequestController;
 use App\Http\Controllers\HeartVoteController;
@@ -28,9 +29,10 @@ use App\Http\Controllers\Admin\IpAccessController as AdminIpAccessController;
 use App\Http\Controllers\Admin\SettingsController as AdminSettingsController;
 use App\Http\Controllers\Admin\FanPostController as AdminFanPostController;
 use App\Http\Controllers\Admin\MemberAccessLogController as AdminMemberAccessLogController;
+use App\Http\Controllers\Admin\PartnerBannerController as AdminPartnerBannerController;
+use App\Http\Controllers\Admin\ActingDummyMemberController;
 use App\Support\PublicRanking;
 use App\Support\PublicFanPostList;
-use App\Support\DatabaseAvailability;
 
 Route::get('/', function (Request $request, PublicFanPostList $fanPosts) {
     $rankings = app(PublicRanking::class);
@@ -38,11 +40,16 @@ Route::get('/', function (Request $request, PublicFanPostList $fanPosts) {
     if (!in_array($fanPostSort, ['latest', 'liked', 'commented'], true)) {
         $fanPostSort = 'latest';
     }
+    $publicRankings = collect(['boy', 'girl', 'boy-group', 'girl-group'])
+        ->mapWithKeys(fn ($category) => [$category => $rankings->category($category)])->all();
+    $rankingImages = collect($publicRankings)->mapWithKeys(fn (array $rows, string $category) => [
+        $category => isset($rows[0]) ? $rankings->popularImages((int) $rows[0]['idx']) : [],
+    ])->all();
 
     return view('home', [
-        'publicRankings' => collect(['boy','girl','boy-group','girl-group'])->mapWithKeys(fn($category) => [$category => $rankings->category($category)])->all(),
-        'posts' => DatabaseAvailability::isAvailable()
-            ? $fanPosts->take($fanPostSort, 14) : [],
+        'publicRankings' => $publicRankings,
+        'rankingImages' => $rankingImages,
+        'posts' => $fanPosts->take($fanPostSort, 14),
         'fanPostSort' => $fanPostSort,
     ]);
 })->name('home');
@@ -51,8 +58,12 @@ Route::get('/idol/{idx}', [IdolController::class, 'show'])->whereNumber('idx')->
 Route::get('/fan-posts', PublicFanPostController::class)->name('fan-posts.index');
 Route::get('/search', SearchController::class)->name('search');
 Route::get('/get-hearts', GetHeartsController::class)->name('get-hearts');
+Route::get('/partner-banners/{idx}/click', [GetHeartsController::class, 'clickPartnerBanner'])
+    ->whereNumber('idx')->name('partner-banners.click');
 Route::post('/get-hearts/daily-check-in', [GetHeartsController::class, 'claimDailyCheckIn'])
     ->middleware(RequireMember::class)->name('get-hearts.daily-check-in');
+Route::post('/get-hearts/partner-banners/{idx}/claim', [GetHeartsController::class, 'claimPartnerBanner'])
+    ->whereNumber('idx')->middleware(RequireMember::class)->name('get-hearts.partner-banners.claim');
 Route::get('/fan-post/{idx}', [FanPostController::class, 'show'])->whereNumber('idx')->name('fan-post.show');
 Route::get('/fan-post/create', [FanPostController::class, 'create'])
     ->middleware(RequireMember::class)->name('fan-post.create');
@@ -95,10 +106,9 @@ Route::post('/logout', [AuthController::class, 'logout'])->middleware(RequireMem
 Route::post('/votes', [HeartVoteController::class, 'store'])
     ->middleware(RequireMember::class)->name('votes.store');
 Route::view('/forgot-password', 'auth.forgot-password')->name('password.forgot');
-Route::get('/reset-password/{token}', function (string $token) {
-    // UI preview only: no token verification or password change.
-    return view('auth.reset-password');
-})->name('password.reset');
+Route::post('/forgot-password', [PasswordResetController::class, 'sendLink'])->name('password.email');
+Route::get('/reset-password', [PasswordResetController::class, 'show'])->name('password.reset');
+Route::post('/reset-password', [PasswordResetController::class, 'reset'])->name('password.update');
 Route::get('/my-page', [MyPageController::class, 'show'])->middleware(RequireMember::class)->name('my-page');
 Route::get('/my-page/fan-posts', [MemberFanPostController::class, 'mine'])
     ->middleware(RequireMember::class)->name('my-page.fan-posts');
@@ -129,6 +139,7 @@ foreach ([
 
 Route::prefix('admin')->name('admin.')->middleware(RequireAdmin::class)->group(function () {
     Route::get('/', AdminDashboardController::class)->name('index');
+    Route::post('/acting-dummy-member', [ActingDummyMemberController::class, 'update'])->name('acting-dummy-member');
     Route::get('/idol-requests', AdminIdolRegistrationRequestController::class)->name('idol-requests.index');
     Route::get('/idol-requests/{idx}', [AdminIdolRegistrationRequestController::class, 'show'])->whereNumber('idx')->name('idol-requests.show');
     Route::post('/idol-requests/{idx}/save', [AdminIdolRegistrationRequestController::class, 'save'])->whereNumber('idx')->name('idol-requests.save');
@@ -149,6 +160,12 @@ Route::prefix('admin')->name('admin.')->middleware(RequireAdmin::class)->group(f
     Route::patch('/members/{idx}/status', [AdminMemberController::class, 'updateStatus'])->whereNumber('idx')->name('members.status');
     Route::get('/activity-logs', AdminActivityLogController::class)->name('activity-logs.index');
     Route::get('/fan-posts', AdminFanPostController::class)->name('fan-posts.index');
+    Route::get('/partner-banners', [AdminPartnerBannerController::class, 'index'])->name('partner-banners.index');
+    Route::get('/partner-banners/create', [AdminPartnerBannerController::class, 'create'])->name('partner-banners.create');
+    Route::post('/partner-banners', [AdminPartnerBannerController::class, 'store'])->name('partner-banners.store');
+    Route::get('/partner-banners/{idx}/edit', [AdminPartnerBannerController::class, 'edit'])->whereNumber('idx')->name('partner-banners.edit');
+    Route::put('/partner-banners/{idx}', [AdminPartnerBannerController::class, 'update'])->whereNumber('idx')->name('partner-banners.update');
+    Route::delete('/partner-banners/{idx}', [AdminPartnerBannerController::class, 'destroy'])->whereNumber('idx')->name('partner-banners.destroy');
     Route::get('/hearts', [AdminHeartController::class, 'index'])->name('hearts.index');
     Route::get('/hearts/settings', [AdminHeartController::class, 'settings'])->name('hearts.settings');
     Route::put('/hearts/settings/{actionCode}', [AdminHeartController::class, 'updateSetting'])->name('hearts.settings.update');

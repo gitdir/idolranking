@@ -3,7 +3,6 @@
 namespace App\Http\Controllers;
 
 use App\Support\HeartRewardManager;
-use App\Support\DatabaseAvailability;
 use App\Support\PublicFanPostList;
 use Illuminate\Http\Request;
 use Illuminate\Pagination\LengthAwarePaginator;
@@ -24,7 +23,8 @@ class FanPostController extends Controller
 
     public function store(Request $request)
     {
-        $member = $request->attributes->get('currentMember');
+        $member = $request->attributes->get('activityMember');
+        $actor = $request->attributes->get('activityActor');
         $mediaType = $request->string('media_type')->toString();
         $request->merge(['media_type' => $mediaType]);
         $validated = $request->validate([
@@ -57,10 +57,10 @@ class FanPostController extends Controller
         }
 
         try {
-            $postIdx = DB::transaction(function () use ($validated, $member, $mediaType, $imagePath, $youtubeId, $tags) {
+            $postIdx = DB::transaction(function () use ($validated, $member, $actor, $mediaType, $imagePath, $youtubeId, $tags) {
                 $postIdx = DB::table('fan_posts')->insertGetId([
                     'idol_idx' => $validated['idol_idx'], 'member_idx' => $member->idx,
-                    'actor_member_idx' => $member->idx, 'title' => $validated['title'],
+                    'actor_member_idx' => $actor->idx, 'title' => $validated['title'],
                     'media_type' => $mediaType,
                     'image_path' => $imagePath, 'youtube_video_id' => $mediaType === 'youtube' ? $youtubeId : null,
                     'content' => $validated['content'], 'status' => 'published',
@@ -95,7 +95,7 @@ class FanPostController extends Controller
                     (int) $member->idx,
                     'fan_post_create',
                     'fan_post_reward:'.$savedPost->idx,
-                    ['memo' => 'Eligible Fan Post creation reward']
+                    ['actor_member_idx' => (int) $actor->idx, 'memo' => 'Eligible Fan Post creation reward']
                 ));
             } catch (\Throwable $exception) {
                 report($exception);
@@ -116,7 +116,7 @@ class FanPostController extends Controller
 
     public function edit(Request $request, string $idx)
     {
-        $member = $request->attributes->get('currentMember');
+        $member = $request->attributes->get('activityMember');
         $post = DB::table('fan_posts')->where('idx', $idx)->where('member_idx', $member->idx)
             ->whereNull('deleted_at')->first(['idx', 'idol_idx', 'title', 'content', 'media_type', 'image_path', 'youtube_video_id']);
         abort_if($post === null, 404);
@@ -134,7 +134,7 @@ class FanPostController extends Controller
 
     public function update(Request $request, string $idx)
     {
-        $member = $request->attributes->get('currentMember');
+        $member = $request->attributes->get('activityMember');
         $post = DB::table('fan_posts')->where('idx', $idx)->where('member_idx', $member->idx)
             ->whereNull('deleted_at')->first(['idx', 'image_path']);
         abort_if($post === null, 404);
@@ -178,56 +178,43 @@ class FanPostController extends Controller
 
     public function show(Request $request, string $idx, PublicFanPostList $fanPostList)
     {
-        $fixtures = require resource_path('data/fan-posts.php');
-        $fixturePost = $fixtures[$idx] ?? null;
-        $databaseDriverAvailable = DatabaseAvailability::isAvailable();
-        $databasePostState = $databaseDriverAvailable
-            ? DB::table('fan_posts as p')->join('idols as i', 'i.idx', '=', 'p.idol_idx')->where('p.idx', $idx)
-                ->first(['p.status', 'p.deleted_at', 'i.status as idol_status'])
-            : null;
-        if ($databasePostState !== null && ($databasePostState->status !== 'published' || $databasePostState->deleted_at !== null || $databasePostState->idol_status !== 'active')) {
-            abort(404);
-        }
-        $databaseRecord = $databaseDriverAvailable ? DB::table('fan_posts as post')
+        $record = DB::table('fan_posts as post')
             ->join('members as member', 'member.idx', '=', 'post.member_idx')
             ->join('idols as idol', 'idol.idx', '=', 'post.idol_idx')
-            ->where('post.idx', $idx)->where('post.status', 'published')->whereNull('post.deleted_at')->where('idol.status', 'active')
+            ->where('post.idx', $idx)->where('post.status', 'published')->whereNull('post.deleted_at')
+            ->where('idol.status', 'active')->where('member.member_level', '>', 0)
+            ->where('member.status', 'active')->whereNull('member.deleted_at')
             ->first(['post.idx', 'post.idol_idx', 'post.title', 'post.media_type', 'post.image_path', 'post.youtube_video_id',
                 'post.content', 'post.view_count', 'post.created_at', 'member.idx as author_idx',
-                'member.member_code', 'member.nickname', 'member.profile_image_path', 'idol.name as idol_name']) : null;
-        abort_unless($fixturePost !== null || $databaseRecord !== null, 404);
-        $post = $databaseRecord === null ? $fixturePost : [
-            'idx' => (int) $databaseRecord->idx, 'idol_idx' => (int) $databaseRecord->idol_idx,
-            'title' => $databaseRecord->title, 'body' => $databaseRecord->content, 'media_type' => $databaseRecord->media_type,
-            'image' => 'portrait-rose', 'image_url' => \App\Support\ManagedImageStorage::publicUrl($databaseRecord->image_path),
-            'youtube_video_id' => $databaseRecord->youtube_video_id, 'views' => (int) $databaseRecord->view_count,
-            'recommendations' => 0, 'tags' => DB::table('fan_post_tags')->where('fan_post_idx', $idx)->orderBy('idx')->pluck('tag')->all(),
-            'comments' => [], 'shape' => 'square',
-            'author' => ['idx' => (int) $databaseRecord->author_idx, 'member_code' => $databaseRecord->member_code,
-                'nickname' => $databaseRecord->nickname, 'image' => 'portrait-rose',
-                'image_url' => $databaseRecord->profile_image_path, 'bio' => ''],
+                'member.member_code', 'member.nickname', 'member.profile_image_path', 'idol.name as idol_name']);
+        abort_if($record === null, 404);
+
+        $post = [
+            'idx' => (int) $record->idx, 'idol_idx' => (int) $record->idol_idx,
+            'title' => $record->title, 'body' => $record->content, 'media_type' => $record->media_type,
+            'image_url' => \App\Support\ManagedImageStorage::publicUrl($record->image_path),
+            'youtube_video_id' => $record->youtube_video_id, 'views' => (int) $record->view_count,
+            'time' => \Illuminate\Support\Carbon::parse($record->created_at)->diffForHumans(),
+            'recommendations' => DB::table('fan_post_likes')->where('fan_post_idx', $idx)->count(),
+            'tags' => DB::table('fan_post_tags')->where('fan_post_idx', $idx)->orderBy('idx')->pluck('tag')->all(),
+            'author' => ['idx' => (int) $record->author_idx, 'member_code' => $record->member_code,
+                'nickname' => $record->nickname, 'image_url' => $record->profile_image_path],
         ];
-        $member = $request->attributes->get('currentMember');
-        $databasePost = $databaseDriverAvailable && $databaseRecord !== null;
-        if ($databasePost) {
-            $post['recommendations'] = DB::table('fan_post_likes')->where('fan_post_idx', $idx)->count();
-            $isRecommended = $member !== null && DB::table('fan_post_likes')
-                ->where('fan_post_idx', $idx)->where('member_idx', $member->idx)->exists();
-        } else {
-            $isRecommended = $member !== null
-                && (bool) $request->session()->get('fixture_fan_post_likes.'.$idx, false);
-            if ($isRecommended) {
-                $post['recommendations']++;
-            }
-        }
-        $morePosts = array_slice(array_filter($fixtures, fn ($item) => $item['author']['idx'] === $post['author']['idx'] && $item['idx'] !== $post['idx']), 0, 3);
-        $trendingPosts = $databaseDriverAvailable
-            ? DB::table('fan_posts as trending')
+        $member = $request->attributes->get('activityMember');
+        $isRecommended = $member !== null && DB::table('fan_post_likes')
+            ->where('fan_post_idx', $idx)->where('member_idx', $member->idx)->exists();
+
+        $morePosts = $fanPostList->byAuthor((int) $record->author_idx, (int) $idx);
+        $trendingPosts = DB::table('fan_posts as trending')
                 ->join('idols as trending_idol', 'trending_idol.idx', '=', 'trending.idol_idx')
-                ->where('trending.idx', '<>', $idx)
-                ->where('trending.status', 'published')
-                ->whereNull('trending.deleted_at')
-                ->where('trending_idol.status', 'active')
+                ->join('members as trending_member', 'trending_member.idx', '=', 'trending.member_idx')
+                ->where('trending.idx', '<>', $idx)->where('trending.status', 'published')->whereNull('trending.deleted_at')
+                ->where('trending_idol.status', 'active')->where('trending_member.member_level', '>', 0)
+                ->where('trending_member.status', 'active')->whereNull('trending_member.deleted_at')
+                ->where(function ($query): void {
+                    $query->where(fn ($images) => $images->where('trending.media_type', 'image')->whereNotNull('trending.image_path')->where('trending.image_path', '<>', ''))
+                        ->orWhere(fn ($videos) => $videos->where('trending.media_type', 'youtube')->whereNotNull('trending.youtube_video_id')->where('trending.youtube_video_id', '<>', ''));
+                })
                 ->orderByDesc('trending.view_count')
                 ->orderByDesc('trending.created_at')
                 ->orderByDesc('trending.idx')
@@ -239,61 +226,39 @@ class FanPostController extends Controller
                     'title' => $item->title,
                     'image_url' => $item->media_type === 'youtube' && $item->youtube_video_id
                         ? 'https://i.ytimg.com/vi/'.$item->youtube_video_id.'/hqdefault.jpg'
-                        : $item->image_path,
+                        : \App\Support\ManagedImageStorage::publicUrl($item->image_path),
                     'time' => \Illuminate\Support\Carbon::parse($item->created_at)->diffForHumans(),
-                ])->all()
-            : [];
-        if (count($trendingPosts) < 3 && $databaseRecord !== null) {
-            $trendingPosts[] = [
-                'idx' => (int) $databaseRecord->idx,
-                'title' => $databaseRecord->title,
-                'image_url' => $databaseRecord->media_type === 'youtube' && $databaseRecord->youtube_video_id
-                    ? 'https://i.ytimg.com/vi/'.$databaseRecord->youtube_video_id.'/hqdefault.jpg'
-                    : $databaseRecord->image_path,
-                'time' => \Illuminate\Support\Carbon::parse($databaseRecord->created_at)->diffForHumans(),
-            ];
-        }
+                ])->all();
         $fanPostSort = $request->string('sort')->toString();
         if (!in_array($fanPostSort, ['latest', 'liked', 'commented'], true)) {
             $fanPostSort = 'latest';
         }
-        $posts = $databaseDriverAvailable
-            ? $fanPostList->forIdol((int) $post['idol_idx'], $fanPostSort)
-            : [];
+        $posts = $fanPostList->forIdol((int) $post['idol_idx'], $fanPostSort);
 
         $commentsPage = filter_var($request->query('comments_page', 1), FILTER_VALIDATE_INT, [
             'options' => ['min_range' => 1],
         ]) ?: 1;
-        if ($databasePost) {
-            $commentsQuery = DB::table('fan_post_comments as comment')
-                ->join('members as member', 'member.idx', '=', 'comment.member_idx')
-                ->where('comment.fan_post_idx', $idx)
-                ->where('comment.status', 'published')
-                ->whereNull('comment.deleted_at')
-                ->orderByDesc('comment.created_at')
-                ->orderByDesc('comment.idx');
-            $commentCount = (clone $commentsQuery)->count();
-            $commentsPage = min($commentsPage, max(1, (int) ceil($commentCount / 10)));
-            $commentItems = $commentsQuery->forPage($commentsPage, 10)
-                ->get(['comment.idx', 'comment.member_idx', 'comment.content', 'comment.created_at',
-                    'member.member_code', 'member.nickname', 'member.profile_image_path'])
-                ->map(fn ($comment) => [
-                    'idx' => (int) $comment->idx,
-                    'member_idx' => (int) $comment->member_idx,
-                    'member_code' => $comment->member_code,
-                    'nickname' => $comment->nickname,
-                    'image_url' => $comment->profile_image_path,
-                    'image' => 'portrait-rose',
-                    'body' => $comment->content,
-                    'time' => \Illuminate\Support\Carbon::parse($comment->created_at)->diffForHumans(),
-                    'can_delete' => $member !== null && (int) $comment->member_idx === (int) $member->idx,
-                ]);
-        } else {
-            $commentCount = count($post['comments']);
-            $commentsPage = min($commentsPage, max(1, (int) ceil($commentCount / 10)));
-            $commentItems = collect(array_slice($post['comments'], ($commentsPage - 1) * 10, 10))
-                ->map(fn ($comment, $offset) => $comment + ['time' => ($offset + 1).' hours ago']);
-        }
+        $commentsQuery = DB::table('fan_post_comments as comment')
+            ->join('members as member', 'member.idx', '=', 'comment.member_idx')
+            ->where('comment.fan_post_idx', $idx)->where('comment.status', 'published')->whereNull('comment.deleted_at')
+            ->where('member.member_level', '>', 0)
+            ->where('member.status', 'active')->whereNull('member.deleted_at')
+            ->orderByDesc('comment.created_at')->orderByDesc('comment.idx');
+        $commentCount = (clone $commentsQuery)->count();
+        $commentsPage = min($commentsPage, max(1, (int) ceil($commentCount / 10)));
+        $commentItems = $commentsQuery->forPage($commentsPage, 10)
+            ->get(['comment.idx', 'comment.member_idx', 'comment.content', 'comment.created_at',
+                'member.member_code', 'member.nickname', 'member.profile_image_path'])
+            ->map(fn ($comment) => [
+                'idx' => (int) $comment->idx,
+                'member_idx' => (int) $comment->member_idx,
+                'member_code' => $comment->member_code,
+                'nickname' => $comment->nickname,
+                'image_url' => $comment->profile_image_path,
+                'body' => $comment->content,
+                'time' => \Illuminate\Support\Carbon::parse($comment->created_at)->diffForHumans(),
+                'can_delete' => $member !== null && (int) $comment->member_idx === (int) $member->idx,
+            ]);
         $comments = new LengthAwarePaginator($commentItems, $commentCount, 10, $commentsPage, [
             'path' => $request->url(),
             'pageName' => 'comments_page',
@@ -301,8 +266,7 @@ class FanPostController extends Controller
             'fragment' => 'comments',
         ]);
 
-        if ($databasePost) {
-            $viewCountIncremented = DB::table('fan_posts')
+        $viewCountIncremented = DB::table('fan_posts')
                 ->where('idx', $idx)
                 ->where('status', 'published')
                 ->whereNull('deleted_at')
@@ -314,17 +278,16 @@ class FanPostController extends Controller
                 })
                 ->increment('view_count');
 
-            if ($viewCountIncremented === 1) {
-                $post['views']++;
-            }
+        if ($viewCountIncremented === 1) {
+            $post['views']++;
         }
 
         return view('fan-posts.show', [
             'post' => $post, 'posts' => $posts, 'morePosts' => $morePosts,
             'trendingPosts' => $trendingPosts,
             'isRecommended' => $isRecommended, 'comments' => $comments, 'fanPostSort' => $fanPostSort,
-            'isOwnPost' => $databasePost && $member !== null && (int) $post['author']['idx'] === (int) $member->idx,
-            'databasePost' => $databasePost,
+            'isOwnPost' => $member !== null && (int) $post['author']['idx'] === (int) $member->idx,
+            'databasePost' => true,
             'seo' => [
                 'title' => $post['title'].' | IDOL RANKING',
                 'description' => mb_substr(trim(preg_replace('/\s+/u', ' ', strip_tags($post['body'] ?? ''))), 0, 180),
@@ -338,7 +301,8 @@ class FanPostController extends Controller
 
     public function storeComment(Request $request, string $idx)
     {
-        $member = $request->attributes->get('currentMember');
+        $member = $request->attributes->get('activityMember');
+        $actor = $request->attributes->get('activityActor');
         $request->merge(['content' => trim((string) $request->input('content'))]);
         $validated = $request->validate([
             'content' => ['required', 'string', 'max:1000'],
@@ -350,7 +314,7 @@ class FanPostController extends Controller
             'request_key.regex' => 'Unable to submit the comment. Please try again.',
         ]);
 
-        $result = DB::transaction(function () use ($idx, $member, $validated): array {
+        $result = DB::transaction(function () use ($idx, $member, $actor, $validated): array {
             $currentMember = DB::table('members')->where('idx', $member->idx)
                 ->where('member_level', '>', 0)->where('status', 'active')->whereNull('deleted_at')
                 ->lockForUpdate()->first(['idx', 'member_code', 'nickname', 'profile_image_path', 'member_level', 'is_dummy', 'heart_balance']);
@@ -364,11 +328,13 @@ class FanPostController extends Controller
             }
 
             $existing = DB::table('fan_post_comments')
-                ->where('actor_member_idx', $currentMember->idx)
+                ->where('actor_member_idx', $actor->idx)
                 ->where('request_key', $validated['request_key'])
                 ->first();
             if ($existing !== null) {
-                if ((int) $existing->fan_post_idx !== (int) $post->idx || $existing->content !== $validated['content']) {
+                if ((int) $existing->fan_post_idx !== (int) $post->idx
+                    || (int) $existing->member_idx !== (int) $currentMember->idx
+                    || $existing->content !== $validated['content']) {
                     return ['error' => 'This comment request has already been used.', 'status' => 409];
                 }
                 if ($existing->status !== 'published' || $existing->deleted_at !== null) {
@@ -385,7 +351,7 @@ class FanPostController extends Controller
             $commentIdx = DB::table('fan_post_comments')->insertGetId([
                 'fan_post_idx' => $post->idx,
                 'member_idx' => $currentMember->idx,
-                'actor_member_idx' => $currentMember->idx,
+                'actor_member_idx' => $actor->idx,
                 'request_key' => $validated['request_key'],
                 'content' => $validated['content'],
                 'status' => 'published',
@@ -416,7 +382,8 @@ class FanPostController extends Controller
                     (int) $member->idx,
                     'comment_create',
                     'comment_reward:'.$commentIdx,
-                    ['comment_idx' => $commentIdx, 'memo' => 'Fan Post comment creation reward']
+                    ['comment_idx' => $commentIdx, 'actor_member_idx' => (int) $actor->idx,
+                        'memo' => 'Fan Post comment creation reward']
                 ));
             } catch (\Throwable $exception) {
                 report($exception);
@@ -434,7 +401,7 @@ class FanPostController extends Controller
 
     public function destroyComment(Request $request, string $idx, string $commentIdx)
     {
-        $member = $request->attributes->get('currentMember');
+        $member = $request->attributes->get('activityMember');
 
         $commentCount = DB::transaction(function () use ($idx, $commentIdx, $member): int {
             $currentMember = DB::table('members')->where('idx', $member->idx)
@@ -488,7 +455,8 @@ class FanPostController extends Controller
 
     public function report(Request $request, string $idx)
     {
-        $member = $request->attributes->get('currentMember');
+        $member = $request->attributes->get('activityMember');
+        $actor = $request->attributes->get('activityActor');
         $validated = $request->validate([
             'reason' => ['required', Rule::in([
                 'spam', 'harassment_hate', 'inappropriate_content',
@@ -511,6 +479,7 @@ class FanPostController extends Controller
             DB::table('fan_post_reports')->insert([
                 'fan_post_idx' => $post->idx,
                 'member_idx' => $member->idx,
+                'actor_member_idx' => $actor->idx,
                 'reason' => $validated['reason'],
                 'details' => filled($validated['details'] ?? null) ? trim($validated['details']) : null,
                 'status' => 'pending',
@@ -535,9 +504,10 @@ class FanPostController extends Controller
 
     public function toggleRecommendation(Request $request, string $idx)
     {
-        $member = $request->attributes->get('currentMember');
+        $member = $request->attributes->get('activityMember');
+        $actor = $request->attributes->get('activityActor');
 
-        $result = DB::transaction(function () use ($idx, $member) {
+        $result = DB::transaction(function () use ($idx, $member, $actor) {
             $post = DB::table('fan_posts as p')->join('idols as i', 'i.idx', '=', 'p.idol_idx')->where('p.idx', $idx)
                 ->where('p.status', 'published')->whereNull('p.deleted_at')->where('i.status', 'active')
                 ->lockForUpdate()->first(['p.idx', 'p.member_idx']);
@@ -551,6 +521,7 @@ class FanPostController extends Controller
                 DB::table('fan_post_likes')->insert([
                     'fan_post_idx' => $post->idx,
                     'member_idx' => $member->idx,
+                    'actor_member_idx' => $actor->idx,
                     'created_at' => now(),
                 ]);
             }
@@ -565,20 +536,10 @@ class FanPostController extends Controller
         });
 
         if ($result === null) {
-            $databasePostState = DB::table('fan_posts')->where('idx', $idx)->first(['status', 'deleted_at']);
-            if ($databasePostState !== null) {
-                abort(404);
-            }
-            $fixtures = require resource_path('data/fan-posts.php');
-            abort_unless(isset($fixtures[$idx]), 404);
-            $alreadyRecommended = (bool) $request->session()->get('fixture_fan_post_likes.'.$idx, false);
-            $request->session()->put('fixture_fan_post_likes.'.$idx, true);
-            $result = [
-                'recommended' => true,
-                'recommendations' => $fixtures[$idx]['recommendations'] + 1,
-                'created' => ! $alreadyRecommended,
-            ];
-        } elseif ($result['created'] && $result['author_member_idx'] !== (int) $member->idx) {
+            abort(404);
+        }
+
+        if ($result['created'] && $result['author_member_idx'] !== (int) $member->idx) {
             try {
                 // The author receives the reward; the post/member pair is the stable recommendation identity.
                 DB::transaction(fn () => app(HeartRewardManager::class)->award(
@@ -586,7 +547,7 @@ class FanPostController extends Controller
                     'fan_post_recommend_received',
                     'fan_post_recommend_received:'.$result['post_idx'].':'.$member->idx,
                     [
-                        'actor_member_idx' => (int) $member->idx,
+                        'actor_member_idx' => (int) $actor->idx,
                         'memo' => 'Fan Post recommendation received reward',
                     ]
                 ));

@@ -2,27 +2,19 @@
 
 @section('content')
     @php
-        // Ranking panel presentation remains unchanged; public ranking data replaces these fallback rows.
         $panels = [
-            ['key' => 'boy', 'title' => 'Boy Ranking', 'theme' => 'blue', 'images' => ['portrait-blue', 'portrait-lilac', 'portrait-peach'], 'members' => [
-                ['Jungkook', 2847316, 128], ['V', 2341002, 96], ['Jimin', 1987450, 84], ['Cha Eun-woo', 1654329, 73], ['Lee Know', 1321887, 0],
-            ]],
-            ['key' => 'girl', 'title' => 'Girl Ranking', 'theme' => 'pink', 'images' => ['portrait-rose', 'portrait-sage', 'portrait-peach'], 'members' => [
-                ['IU', 2615920, 112], ['Jennie', 2308441, 128], ['Jisoo', 1972650, 128], ['Rosé', 1725093, 128], ['Karina', 1413882, 0],
-            ]],
-            ['key' => 'boy-group', 'title' => 'Boy Group Ranking', 'theme' => 'purple', 'images' => ['group-blue', 'group-lilac', 'group-rose'], 'members' => [
-                ['BTS', 3947125, 256], ['SEVENTEEN', 2615480, 128], ['Stray Kids', 2102893, 128], ['TXT', 1546309, 128], ['ENHYPEN', 1284903, 0],
-            ]],
-            ['key' => 'girl-group', 'title' => 'Girl Group Ranking', 'theme' => 'pink', 'images' => ['group-rose', 'group-lilac', 'group-blue'], 'members' => [
-                ['BLACKPINK', 3842661, 224], ['TWICE', 2711522, 128], ['aespa', 2084392, 128], ['IVE', 1688420, 0], ['LE SSERAFIM', 1320115, 128],
-            ]],
+            ['key' => 'boy', 'title' => 'Boy Ranking', 'theme' => 'blue'],
+            ['key' => 'girl', 'title' => 'Girl Ranking', 'theme' => 'pink'],
+            ['key' => 'boy-group', 'title' => 'Boy Group Ranking', 'theme' => 'purple'],
+            ['key' => 'girl-group', 'title' => 'Girl Group Ranking', 'theme' => 'pink'],
         ];
         foreach ($panels as $panelIndex => $panel) {
             $visible = $publicRankings[$panel['key']] ?? [];
-            $panels[$panelIndex]['members'] = array_map(fn(array $idol) => [
-                $idol['name'], $idol['hearts'], $idol['posts'], 'idx'=>$idol['idx'], 'group'=>$idol['group'], 'image'=>$idol['image'], 'image_url'=>$idol['image_url'] ?? null,
+            $panels[$panelIndex]['members'] = array_map(fn (array $idol) => [
+                $idol['name'], $idol['hearts'], $idol['posts'], 'idx' => $idol['idx'],
+                'group' => $idol['group'], 'image_url' => $idol['image_url'] ?? null,
             ], array_slice($visible, 0, 5));
-            $panels[$panelIndex]['images'] = array_pad(array_slice(array_column($visible, 'image'), 0, 3), 3, $panel['images'][0]);
+            $panels[$panelIndex]['images'] = $rankingImages[$panel['key']] ?? [];
         }
     @endphp
 

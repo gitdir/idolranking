@@ -19,15 +19,8 @@ class RankingController extends Controller
         $databaseGender = match ($gender) { 'boy' => 'male', 'girl' => 'female', default => null };
         $idols = $publicRanking->ranking($type === 'idol' ? 'individual' : 'group', $databaseGender, $month);
         $featured = $idols[0] ?? null;
-        $featuredImages = $featured ? array_fill(0, 3, $featured['image']) : [];
+        $featuredImages = $featured ? $publicRanking->popularImages((int) $featured['idx']) : [];
         $topVoters = $featured ? $publicRanking->topVoters((int) $featured['idx'], $month) : [];
-        if ($featured && $topVoters === []) {
-            $topVoters = [
-                ['member_code'=>'demoMemberA1','nickname'=>'golden_army','image_url'=>null,'bio'=>'Every Heart for '.$featured['name'].'.','hearts'=>184500],
-                ['member_code'=>'demoMemberB2','nickname'=>'purple_universe','image_url'=>null,'bio'=>'Music brings us together.','hearts'=>156200],
-                ['member_code'=>'demoMemberC3','nickname'=>'moonlight','image_url'=>null,'bio'=>'Cheering from across the world.','hearts'=>128400],
-            ];
-        }
 
         $canonicalParameters = [];
         if ($gender !== 'all') $canonicalParameters['gender'] = $gender;
@@ -44,7 +37,7 @@ class RankingController extends Controller
             'gender' => $gender,
             'month' => $month,
             'monthValue' => $month->format('Y-m'),
-            'monthLabel' => $month->format('F Y'),
+            'monthLabel' => $month->format('Y.m'),
             'previousMonth' => $month->copy()->subMonth()->format('Y-m'),
             'nextMonth' => $month->lt($currentMonth) ? $month->copy()->addMonth()->format('Y-m') : null,
             'idols' => $idols,
