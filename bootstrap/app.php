@@ -9,7 +9,7 @@ use App\Http\Middleware\CaptureReferral;
 use App\Http\Middleware\BlockRestrictedIp;
 use App\Http\Middleware\TrackVisitor;
 
-return Application::configure(basePath: dirname(__DIR__))
+$app = Application::configure(basePath: dirname(__DIR__))
     ->withRouting(
         web: __DIR__.'/../routes/web.php',
         commands: __DIR__.'/../routes/console.php',
@@ -25,3 +25,19 @@ return Application::configure(basePath: dirname(__DIR__))
     ->withExceptions(function (Exceptions $exceptions): void {
         //
     })->create();
+
+$configurePublicPath = static function (Application $app, mixed $publicPath): void {
+    if (is_string($publicPath) && ($publicPath = trim($publicPath)) !== '') {
+        $app->usePublicPath($publicPath);
+    }
+};
+
+$app->afterLoadingEnvironment(function (Application $app) use ($configurePublicPath): void {
+    $configurePublicPath($app, env('APP_PUBLIC_PATH'));
+});
+
+$app->afterBootstrapping(\Illuminate\Foundation\Bootstrap\LoadConfiguration::class, function (Application $app) use ($configurePublicPath): void {
+    $configurePublicPath($app, $app['config']->get('app.public_path'));
+});
+
+return $app;
