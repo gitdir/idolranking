@@ -10,7 +10,6 @@ PHP='/opt/alt/php84/usr/bin/php'
 COMPOSER='/usr/local/bin/composer'
 EXPECTED_DB='u624668418_idol'
 EXPECTED_SHA='BA0C271DF57E377268A7FE4D9CA73FA4E2BFAD3AC4262BAC9EC819955080CACB'
-EXPECTED_COMMIT='86b685ec52c309e8a46dad2b4aa65a7e4993d553'
 EXPECTED_URL='https://orchid-oryx-674671.hostingersite.com'
 EXPECTED_TABLE_NAMES='admin_activity_logs,admin_dummy_activity_requests,blocked_ips,daily_check_in_translations,daily_check_ins,fan_post_comment_reports,fan_post_comment_translations,fan_post_comments,fan_post_likes,fan_post_reports,fan_post_tags,fan_post_translations,fan_posts,heart_histories,heart_reward_settings,idol_debuts,idol_group_members,idol_localizations,idol_name_aliases,idol_profile_image_reports,idol_registration_request_debuts,idol_registration_request_localizations,idol_registration_requests,idol_votes,idols,member_access_logs,member_login_histories,member_social_accounts,members,partner_banner_clicks,partner_banners,password_reset_tokens,restricted_nicknames,schema_patch_history,site_settings,visitor_daily_stats,visitor_daily_uniques'
 
@@ -23,7 +22,8 @@ fail() {
 [[ $# -eq 15 ]] || fail 'Expected MODE COMMIT URL DATABASE OLD_TABLES TABLES FKS SHA PUBLIC_COUNT PUBLIC_BYTES PRIVATE_COUNT PRIVATE_BYTES STAGE BASE RUN_ID.'
 MODE=$1; COMMIT=$2; BASE_URL=$3; DATABASE=$4; OLD_TABLES=$5; TABLES=$6; FKS=$7; SHA=$8
 PUBLIC_COUNT=$9; PUBLIC_BYTES=${10}; PRIVATE_COUNT=${11}; PRIVATE_BYTES=${12}; STAGE=${13}; BASE_COMMIT=${14}; RUN_ID=${15}
-[[ "$COMMIT" == "$EXPECTED_COMMIT" && "$BASE_URL" == "$EXPECTED_URL" && "$DATABASE" == "$EXPECTED_DB" ]] || fail 'Release identity differs from the reviewed values.'
+[[ "$COMMIT" =~ ^[a-f0-9]{40}$ ]] || fail 'Target commit must be a full lowercase 40-character SHA.'
+[[ "$BASE_URL" == "$EXPECTED_URL" && "$DATABASE" == "$EXPECTED_DB" ]] || fail 'Release identity differs from the reviewed values.'
 [[ "$OLD_TABLES" == 25 && "$TABLES" == 37 && "$FKS" == 58 && "$SHA" == "$EXPECTED_SHA" ]] || fail 'Database inventory differs from the reviewed values.'
 for value in "$PUBLIC_COUNT" "$PUBLIC_BYTES" "$PRIVATE_COUNT" "$PRIVATE_BYTES"; do [[ "$value" =~ ^[0-9]+$ ]] || fail 'Invalid staged media inventory.'; done
 [[ "$RUN_ID" =~ ^[a-f0-9]{32}$ ]] || fail 'Invalid run identifier.'
@@ -191,8 +191,12 @@ check_import_support() {
 }
 
 if [[ "$MODE" == preflight ]]; then
-    remote_main=$(git ls-remote --heads origin refs/heads/main | awk 'NR == 1 { print $1 }')
-    [[ "$remote_main" == "$COMMIT" ]] || fail 'origin/main does not point to the reviewed release commit.'
+    # Fetch only the current main tip into FETCH_HEAD; do not change the checked-out branch.
+    git fetch --no-tags origin refs/heads/main
+    remote_main=$(git rev-parse FETCH_HEAD)
+    git cat-file -e "$COMMIT^{commit}" || fail 'Target commit object is unavailable in the production repository.'
+    git merge-base --is-ancestor "$COMMIT" FETCH_HEAD || fail 'Target commit is not reachable from current origin/main.'
+    git merge-base --is-ancestor "$CURRENT" "$COMMIT" || fail 'Production HEAD cannot fast-forward to the target commit.'
     check_identity
     check_grants
     check_import_support

@@ -19,13 +19,13 @@ No private key, database password, or production `.env` belongs in this director
 
 Use `initial-release.ps1` only for the reviewed initial release that combines code, the complete local database, and local uploaded media. This workflow is separate from ordinary code deployment and from the standalone SQL tools. It never applies historical SQL patches.
 
-The command validates the exact release commit, verified SQL checksum, exact canonical table-name set (37 tables including `schema_patch_history`, excluding `fan_post_monthly_views`) and 58 foreign-key definitions, configured production database name and current 25-table baseline, local media inventory, remote destination collisions, Vite manifest, SSH host key, and fast-forward eligibility before maintenance mode. It builds from a clean Git archive in an isolated temporary directory, then uploads the dump, build, images, and media into a private mode-700 directory under the production home. No public destination is touched during staging.
+`-Commit` is required and must be the full 40-character SHA to deploy. The local driver requires a clean `main` worktree, fetches the current `origin/main` tip into `FETCH_HEAD`, and verifies the target commit is an ancestor of or equal to that tip. The remote coordinator repeats the SHA, branch, clean-worktree, origin reachability, and production-to-target fast-forward checks. The command also validates the verified SQL checksum, exact canonical table-name set (37 tables including `schema_patch_history`, excluding `fan_post_monthly_views`) and 58 foreign-key definitions, configured production database name and current 25-table baseline, local media inventory, remote destination collisions, Vite manifest, and SSH host key before maintenance mode. It builds from a clean Git archive in an isolated temporary directory, then uploads the dump, build, images, and media into a private mode-700 directory under the production home. No public destination is touched during staging.
 
-Local validation only (no npm, SSH, upload, or production change):
+Local validation only (reads GitHub `origin/main`; no npm, SSH, upload, or production change). It requires the local `main` worktree to have no staged or unstaged tracked changes. Untracked developer files are ignored by validation and are never included in the committed-source Git archive or deployment payload; only the explicitly configured dump and media directories are considered as external inputs:
 
 ```powershell
 .\scripts\deploy\initial-release.ps1 `
-  -Commit 86b685ec52c309e8a46dad2b4aa65a7e4993d553 `
+  -Commit 8e1e1d7cc7a496945cd3988de36f4f17b9c8fffa `
   -BaseUrl https://orchid-oryx-674671.hostingersite.com `
   -DatabaseDump 'C:\Users\LEO\AppData\Local\Temp\idolranking-mariadb-reconciled-deadca0acc0a49269a96d09eb9d4e56d\idolranking-mariadb118-compatible.sql' `
   -Sha256 BA0C271DF57E377268A7FE4D9CA73FA4E2BFAD3AC4262BAC9EC819955080CACB `
@@ -40,7 +40,7 @@ The coordinated production command uses the same arguments, removes `-DryRun`, a
 
 ```powershell
 .\scripts\deploy\initial-release.ps1 `
-  -Commit 86b685ec52c309e8a46dad2b4aa65a7e4993d553 `
+  -Commit 8e1e1d7cc7a496945cd3988de36f4f17b9c8fffa `
   -BaseUrl https://orchid-oryx-674671.hostingersite.com `
   -DatabaseDump 'C:\Users\LEO\AppData\Local\Temp\idolranking-mariadb-reconciled-deadca0acc0a49269a96d09eb9d4e56d\idolranking-mariadb118-compatible.sql' `
   -Sha256 BA0C271DF57E377268A7FE4D9CA73FA4E2BFAD3AC4262BAC9EC819955080CACB `
@@ -52,6 +52,7 @@ The coordinated production command uses the same arguments, removes `-DryRun`, a
 ```
 
 The remote coordinator takes the same non-blocking lock used by other deployment helpers and maintains one maintenance window. It rechecks Git and the DB identity before the window, fast-forwards only, runs Composer and Laravel commands with PHP 8.4, and imports the complete dump without running patches. To remain within the Hostinger database user's existing schema grants, it replaces all base tables inside the verified target database instead of dropping and recreating the database itself; the target database identity and `.env` remain unchanged. Preflight stops if views, triggers, routines, or events exist, because they are outside this reviewed dump. It validates the dump SHA-256, exact 37 table names, 58 foreign-key definitions, and MariaDB compatibility during staging and immediately before dropping existing tables. After import it checks both exact counts and table names. Table DDL is not transactional. It synchronizes media additively (no `--delete`) and refuses any existing unexpected storage path. Build assets are published additively with the Vite manifest moved into place last. It verifies unchanged `.env`, `public_html/index.php` and `.htaccess`, exact Git HEAD, HTTP routes, all four Vite entries, and `/fan-garden` returning 404.
+The remote coordinator's initial preflight fetches the current `origin/main` tip into `FETCH_HEAD` without switching the checked-out branch, then verifies the requested commit is contained in that tip and the production HEAD can fast-forward to it. A later fetch immediately before maintenance repeats the reachability check. It otherwise takes the same non-blocking lock used by other deployment helpers and maintains one maintenance window. It rechecks Git and the DB identity before the window, fast-forwards only, runs Composer and Laravel commands with PHP 8.4, and imports the complete dump without running patches. To remain within the Hostinger database user's existing schema grants, it replaces all base tables inside the verified target database instead of dropping and recreating the database itself; the target database identity and `.env` remain unchanged. Preflight stops if views, triggers, routines, or events exist, because they are outside this reviewed dump. It validates the dump SHA-256, exact 37 table names, 58 foreign-key definitions, and MariaDB compatibility once during staging and again immediately before dropping any existing table. After import it checks both exact counts and table names. Table DDL is not transactional. It synchronizes media additively (no `--delete`) and refuses any existing unexpected storage path. Build assets are published additively with the Vite manifest moved into place last. It verifies unchanged `.env`, `public_html/index.php` and `.htaccess`, exact Git HEAD, HTTP routes, all four Vite entries, and `/fan-garden` returning 404.
 
 ### Uploaded image delivery in the initial release
 
@@ -72,7 +73,7 @@ The current Hostinger account was previously approved to skip a database backup.
 The PowerShell entry point is intentionally code-only. SQL files are never discovered or applied by it.
 
 ```powershell
-.\scripts\deploy\deploy.ps1 -Commit 86b685ec52c309e8a46dad2b4aa65a7e4993d553 -BaseUrl https://orchid-oryx-674671.hostingersite.com -DryRun
+.\scripts\deploy\deploy.ps1 -Commit 8e1e1d7cc7a496945cd3988de36f4f17b9c8fffa -BaseUrl https://orchid-oryx-674671.hostingersite.com -DryRun
 ```
 
 `-DryRun` is validation only: it checks that the exact commit object and required local deployment files exist. It does not create temporary files or logs, invoke npm, inspect SSH credentials, connect to production, upload files, or change production state.
@@ -80,7 +81,7 @@ The PowerShell entry point is intentionally code-only. SQL files are never disco
 Run an isolated local build separately before deployment:
 
 ```powershell
-.\scripts\deploy\deploy.ps1 -Commit 86b685ec52c309e8a46dad2b4aa65a7e4993d553 -BaseUrl https://orchid-oryx-674671.hostingersite.com -Build
+.\scripts\deploy\deploy.ps1 -Commit 8e1e1d7cc7a496945cd3988de36f4f17b9c8fffa -BaseUrl https://orchid-oryx-674671.hostingersite.com -Build
 ```
 
 `-Build` creates a Git archive in a unique OS temporary directory and runs `npm ci` with a cache under that temporary directory, followed by `npm run build`. It never uses or changes the project's existing `node_modules`, `package.json`, or `package-lock.json`; archive, cache, logs, and installed dependencies are removed when the run finishes. It does not inspect SSH credentials or connect to production.
@@ -88,7 +89,7 @@ Run an isolated local build separately before deployment:
 After reviewing the dry-run output, the production command is:
 
 ```powershell
-.\scripts\deploy\deploy.ps1 -Commit 86b685ec52c309e8a46dad2b4aa65a7e4993d553 -BaseUrl https://orchid-oryx-674671.hostingersite.com
+.\scripts\deploy\deploy.ps1 -Commit 8e1e1d7cc7a496945cd3988de36f4f17b9c8fffa -BaseUrl https://orchid-oryx-674671.hostingersite.com
 ```
 
 Use the full SHA of the approved release. The production command builds from a Git archive of that exact commit, rather than the current working tree. It transfers only `public/build`, `public/images`, and `public/favicon.ico` to a unique mode-700 staging directory under the production home. Run `-DryRun` first, then `-Build`, review the generated manifest/assets, and only then run the production command. The remote script then:
@@ -150,6 +151,6 @@ Database replacement is not transactional. The database can be left empty or par
 
 ## Current release note
 
-The repository is at `86b685ec52c309e8a46dad2b4aa65a7e4993d553` on `main`. A previous read-only production snapshot recorded `4d16c54f2272afd21a7dbac6c1c846397a7e1164` before the coordinated initial release. That observation is historical: current production HEAD, database contents, and whether the integrated release completed are unverified. Check them read-only before reporting deployment status.
+The repository is at `8e1e1d7cc7a496945cd3988de36f4f17b9c8fffa` on `main`. A previous read-only production snapshot recorded `4d16c54f2272afd21a7dbac6c1c846397a7e1164` before the coordinated initial release. That observation is historical: current production HEAD, database contents, and whether the integrated release completed are unverified. Check them read-only before reporting deployment status.
 
 The reconciled local database and release dump now match the canonical `sql/deploy/mariadb11_schema.sql`: 37 tables, 58 foreign keys, `schema_patch_history` present, and `fan_post_monthly_views` absent. The MariaDB 11.8-compatible copy was generated separately from the preserved MySQL 8.4 original; only the verified `utf8mb4_0900_ai_ci` collation was changed to `utf8mb4_unicode_ci`. Current compatible-copy SHA-256: `BA0C271DF57E377268A7FE4D9CA73FA4E2BFAD3AC4262BAC9EC819955080CACB`. The dump files are sensitive, machine-local temporary artifacts outside Git; confirm availability and checksum before any future use.

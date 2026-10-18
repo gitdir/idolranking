@@ -41,7 +41,7 @@ if (Get-Variable -Name PSNativeCommandUseErrorActionPreference -ErrorAction Sile
 }
 
 $ProjectRoot = (Resolve-Path (Join-Path $PSScriptRoot '..\..')).Path.TrimEnd('\')
-$ExpectedCommit = '86b685ec52c309e8a46dad2b4aa65a7e4993d553'
+$Commit = $Commit.ToLowerInvariant()
 $ExpectedDatabase = 'u624668418_idol'
 $ExpectedSha256 = 'BA0C271DF57E377268A7FE4D9CA73FA4E2BFAD3AC4262BAC9EC819955080CACB'
 $ExpectedTables = 37
@@ -112,7 +112,6 @@ function Assert-SshIdentity {
 }
 
 function Assert-LocalInputs {
-    if ($Commit.ToLowerInvariant() -cne $ExpectedCommit) { throw 'This one-time workflow accepts only the approved release commit.' }
     if ($TargetDatabase -cne $ExpectedDatabase -or $ExpectedTableCount -ne $ExpectedTables -or
         $ExpectedProductionTableCount -ne $ExpectedOldTables -or $Sha256.ToUpperInvariant() -cne $ExpectedSha256) {
         throw 'Database target, baseline, table count, or checksum differs from the reviewed initial release.'
@@ -123,9 +122,22 @@ function Assert-LocalInputs {
     }
     if (-not (Test-Path -LiteralPath $RemoteCoordinator -PathType Leaf)) { throw 'The remote initial-release coordinator is missing.' }
 
-    & $GitExe -C $ProjectRoot cat-file -e "$ExpectedCommit^{commit}" 2>$null
-    if ($LASTEXITCODE -ne 0) { throw 'The approved release commit is unavailable locally.' }
+    $localBranch = & $GitExe -C $ProjectRoot branch --show-current
+    if ($LASTEXITCODE -ne 0 -or $localBranch -cne 'main') { throw 'Local deployment checkout must be on main.' }
+    # Only tracked files are release inputs. Reject staged/unstaged tracked changes,
+    # while leaving unrelated developer files untracked and outside the Git archive.
+    $localChanges = & $GitExe -C $ProjectRoot status --porcelain=v1 --untracked-files=no
+    if ($LASTEXITCODE -ne 0 -or $localChanges) { throw 'Local deployment worktree must have no staged or unstaged tracked changes.' }
 
+    # Fetch the current main tip into FETCH_HEAD without changing the local branch or worktree.
+    & $GitExe -C $ProjectRoot fetch --no-tags origin refs/heads/main
+    if ($LASTEXITCODE -ne 0) { throw 'Could not read the current origin/main commit.' }
+    $originMain = (& $GitExe -C $ProjectRoot rev-parse FETCH_HEAD).Trim().ToLowerInvariant()
+    if ($LASTEXITCODE -ne 0 -or $originMain -notmatch '^[0-9a-f]{40}$') { throw 'Could not resolve the current origin/main commit.' }
+    & $GitExe -C $ProjectRoot cat-file -e "$Commit^{commit}" 2>$null
+    if ($LASTEXITCODE -ne 0) { throw 'The supplied target commit is unavailable locally.' }
+    & $GitExe -C $ProjectRoot merge-base --is-ancestor $Commit FETCH_HEAD 2>$null
+    if ($LASTEXITCODE -ne 0) { throw 'The supplied target commit is not reachable from the current origin/main tip.' }
     $dumpPath = (Resolve-Path -LiteralPath $DatabaseDump -ErrorAction Stop).Path
     if (-not (Test-Path -LiteralPath $dumpPath -PathType Leaf) -or
         (Get-Item -LiteralPath $dumpPath).Attributes -band [System.IO.FileAttributes]::ReparsePoint) {
@@ -259,14 +271,14 @@ try {
     if (-not $Approved) { throw 'Production initial release requires the explicit -Approved switch.' }
 
     Assert-SshIdentity
-    $originMain = & $GitExe -C $ProjectRoot ls-remote --heads origin main
-    if ($LASTEXITCODE -ne 0) { throw 'Could not verify origin/main.' }
-    $originSha = (($originMain -split '\s+')[0]).ToLowerInvariant()
-    if ($originSha -cne $ExpectedCommit) { throw 'origin/main no longer points to the approved release commit.' }
+    & $GitExe -C $ProjectRoot fetch --no-tags origin refs/heads/main
+    if ($LASTEXITCODE -ne 0) { throw 'Could not refresh origin/main before production preflight.' }
+    & $GitExe -C $ProjectRoot merge-base --is-ancestor $Commit FETCH_HEAD 2>$null
+    if ($LASTEXITCODE -ne 0) { throw 'The target commit is no longer reachable from current origin/main.' }
 
     $runId = [guid]::NewGuid().ToString('N')
     $remoteStageRoot = "$RemoteHome/.idolranking-initial-release-$runId"
-    $preflightArgs = @('preflight', $ExpectedCommit, $BaseUrlExpected, $ExpectedDatabase,
+    $preflightArgs = @('preflight', $Commit, $BaseUrlExpected, $ExpectedDatabase,
         "$ExpectedOldTables", "$ExpectedTables", "$ExpectedForeignKeys", $ExpectedSha256,
         "$($local.Media.public.Count)", "$($local.Media.public.Bytes)",
         "$($local.Media.private.Count)", "$($local.Media.private.Bytes)", '-', '-', $runId)
@@ -283,7 +295,7 @@ try {
     }
     $archivePath = Join-Path $tempRoot 'release.zip'
     $sourceRoot = Join-Path $tempRoot 'source'
-    & $GitExe -C $ProjectRoot archive --format=zip "--output=$archivePath" $ExpectedCommit
+    & $GitExe -C $ProjectRoot archive --format=zip "--output=$archivePath" $Commit
     if ($LASTEXITCODE -ne 0) { throw 'Could not create the exact release source archive.' }
     Expand-Archive -LiteralPath $archivePath -DestinationPath $sourceRoot
     foreach ($required in @('package-lock.json', 'public\images', 'resources\css\app.css', 'resources\css\admin.css', 'resources\js\app.js', 'resources\js\admin.js')) {
@@ -345,7 +357,7 @@ try {
     & $scp @scpOptions (Join-Path $payload 'build') (Join-Path $payload 'images') (Join-Path $payload 'media') (Join-Path $payload 'input.sql') "${Target}:$remoteStageRoot/"
     if ($LASTEXITCODE -ne 0) { throw "Private staging upload failed; review $remoteStageRoot before cleanup." }
 
-    $stageArgs = @('validate-stage', $ExpectedCommit, $BaseUrlExpected, $ExpectedDatabase,
+    $stageArgs = @('validate-stage', $Commit, $BaseUrlExpected, $ExpectedDatabase,
         "$ExpectedOldTables", "$ExpectedTables", "$ExpectedForeignKeys", $ExpectedSha256,
         "$($local.Media.public.Count)", "$($local.Media.public.Bytes)",
         "$($local.Media.private.Count)", "$($local.Media.private.Bytes)",
@@ -353,18 +365,18 @@ try {
     $stageResult = Invoke-SshHelper -Arguments $stageArgs
     $stageResult | ForEach-Object { Write-Host $_ }
 
-    $approvalPhrase = "INITIAL RELEASE $ExpectedCommit REPLACE DATABASE $ExpectedDatabase FROM DUMP $ExpectedSha256 TABLES $ExpectedTables BACKUP $BackupDecision"
+    $approvalPhrase = "INITIAL RELEASE $Commit REPLACE DATABASE $ExpectedDatabase FROM DUMP $ExpectedSha256 TABLES $ExpectedTables BACKUP $BackupDecision"
     Write-Host "Staging is ready. Database confirmation must match exactly:`n$approvalPhrase"
     $typed = Read-Host 'Type the complete confirmation phrase to continue'
     if ($typed -cne $approvalPhrase) { throw 'Confirmation did not match; production changes were not started.' }
 
-    $deployArgs = @('deploy', $ExpectedCommit, $BaseUrlExpected, $ExpectedDatabase,
+    $deployArgs = @('deploy', $Commit, $BaseUrlExpected, $ExpectedDatabase,
         "$ExpectedOldTables", "$ExpectedTables", "$ExpectedForeignKeys", $ExpectedSha256,
         "$($local.Media.public.Count)", "$($local.Media.public.Bytes)",
         "$($local.Media.private.Count)", "$($local.Media.private.Bytes)",
         $remoteStageRoot, $baseCommit, $runId)
     $null = Invoke-SshHelper -Arguments $deployArgs -AllocateTty
-    Write-Host "Initial release completed for $ExpectedCommit."
+    Write-Host "Initial release completed for $Commit."
 }
 catch {
     Write-Error $_
