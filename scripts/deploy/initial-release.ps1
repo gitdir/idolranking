@@ -293,7 +293,10 @@ function Invoke-SshHelper {
 }
 
 function Invoke-SshCommand {
-    param([Parameter(Mandatory = $true)][string]$Command)
+    param(
+        [Parameter(Mandatory = $true)][string]$Command,
+        [string]$FailureMessage = 'Remote SSH command failed.'
+    )
     $options = @(
         '-T', '-p', '65002', '-i', $SshKey,
         '-o', 'IdentitiesOnly=yes', '-o', 'PubkeyAuthentication=yes',
@@ -303,7 +306,43 @@ function Invoke-SshCommand {
         '-o', 'ConnectTimeout=12'
     )
     & (Get-Command ssh.exe).Source @options $Target $Command
-    if ($LASTEXITCODE -ne 0) { throw 'Could not create the unique protected staging directory.' }
+    if ($LASTEXITCODE -ne 0) { throw $FailureMessage }
+}
+
+function Remove-AbandonedRemoteStage {
+    param([Parameter(Mandatory = $true)][string]$StagePath)
+
+    $match = [regex]::Match($StagePath, '^/home/u624668418/\.idolranking-initial-release-([a-f0-9]{32})$')
+    if (-not $match.Success) { throw 'Refusing cleanup: remote stage path is not a generated per-run path.' }
+    $runId = $match.Groups[1].Value
+    $expectedPath = "$RemoteHome/.idolranking-initial-release-$runId"
+    if ($StagePath -cne $expectedPath) { throw 'Refusing cleanup: remote stage path differs from the expected home directory.' }
+
+    # Only remove the exact mode-700 directory created for this run, owned by the
+    # authenticated account, with known workflow payload names at its top level.
+    $cleanupCommand = @'
+stage="$HOME/.idolranking-initial-release-__RUN_ID__"
+expected="$HOME/.idolranking-initial-release-__RUN_ID__"
+if [ ! -e "$stage" ] && [ ! -L "$stage" ]; then echo STAGE_ALREADY_ABSENT; exit 0; fi
+[ "$stage" = "$expected" ] || exit 41
+[ -d "$stage" ] && [ ! -L "$stage" ] || exit 42
+[ "$(readlink -f -- "$stage")" = "$expected" ] || exit 43
+[ "$(stat -c %u -- "$stage")" = "$(id -u)" ] || exit 44
+[ "$(stat -c %a -- "$stage")" = 700 ] || exit 45
+for child in "$stage"/* "$stage"/.[!.]* "$stage"/..?*; do
+    [ -e "$child" ] || [ -L "$child" ] || continue
+    case "${child##*/}" in
+        build|images|media) [ -d "$child" ] && [ ! -L "$child" ] || exit 46 ;;
+        input.sql|remote-initial-release.sh) [ -f "$child" ] && [ ! -L "$child" ] || exit 47 ;;
+        *) exit 48 ;;
+    esac
+done
+rm -rf -- "$stage" || exit 49
+[ ! -e "$stage" ] && [ ! -L "$stage" ] || exit 50
+echo STAGE_CLEANED
+'@
+    $cleanupCommand = $cleanupCommand.Replace('__RUN_ID__', $runId)
+    Invoke-SshCommand -Command $cleanupCommand -FailureMessage 'Safe remote staging cleanup refused or failed; inspect the exact per-run path manually.'
 }
 
 function Copy-LocalMedia {
@@ -323,6 +362,8 @@ function Copy-LocalMedia {
 
 $tempRoot = $null
 $remoteStageRoot = $null
+$remoteStageCreated = $false
+$deploymentAttempted = $false
 try {
     $local = Assert-LocalInputs
     Write-Host "Local release commit and dump validated; $ExpectedTables tables, $ExpectedForeignKeys foreign keys."
@@ -408,7 +449,8 @@ try {
     Copy-LocalMedia -Inventory $local -DestinationRoot (Join-Path $payload 'media')
     Copy-Item -LiteralPath $local.DumpPath -Destination (Join-Path $payload 'input.sql')
 
-    Invoke-SshCommand -Command "umask 077 && mkdir -m 700 -- $remoteStageRoot"
+    Invoke-SshCommand -Command "umask 077 && mkdir -m 700 -- $remoteStageRoot" -FailureMessage 'Could not create the unique protected staging directory.'
+    $remoteStageCreated = $true
     $scp = (Get-Command scp.exe -ErrorAction Stop).Source
     $scpOptions = @(
         '-r', '-P', '65002', '-i', $SshKey,
@@ -439,12 +481,20 @@ try {
         "$($local.Media.public.Count)", "$($local.Media.public.Bytes)",
         "$($local.Media.private.Count)", "$($local.Media.private.Bytes)",
         $remoteStageRoot, $baseCommit, $runId)
+    $deploymentAttempted = $true
     Invoke-SshHelper -Arguments $deployArgs -AllocateTty -RemoteScriptPath $stagedCoordinator
     Write-Host "Initial release completed for $Commit."
 }
 catch {
-    Write-Error $_
-    if ($remoteStageRoot) { Write-Warning "Protected remote staging may remain at $remoteStageRoot; inspect before any retry." }
+    if ($remoteStageCreated -and -not $deploymentAttempted) {
+        try {
+            Remove-AbandonedRemoteStage -StagePath $remoteStageRoot
+            Write-Warning 'Removed only this run’s verified private staging directory because deployment had not started.'
+        }
+        catch { Write-Warning "Protected remote staging may remain at $remoteStageRoot; cleanup checks refused or could not complete." }
+    }
+    elseif ($remoteStageCreated) { Write-Warning "Protected remote staging remains at $remoteStageRoot for manual inspection after a deployment attempt." }
+    Write-Error $_ -ErrorAction Continue
     throw
 }
 finally {

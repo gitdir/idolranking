@@ -23,6 +23,8 @@ Use `initial-release.ps1` only for the reviewed initial release that combines co
 
 The coordinator is streamed over SSH standard input for the non-interactive remote preflight, avoiding Windows command-line length limits. After the protected stage is created, the same coordinator is copied there and SHA-256 verified before stage validation and deployment. The interactive deploy runs from that verified staged file with a TTY and no piped stdin, so its second typed confirmation remains interactive and cannot be consumed as script input.
 
+The remote coordinator uses ordinary pipes for media count/byte inventories and NUL-delimited `find` pipelines for collision checks; it does not depend on `/dev/fd` process substitution. If build, upload, staging validation, or the local confirmation fails before an interactive deployment attempt, the PowerShell driver removes only the current run's exact private stage after checking its generated path, canonical path, owner, mode `700`, and allowed top-level payload names. It leaves the stage untouched when any check fails. Once the remote deployment attempt begins, staging is retained for recovery inspection.
+
 Local validation only (reads GitHub `origin/main`; no npm, SSH, upload, or production change). It requires the local `main` worktree to have no staged or unstaged tracked changes. Untracked developer files are ignored by validation and are never included in the committed-source Git archive or deployment payload; only the explicitly configured dump and media directories are considered as external inputs:
 
 ```powershell
@@ -68,7 +70,7 @@ The read-only inspection found the destination link missing. The coordinator wil
 
 The database host configured on the production server resolves as a public-network endpoint. The workflow neither opens a port nor changes firewall rules and keeps the database password inside PHP memory, but deployment approval should be contingent on Hostinger's existing database ingress restrictions being confirmed.
 
-The current Hostinger account was previously approved to skip a database backup. The script encodes that choice as `APPROVED-NO-BACKUP` and asks for it explicitly again. Database replacement is not transactional. If failure occurs after replacement begins, the coordinator does not retry or claim rollback; it leaves the site in maintenance mode and reports the stage and current Git commit for manual recovery. Private staged files are retained for inspection; remove them only after reviewing the reported state. Never invoke `database-operation.ps1 -Mode Replace` or historical patches as part of this first release.
+The current Hostinger account was previously approved to skip a database backup. The script encodes that choice as `APPROVED-NO-BACKUP` and asks for it explicitly again. Database replacement is not transactional. If failure occurs after replacement begins, the coordinator does not retry or claim rollback; it leaves the site in maintenance mode and reports the stage and current Git commit for manual recovery. After a deployment attempt starts, private staged files are retained for inspection; remove them only after reviewing the reported state. Never invoke `database-operation.ps1 -Mode Replace` or historical patches as part of this first release.
 
 ## Standard code deployment
 

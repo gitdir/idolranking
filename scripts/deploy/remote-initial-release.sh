@@ -223,12 +223,14 @@ if find "$STAGE" -type l -print -quit | grep -q .; then fail 'Staged payload con
 
 media_inventory() {
     local dir=$1 count bytes
-    count=$(find "$dir" -type f ! -name .gitignore -printf x | wc -c | tr -d ' ')
-    bytes=$(find "$dir" -type f ! -name .gitignore -printf '%s\n' | awk '{total += $1} END {printf "%.0f", total}')
+    count=$(find "$dir" -type f ! -name .gitignore -printf x | wc -c | tr -d ' ') || return 1
+    bytes=$(find "$dir" -type f ! -name .gitignore -printf '%s\n' | awk '{total += $1} END {printf "%.0f", total}') || return 1
     printf '%s %s\n' "$count" "$bytes"
 }
-read -r staged_public_count staged_public_bytes < <(media_inventory "$STAGE/media/public")
-read -r staged_private_count staged_private_bytes < <(media_inventory "$STAGE/media/private")
+public_inventory=$(media_inventory "$STAGE/media/public") || fail 'Could not inspect staged public media.'
+private_inventory=$(media_inventory "$STAGE/media/private") || fail 'Could not inspect staged private media.'
+read -r staged_public_count staged_public_bytes <<< "$public_inventory"
+read -r staged_private_count staged_private_bytes <<< "$private_inventory"
 [[ "$staged_public_count" == "$PUBLIC_COUNT" && "$staged_public_bytes" == "$PUBLIC_BYTES" &&
    "$staged_private_count" == "$PRIVATE_COUNT" && "$staged_private_bytes" == "$PRIVATE_BYTES" ]] || fail 'Staged upload inventory differs from the local inventory.'
 
@@ -238,14 +240,14 @@ check_additive_collisions() {
         [[ -d "$destination" && ! -L "$destination" ]] || fail 'An upload destination is not a regular directory.'
         if find "$destination" -type l -print -quit | grep -q .; then fail 'An upload destination contains a symlink.'; fi
     fi
-    while IFS= read -r -d '' file; do
+    find "$source" -mindepth 1 -type d -print0 | while IFS= read -r -d '' file; do
         relative=${file#"$source"/}
         target="$destination/$relative"
         if [[ -e "$target" || -L "$target" ]]; then
             [[ -d "$target" && ! -L "$target" ]] || fail 'An upload directory collides with a non-directory destination.'
         fi
-    done < <(find "$source" -mindepth 1 -type d -print0)
-    while IFS= read -r -d '' file; do
+    done || return 1
+    find "$source" -type f -print0 | while IFS= read -r -d '' file; do
         relative=${file#"$source"/}
         if [[ "$omit_manifest" == 1 && "$relative" == manifest.json ]]; then continue; fi
         target="$destination/$relative"
@@ -253,7 +255,7 @@ check_additive_collisions() {
             [[ -f "$target" && ! -L "$target" ]] || fail 'An upload file collides with a non-regular destination.'
             [[ "$(sha256sum "$file" | awk '{print $1}')" == "$(sha256sum "$target" | awk '{print $1}')" ]] || fail 'An upload file collides with different existing content.'
         fi
-    done < <(find "$source" -type f -print0)
+    done || return 1
 }
 
 validate_destinations() {
