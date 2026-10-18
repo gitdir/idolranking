@@ -9,9 +9,10 @@ PUBLIC_DIR='/home/u624668418/domains/orchid-oryx-674671.hostingersite.com/public
 PHP='/opt/alt/php84/usr/bin/php'
 COMPOSER='/usr/local/bin/composer'
 EXPECTED_DB='u624668418_idol'
-EXPECTED_SHA='5B6168E89C6DB4DB805198C7FD27DC36B3781F54D44260BEEB058C435AD2D6CD'
+EXPECTED_SHA='BA0C271DF57E377268A7FE4D9CA73FA4E2BFAD3AC4262BAC9EC819955080CACB'
 EXPECTED_COMMIT='86b685ec52c309e8a46dad2b4aa65a7e4993d553'
 EXPECTED_URL='https://orchid-oryx-674671.hostingersite.com'
+EXPECTED_TABLE_NAMES='admin_activity_logs,admin_dummy_activity_requests,blocked_ips,daily_check_in_translations,daily_check_ins,fan_post_comment_reports,fan_post_comment_translations,fan_post_comments,fan_post_likes,fan_post_reports,fan_post_tags,fan_post_translations,fan_posts,heart_histories,heart_reward_settings,idol_debuts,idol_group_members,idol_localizations,idol_name_aliases,idol_profile_image_reports,idol_registration_request_debuts,idol_registration_request_localizations,idol_registration_requests,idol_votes,idols,member_access_logs,member_login_histories,member_social_accounts,members,partner_banner_clicks,partner_banners,password_reset_tokens,restricted_nicknames,schema_patch_history,site_settings,visitor_daily_stats,visitor_daily_uniques'
 
 log() { printf '[%s] %s\n' "$(date -u '+%Y-%m-%dT%H:%M:%SZ')" "$1"; }
 fail() {
@@ -23,13 +24,13 @@ fail() {
 MODE=$1; COMMIT=$2; BASE_URL=$3; DATABASE=$4; OLD_TABLES=$5; TABLES=$6; FKS=$7; SHA=$8
 PUBLIC_COUNT=$9; PUBLIC_BYTES=${10}; PRIVATE_COUNT=${11}; PRIVATE_BYTES=${12}; STAGE=${13}; BASE_COMMIT=${14}; RUN_ID=${15}
 [[ "$COMMIT" == "$EXPECTED_COMMIT" && "$BASE_URL" == "$EXPECTED_URL" && "$DATABASE" == "$EXPECTED_DB" ]] || fail 'Release identity differs from the reviewed values.'
-[[ "$OLD_TABLES" == 25 && "$TABLES" == 37 && "$FKS" == 59 && "$SHA" == "$EXPECTED_SHA" ]] || fail 'Database inventory differs from the reviewed values.'
+[[ "$OLD_TABLES" == 25 && "$TABLES" == 37 && "$FKS" == 58 && "$SHA" == "$EXPECTED_SHA" ]] || fail 'Database inventory differs from the reviewed values.'
 for value in "$PUBLIC_COUNT" "$PUBLIC_BYTES" "$PRIVATE_COUNT" "$PRIVATE_BYTES"; do [[ "$value" =~ ^[0-9]+$ ]] || fail 'Invalid staged media inventory.'; done
 [[ "$RUN_ID" =~ ^[a-f0-9]{32}$ ]] || fail 'Invalid run identifier.'
 [[ "$BASE_COMMIT" == '-' || "$BASE_COMMIT" =~ ^[a-f0-9]{40}$ ]] || fail 'Invalid base commit.'
 [[ "$MODE" == preflight || "$MODE" == validate-stage || "$MODE" == deploy ]] || fail 'Unknown coordinator mode.'
 
-for command in git flock curl sha256sum stat find grep awk rsync base64 sed readlink wc tr install mv mkdir ln date; do
+for command in git flock curl sha256sum stat find grep awk rsync base64 sed readlink wc tr paste install mv mkdir ln date; do
     command -v "$command" >/dev/null 2>&1 || fail "Required command unavailable: $command"
 done
 [[ -x "$PHP" && -x "$COMPOSER" ]] || fail 'PHP 8.4 or Composer executable unavailable.'
@@ -96,7 +97,8 @@ try {
         $triggers = (int)$pdo->query('SELECT COUNT(*) FROM information_schema.triggers WHERE trigger_schema=DATABASE()')->fetchColumn();
         $routines = (int)$pdo->query('SELECT COUNT(*) FROM information_schema.routines WHERE routine_schema=DATABASE()')->fetchColumn();
         $events = (int)$pdo->query('SELECT COUNT(*) FROM information_schema.events WHERE event_schema=DATABASE()')->fetchColumn();
-        printf("DB_VERSION=%s\nDB_TABLES=%d\nDB_FKS=%d\nDB_VIEWS=%d\nDB_TRIGGERS=%d\nDB_ROUTINES=%d\nDB_EVENTS=%d\n",$version,$tables,$fks,$views,$triggers,$routines,$events);
+        $names = $pdo->query('SELECT table_name FROM information_schema.tables WHERE table_schema=DATABASE() AND table_type=0x42415345205441424c45 ORDER BY table_name')->fetchAll(PDO::FETCH_COLUMN);
+        printf("DB_VERSION=%s\nDB_TABLES=%d\nDB_FKS=%d\nDB_TABLE_NAMES=%s\nDB_VIEWS=%d\nDB_TRIGGERS=%d\nDB_ROUTINES=%d\nDB_EVENTS=%d\n",$version,$tables,$fks,implode(',', $names),$views,$triggers,$routines,$events);
         exit(0);
     }
     if ($mode === 'grants') {
@@ -147,26 +149,31 @@ db_meta() { db_php metadata; }
 validate_dump() {
     [[ -f "$STAGE/input.sql" && ! -L "$STAGE/input.sql" ]] || fail 'Staged SQL dump is missing or is not a regular file.'
     [[ "$(sha256sum "$STAGE/input.sql" | awk '{print toupper($1)}')" == "$EXPECTED_SHA" ]] || fail 'Staged SQL checksum mismatch.'
-    local create_count fk_count
+    local create_count fk_count create_names
     create_count=$(grep -Ec '^CREATE TABLE( IF NOT EXISTS)? ' "$STAGE/input.sql" || true)
     fk_count=$(grep -Ec '^[[:space:]]*CONSTRAINT .* FOREIGN KEY' "$STAGE/input.sql" || true)
-    [[ "$create_count" == "$TABLES" && "$fk_count" == "$FKS" ]] || fail 'Staged SQL table or foreign-key definition count mismatch.'
+    create_names=$(sed -n 's/^CREATE TABLE `\([^`]*\)`.*/\1/p' "$STAGE/input.sql" | LC_ALL=C sort | paste -sd, -)
+    [[ "$create_count" == "$TABLES" && "$fk_count" == "$FKS" && "$create_names" == "$EXPECTED_TABLE_NAMES" ]] || fail 'Staged SQL table names or foreign-key definition inventory mismatch.'
     if grep -Eiq '^[[:space:]]*(CREATE|DROP) DATABASE|^[[:space:]]*USE[[:space:]]|utf8mb4_0900_|^[[:space:]]*CREATE[[:space:]]+(DEFINER=.*[[:space:]]+)?(VIEW|TRIGGER|PROCEDURE|FUNCTION|EVENT)\b' "$STAGE/input.sql"; then
         fail 'Staged SQL contains disallowed database-level DDL, unsupported collation, or an unreviewed schema object.'
     fi
 }
 
 check_identity() {
-    local expected_tables=${1:-$OLD_TABLES} meta version tables fks views triggers routines events
+    local expected_tables=${1:-$OLD_TABLES} meta version tables fks names views triggers routines events
     meta=$(db_meta 2>/dev/null) || fail 'Could not verify production database identity using application configuration.'
     version=$(printf '%s\n' "$meta" | sed -n 's/^DB_VERSION=//p')
     tables=$(printf '%s\n' "$meta" | sed -n 's/^DB_TABLES=//p')
     fks=$(printf '%s\n' "$meta" | sed -n 's/^DB_FKS=//p')
+    names=$(printf '%s\n' "$meta" | sed -n 's/^DB_TABLE_NAMES=//p')
     views=$(printf '%s\n' "$meta" | sed -n 's/^DB_VIEWS=//p')
     triggers=$(printf '%s\n' "$meta" | sed -n 's/^DB_TRIGGERS=//p')
     routines=$(printf '%s\n' "$meta" | sed -n 's/^DB_ROUTINES=//p')
     events=$(printf '%s\n' "$meta" | sed -n 's/^DB_EVENTS=//p')
     [[ "$version" == 11.8.9* && "$tables" == "$expected_tables" && "$fks" =~ ^[0-9]+$ && "$views" == 0 && "$triggers" == 0 && "$routines" == 0 && "$events" == 0 ]] || fail 'Database version or schema-object inventory differs from the expected state.'
+    if [[ "$expected_tables" == "$TABLES" ]]; then
+        [[ "$fks" == "$FKS" && "$names" == "$EXPECTED_TABLE_NAMES" && ",$names," == *',schema_patch_history,'* && ",$names," != *',fan_post_monthly_views,'* ]] || fail 'Imported table names or foreign-key count differ from the canonical release schema.'
+    fi
     printf '%s\n' "$meta"
 }
 

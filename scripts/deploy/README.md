@@ -19,7 +19,7 @@ No private key, database password, or production `.env` belongs in this director
 
 Use `initial-release.ps1` only for the reviewed initial release that combines code, the complete local database, and local uploaded media. This workflow is separate from ordinary code deployment and from the standalone SQL tools. It never applies historical SQL patches.
 
-The command validates the exact release commit, the verified SQL checksum and 37 table/59 foreign-key definitions, the configured production database name and current 25-table baseline, local media inventory, remote destination collisions, Vite manifest, SSH host key, and fast-forward eligibility before maintenance mode. It builds from a clean Git archive in an isolated temporary directory, then uploads the dump, build, images, and media into a private mode-700 directory under the production home. No public destination is touched during staging.
+The command validates the exact release commit, verified SQL checksum, exact canonical table-name set (37 tables including `schema_patch_history`, excluding `fan_post_monthly_views`) and 58 foreign-key definitions, configured production database name and current 25-table baseline, local media inventory, remote destination collisions, Vite manifest, SSH host key, and fast-forward eligibility before maintenance mode. It builds from a clean Git archive in an isolated temporary directory, then uploads the dump, build, images, and media into a private mode-700 directory under the production home. No public destination is touched during staging.
 
 Local validation only (no npm, SSH, upload, or production change):
 
@@ -27,8 +27,8 @@ Local validation only (no npm, SSH, upload, or production change):
 .\scripts\deploy\initial-release.ps1 `
   -Commit 86b685ec52c309e8a46dad2b4aa65a7e4993d553 `
   -BaseUrl https://orchid-oryx-674671.hostingersite.com `
-  -DatabaseDump 'C:\Users\LEO\AppData\Local\Temp\idolranking-mariadb-migration-8cc011fa9170498ea31ee30f3ebacf58\idolranking-mariadb118-compatible.sql' `
-  -Sha256 5B6168E89C6DB4DB805198C7FD27DC36B3781F54D44260BEEB058C435AD2D6CD `
+  -DatabaseDump 'C:\Users\LEO\AppData\Local\Temp\idolranking-mariadb-reconciled-deadca0acc0a49269a96d09eb9d4e56d\idolranking-mariadb118-compatible.sql' `
+  -Sha256 BA0C271DF57E377268A7FE4D9CA73FA4E2BFAD3AC4262BAC9EC819955080CACB `
   -TargetDatabase u624668418_idol `
   -ExpectedTableCount 37 `
   -ExpectedProductionTableCount 25 `
@@ -42,8 +42,8 @@ The coordinated production command uses the same arguments, removes `-DryRun`, a
 .\scripts\deploy\initial-release.ps1 `
   -Commit 86b685ec52c309e8a46dad2b4aa65a7e4993d553 `
   -BaseUrl https://orchid-oryx-674671.hostingersite.com `
-  -DatabaseDump 'C:\Users\LEO\AppData\Local\Temp\idolranking-mariadb-migration-8cc011fa9170498ea31ee30f3ebacf58\idolranking-mariadb118-compatible.sql' `
-  -Sha256 5B6168E89C6DB4DB805198C7FD27DC36B3781F54D44260BEEB058C435AD2D6CD `
+  -DatabaseDump 'C:\Users\LEO\AppData\Local\Temp\idolranking-mariadb-reconciled-deadca0acc0a49269a96d09eb9d4e56d\idolranking-mariadb118-compatible.sql' `
+  -Sha256 BA0C271DF57E377268A7FE4D9CA73FA4E2BFAD3AC4262BAC9EC819955080CACB `
   -TargetDatabase u624668418_idol `
   -ExpectedTableCount 37 `
   -ExpectedProductionTableCount 25 `
@@ -51,7 +51,7 @@ The coordinated production command uses the same arguments, removes `-DryRun`, a
   -Approved
 ```
 
-The remote coordinator takes the same non-blocking lock used by other deployment helpers and maintains one maintenance window. It rechecks Git and the DB identity before the window, fast-forwards only, runs Composer and Laravel commands with PHP 8.4, and imports the complete dump without running patches. To remain within the Hostinger database user's existing schema grants, it replaces all base tables inside the verified target database instead of dropping and recreating the database itself; the target database identity and `.env` remain unchanged. Preflight stops if views, triggers, routines, or events exist, because they are outside this reviewed 37-table dump. It validates the dump SHA-256, 37 `CREATE TABLE` definitions, 59 foreign-key definitions, and MariaDB compatibility once during staging validation and again immediately before dropping any existing table. Table DDL is not transactional. It synchronizes media additively (no `--delete`) and refuses any existing unexpected storage path. Build assets are published additively with the Vite manifest moved into place last. It verifies table/FK counts, unchanged `.env`, `public_html/index.php` and `.htaccess`, exact Git HEAD, HTTP routes, all four Vite entries, and `/fan-garden` returning 404.
+The remote coordinator takes the same non-blocking lock used by other deployment helpers and maintains one maintenance window. It rechecks Git and the DB identity before the window, fast-forwards only, runs Composer and Laravel commands with PHP 8.4, and imports the complete dump without running patches. To remain within the Hostinger database user's existing schema grants, it replaces all base tables inside the verified target database instead of dropping and recreating the database itself; the target database identity and `.env` remain unchanged. Preflight stops if views, triggers, routines, or events exist, because they are outside this reviewed dump. It validates the dump SHA-256, exact 37 table names, 58 foreign-key definitions, and MariaDB compatibility during staging and immediately before dropping existing tables. After import it checks both exact counts and table names. Table DDL is not transactional. It synchronizes media additively (no `--delete`) and refuses any existing unexpected storage path. Build assets are published additively with the Vite manifest moved into place last. It verifies unchanged `.env`, `public_html/index.php` and `.htaccess`, exact Git HEAD, HTTP routes, all four Vite entries, and `/fan-garden` returning 404.
 
 ### Uploaded image delivery in the initial release
 
@@ -152,4 +152,4 @@ Database replacement is not transactional. The database can be left empty or par
 
 The repository is at `86b685ec52c309e8a46dad2b4aa65a7e4993d553` on `main`. A previous read-only production snapshot recorded `4d16c54f2272afd21a7dbac6c1c846397a7e1164` before the coordinated initial release. That observation is historical: current production HEAD, database contents, and whether the integrated release completed are unverified. Check them read-only before reporting deployment status.
 
-There is also a schema mismatch to resolve before relying on a fresh-install snapshot to reproduce the one-time imported database. A read-only DDL comparison found that the external dump has 37 tables/59 foreign keys and contains `fan_post_monthly_views` with FK `fan_post_monthly_views.fan_post_idx → fan_posts.idx`; the checked-in `sql/deploy/mariadb11_schema.sql` has 37/58 and contains `schema_patch_history` instead. The external dump therefore lacks the patch-history table required by incremental patch deployment. This is a table-set difference, not simply one missing FK. Reconcile the table definition, data, and patch-ledger consequences before importing it or claiming schema parity. The dump is not stored in Git.
+The reconciled local database and release dump now match the canonical `sql/deploy/mariadb11_schema.sql`: 37 tables, 58 foreign keys, `schema_patch_history` present, and `fan_post_monthly_views` absent. The MariaDB 11.8-compatible copy was generated separately from the preserved MySQL 8.4 original; only the verified `utf8mb4_0900_ai_ci` collation was changed to `utf8mb4_unicode_ci`. Current compatible-copy SHA-256: `BA0C271DF57E377268A7FE4D9CA73FA4E2BFAD3AC4262BAC9EC819955080CACB`. The dump files are sensitive, machine-local temporary artifacts outside Git; confirm availability and checksum before any future use.

@@ -35,7 +35,7 @@ Deferred or intentionally unavailable:
 
 `sql/deploy/mariadb11_schema.sql` is the current fresh-install snapshot. It contains 37 table definitions and 58 named foreign-key constraints. `sql/deploy/mariadb11_seed.sql` inserts essential Heart reward settings only; it does not provide the local idol/member/activity dataset. There are 36 historical/forward patch SQL files; see `sql/README.md` for baseline and ordering rules.
 
-The one-time integrated deployment script is pinned to an external dump with 37 tables and 59 foreign keys. A read-only DDL comparison found a table-set difference: the dump contains `fan_post_monthly_views` and its FK `fan_post_monthly_views.fan_post_idx → fan_posts.idx`, while the checked-in snapshot contains `schema_patch_history` instead. The dump therefore lacks the patch ledger required by the incremental patch workflow. This is not just a count discrepancy; do not import the dump or claim schema parity until its data and schema are reconciled. A fresh PC can recreate the checked-in schema, but cannot reproduce the external dump's full data. Never put a database dump in Git.
+The current one-time integrated release dump has been reconciled with the canonical snapshot: both contain the same 37 tables and 58 foreign keys, including `schema_patch_history` and excluding `fan_post_monthly_views`. The legacy table had no application references and was confirmed empty before its locally approved removal. The external dump is not in Git; it contains application data and must be handled as a sensitive temporary artifact.
 
 ## Development history landmarks
 
@@ -48,6 +48,6 @@ Fan Garden's public route is a deliberate `abort(404)` in `routes/web.php`; pres
 - Local branch and `origin/main` were observed at `86b685ec52c309e8a46dad2b4aa65a7e4993d553` during this documentation pass.
 - The deployment scripts under `scripts/deploy/` and `docs/ui/fan-garden.png` were untracked in the worktree at inspection. Keep the image; commit the non-secret deployment scripts and these recovery docs if they are intended to be available from GitHub.
 - Current production deployment status is unknown. A historical read-only observation recorded production at `4d16c54f2272afd21a7dbac6c1c846397a7e1164` before the integrated code/database/media release. Recheck current production commit and HTTP behavior read-only before saying the release succeeded.
-- Reconcile the `fan_post_monthly_views` versus `schema_patch_history` table-set discrepancy, including the 58-versus-59 FK count, and provide a secure, durable, non-Git transfer plan for any full database dump and private/public uploads needed on a new machine.
+- Before any integrated release, recheck the current compatible dump path and SHA-256; the current artifact is outside Git and may not survive a machine change.
 - Make deployment scripts portable to a new Windows user or document the required local changes: the current scripts hardcode `C:\Users\LEO\.ssh` paths, SSH identity/host, and Hostinger filesystem paths.
 - Verify XAMPP's actual Apache PHP runtime. The inspected XAMPP CLI PHP was 8.2.12, while the standalone CLI PHP at `C:\php84\php.exe` was 8.4.26; Laravel 13 requires PHP 8.3+, and the project target is 8.4.

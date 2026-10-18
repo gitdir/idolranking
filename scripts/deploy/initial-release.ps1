@@ -43,9 +43,9 @@ if (Get-Variable -Name PSNativeCommandUseErrorActionPreference -ErrorAction Sile
 $ProjectRoot = (Resolve-Path (Join-Path $PSScriptRoot '..\..')).Path.TrimEnd('\')
 $ExpectedCommit = '86b685ec52c309e8a46dad2b4aa65a7e4993d553'
 $ExpectedDatabase = 'u624668418_idol'
-$ExpectedSha256 = '5B6168E89C6DB4DB805198C7FD27DC36B3781F54D44260BEEB058C435AD2D6CD'
+$ExpectedSha256 = 'BA0C271DF57E377268A7FE4D9CA73FA4E2BFAD3AC4262BAC9EC819955080CACB'
 $ExpectedTables = 37
-$ExpectedForeignKeys = 59
+$ExpectedForeignKeys = 58
 $ExpectedOldTables = 25
 $BaseUrlExpected = 'https://orchid-oryx-674671.hostingersite.com'
 $SshKey = 'C:\Users\LEO\.ssh\idolranking_hostinger_ed25519'
@@ -163,6 +163,17 @@ function Assert-LocalInputs {
         throw "Dump must contain exactly $ExpectedTables unique CREATE TABLE definitions."
     }
     if ($foreignKeyCount -ne $ExpectedForeignKeys) { throw 'Dump foreign-key definition count differs from the reviewed schema.' }
+    $canonicalSchema = Join-Path $ProjectRoot 'sql\deploy\mariadb11_schema.sql'
+    if (-not (Test-Path -LiteralPath $canonicalSchema -PathType Leaf)) { throw 'Canonical MariaDB schema snapshot is missing.' }
+    $canonicalNames = [System.Collections.Generic.List[string]]::new()
+    foreach ($line in [System.IO.File]::ReadLines($canonicalSchema)) {
+        if ($line -match '^CREATE TABLE(?: IF NOT EXISTS)?\s+`?([^`\s(]+)`?') { $canonicalNames.Add($Matches[1]) }
+    }
+    if ($canonicalNames.Count -ne $ExpectedTables -or
+        (@(Compare-Object ($tableNames | Sort-Object -Unique) ($canonicalNames | Sort-Object -Unique) -CaseSensitive).Count -ne 0) -or
+        $tableNames.Contains('fan_post_monthly_views') -or -not $tableNames.Contains('schema_patch_history')) {
+        throw 'Dump table names differ from the canonical schema snapshot.'
+    }
 
     $mediaRoot = Join-Path $ProjectRoot 'storage\app'
     $mediaInventory = @{}

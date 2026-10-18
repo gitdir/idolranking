@@ -139,10 +139,29 @@ if [[ "$MODE" == 'patch' ]]; then
     read -r -p "Type exactly to authorize: $phrase " typed_phrase
     [[ "$typed_phrase" == "$phrase" ]] || fail 'Patch confirmation did not match.'
 
-    count=$("${mariadb_base[@]}" --database="$DATABASE" --batch --skip-column-names \
-        --execute="SELECT COUNT(*) FROM schema_patch_history WHERE patch_name = '$patch_name';") \
-        || fail 'Could not check schema_patch_history; patch was not run.'
-    [[ "$count" == '0' ]] || fail 'Patch is already recorded; inspect the schema before any retry.'
+    history_exists=$("${mariadb_base[@]}" --database="$DATABASE" --batch --skip-column-names \
+        --execute="SELECT COUNT(*) FROM information_schema.tables WHERE table_schema = DATABASE() AND table_name = 'schema_patch_history' AND table_type = 'BASE TABLE';") \
+        || fail 'Could not inspect schema_patch_history; patch was not run.'
+    if [[ "$patch_name" == '20261013_001_create_schema_patch_history.sql' ]]; then
+        [[ "$history_exists" == '0' ]] || fail 'Bootstrap patch only applies when schema_patch_history is absent; inspect the table before proceeding.'
+    else
+        [[ "$history_exists" == '1' ]] || fail 'schema_patch_history is absent; apply the approved bootstrap patch first.'
+        count=$("${mariadb_base[@]}" --database="$DATABASE" --batch --skip-column-names \
+            --execute="SELECT COUNT(*) FROM schema_patch_history WHERE patch_name = '$patch_name';") \
+            || fail 'Could not check schema_patch_history; patch was not run.'
+        [[ "$count" == '0' ]] || fail 'Patch is already recorded; inspect the schema before any retry.'
+    fi
+
+    if [[ "$patch_name" == '20261018_001_drop_unused_fan_post_monthly_views.sql' ]]; then
+        monthly_view_table=$("${mariadb_base[@]}" --database="$DATABASE" --batch --skip-column-names \
+            --execute="SELECT COUNT(*) FROM information_schema.tables WHERE table_schema = DATABASE() AND table_name = 'fan_post_monthly_views' AND table_type = 'BASE TABLE';") \
+            || fail 'Could not inspect fan_post_monthly_views; destructive patch was not run.'
+        [[ "$monthly_view_table" == '1' ]] || fail 'Expected fan_post_monthly_views is missing; destructive patch was not run.'
+        monthly_view_rows=$("${mariadb_base[@]}" --database="$DATABASE" --batch --skip-column-names \
+            --execute='SELECT COUNT(*) FROM fan_post_monthly_views;') \
+            || fail 'Could not verify fan_post_monthly_views row count; destructive patch was not run.'
+        [[ "$monthly_view_rows" == '0' ]] || fail 'fan_post_monthly_views is not empty; destructive patch was not run.'
+    fi
 
     enter_maintenance
     database_mutated=1

@@ -18,7 +18,7 @@ For a short request such as “Analyze this project and set up the environment,�
 - Repository: `https://github.com/gitdir/idolranking.git`
 - Primary branch: `main`
 - Local project inspected: `D:\www\idolranking`
-- Repository HEAD during this documentation pass: `86b685ec52c309e8a46dad2b4aa65a7e4993d553` (`아이돌랭킹 1차 출시 버전 통합`). `origin/main` resolved to the same commit at inspection.
+- Repository HEAD during this documentation pass: `86b685ec52c309e8a46dad2b4aa65a7e4993d553` (first integrated release commit). `origin/main` resolved to the same commit at inspection.
 - Use focused changes and SQL patches, inspect diffs, run relevant tests, then commit/push only when explicitly asked. Do not run `git reset --hard`, `git clean`, or silently overwrite a worktree.
 - Commit `composer.json`/`composer.lock`, `package.json`/`package-lock.json`, approved source SQL, tests, docs, and source public assets. Do not commit `.env`, credentials, database dumps, uploads, `vendor`, `node_modules`, `public/build`, caches, or temporary files.
 - At inspection, `scripts/` and `docs/ui/fan-garden.png` were untracked. The non-secret deployment scripts and project docs should be committed if GitHub is to be the recovery source. Preserve `docs/ui/fan-garden.png`; include it if it remains a design reference. Recheck status before staging.
@@ -104,8 +104,8 @@ Use `.env.example` to identify variable names. The real values are deliberately 
 - SQL, not Laravel migrations, owns the schema. See `sql/README.md`; all SQL files currently under `sql/` are allowlisted source files. Add an explicit `.gitignore` allowlist entry for each new schema/patch/seed file.
 - Fresh install uses `sql/deploy/mariadb11_schema.sql` then `sql/deploy/mariadb11_seed.sql`; legacy `sql/schema/001_initial_schema.sql`, `schema/partner_banners.sql`, and historical patches are not extra fresh-install steps.
 - For a continuing database, verify its exact baseline, take a consistent encrypted backup, apply one checksum-reviewed forward patch, verify it, then record it in `schema_patch_history`. MariaDB DDL can implicitly commit; a partial patch is not safe to retry blindly.
-- Known schema mismatch: a read-only DDL comparison found 37 tables/58 FKs in the checked-in snapshot versus 37/59 in the external initial-release dump. The dump has `fan_post_monthly_views` and FK `fan_post_monthly_views.fan_post_idx → fan_posts.idx`; the snapshot has `schema_patch_history` instead. The dump lacks the ledger expected by incremental patch deployment. Reconcile the table definition, data, and patch-ledger consequences before importing the dump or claiming parity.
-- The previous one-time prepared MariaDB dump was outside Git at `C:\Users\LEO\AppData\Local\Temp\idolranking-mariadb-migration-8cc011fa9170498ea31ee30f3ebacf58\idolranking-mariadb118-compatible.sql`, SHA-256 `5B6168E89C6DB4DB805198C7FD27DC36B3781F54D44260BEEB058C435AD2D6CD`. A temp path is not durable and may not exist on another PC. Recheck file, checksum, schema inventory, and data provenance before use; do not assume the historical approval to skip backup applies to a new operation.
+- Reconciled schema: the local database, `sql/deploy/mariadb11_schema.sql`, and the newly prepared compatible dump have the same 37 table names and 58 FK definitions. `schema_patch_history` is present and `fan_post_monthly_views` is absent. The legacy table was verified empty and dropped locally with explicit approval; only the successful history-table bootstrap is recorded in the ledger.
+- Current one-time MariaDB-compatible dump: `C:\Users\LEO\AppData\Local\Temp\idolranking-mariadb-reconciled-deadca0acc0a49269a96d09eb9d4e56d\idolranking-mariadb118-compatible.sql`, SHA-256 `BA0C271DF57E377268A7FE4D9CA73FA4E2BFAD3AC4262BAC9EC819955080CACB`. The unchanged MySQL 8.4 original is beside it. Both are sensitive, temporary, outside Git, and may disappear; verify the path, checksum, schema inventory, and approved data provenance before use.
 - The earlier verified local inventory had 11 public upload files (about 3.55 MB) and no private files, but this is a historical inventory, not an available backup. Preserve and transfer `storage/app/public`, `storage/app/private`, and release-owned `public/images` separately from SQL. Never commit private evidence or member uploads.
 
 ## 7. GitHub and Hostinger deployment
@@ -128,7 +128,7 @@ The initial production deployment is **not confirmed** by this guide. A historic
 
 ## 8. Portability issues and pending work
 
-1. **Schema parity:** reconcile the `fan_post_monthly_views` versus `schema_patch_history` table-set difference (and 58-vs-59 FK count); update the canonical snapshot/dump process only after review.
+1. **Initial release artifacts:** the one-time dump and uploads remain machine-local temporary artifacts, not Git recovery inputs. Keep them in approved protected storage and verify checksums before any transfer.
 2. **External data:** the full dump, initial idol/group records, and uploads are not recoverable from this Git repository. Establish encrypted, durable, access-controlled storage or a sanitized seed dataset.
 3. **Windows paths:** deployment PowerShell currently hardcodes the LEO profile's `.ssh` paths and one Hostinger identity/layout. Parameterize these for another operator or document the approved local edits before relying on them on a new PC.
 4. **Apache PHP:** local XAMPP includes PHP 8.2.12 while standalone CLI PHP is 8.4.26. Confirm web runtime and configure Apache for PHP 8.4.
