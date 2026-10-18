@@ -1,0 +1,6 @@
+Country flag SVGs are from lipis/flag-icons:
+https://github.com/lipis/flag-icons
+
+Included files: kr.svg, jp.svg, us.svg, cn.svg (flags/4x3).
+The collection is licensed under the MIT License. The required copyright and
+permission notice are included in LICENSE in this directory.

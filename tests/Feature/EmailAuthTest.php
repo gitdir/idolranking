@@ -84,11 +84,12 @@ class EmailAuthTest extends TestCase
         )");
         DB::statement("CREATE TABLE heart_reward_settings (idx INTEGER PRIMARY KEY AUTOINCREMENT, action_code TEXT UNIQUE, heart_amount INTEGER, daily_limit INTEGER DEFAULT 0, is_enabled INTEGER DEFAULT 1)");
         DB::statement("CREATE TABLE heart_histories (idx INTEGER PRIMARY KEY AUTOINCREMENT, member_idx INTEGER, amount INTEGER, balance_after INTEGER, reason TEXT, vote_idx INTEGER, comment_idx INTEGER, reversal_of_history_idx INTEGER, operation_key TEXT, actor_member_idx INTEGER, memo TEXT, created_at TEXT, UNIQUE (member_idx, operation_key))");
+        DB::statement("CREATE TABLE daily_check_ins (idx INTEGER PRIMARY KEY AUTOINCREMENT, member_idx INTEGER NOT NULL, actor_member_idx INTEGER NOT NULL, language_code TEXT, content TEXT NOT NULL, awarded_hearts INTEGER NOT NULL, check_in_date TEXT NOT NULL, created_at TEXT, updated_at TEXT, UNIQUE (member_idx, check_in_date))");
         DB::statement("CREATE TABLE idols (idx INTEGER PRIMARY KEY, type TEXT, gender TEXT, status TEXT DEFAULT 'active')");
         DB::statement("CREATE TABLE idol_group_members (individual_idx INTEGER, group_idx INTEGER, PRIMARY KEY (individual_idx, group_idx))");
         DB::statement("CREATE TABLE idol_votes (idx INTEGER PRIMARY KEY, idol_idx INTEGER, heart_amount INTEGER, created_at TEXT)");
         DB::statement("CREATE TABLE fan_posts (idx INTEGER PRIMARY KEY, idol_idx INTEGER, member_idx INTEGER, media_type TEXT DEFAULT 'text', image_path TEXT, youtube_video_id TEXT, content TEXT, view_count INTEGER DEFAULT 0, status TEXT DEFAULT 'published', deleted_at TEXT, created_at TEXT)");
-        DB::statement('CREATE TABLE fan_post_likes (fan_post_idx INTEGER, member_idx INTEGER)');
+        DB::statement('CREATE TABLE fan_post_likes (fan_post_idx INTEGER, member_idx INTEGER, created_at TEXT)');
         DB::statement("CREATE TABLE fan_post_comments (idx INTEGER PRIMARY KEY, fan_post_idx INTEGER, status TEXT DEFAULT 'published', deleted_at TEXT)");
     }
 
@@ -161,7 +162,7 @@ class EmailAuthTest extends TestCase
         $this->database();
 
         $this->withSession($this->verifiedEmailState())
-            ->postJson('/register', $this->registration())
+            ->postJson('/register', $this->registration(['member_level' => 10, 'is_dummy' => 1]))
             ->assertCreated()->assertJson(['success' => true])->assertSessionHas('member_idx')
             ->assertSessionMissing('register_email_verification');
 
@@ -362,6 +363,8 @@ class EmailAuthTest extends TestCase
             'success' => true,
             'redirect' => '/ranking/boy?period=monthly',
         ])->assertSessionHas('member_idx', $idx);
+        $this->assertSame(0, DB::table('daily_check_ins')->count());
+        $this->assertSame(0, DB::table('heart_histories')->where('member_idx', $idx)->where('reason', 'daily_attendance')->count());
         $this->get('/my-page')->assertOk()->assertSee('member@example.test');
         $this->post('/logout')->assertRedirect('/');
         $this->postJson('/login', [

@@ -13,6 +13,7 @@ class FanPostReportController extends Controller
     public function index(Request $request)
     {
         $status = $request->string('status')->toString();
+        $reason = $request->string('reason')->toString();
         $search = trim($request->string('q')->toString());
         $allowed=['created_at'=>'r.created_at','status'=>'r.status'];
         $sort=array_key_exists($request->query('sort'),$allowed)?$request->query('sort'):'created_at'; $direction=$request->query('direction')==='asc'?'asc':'desc';
@@ -21,6 +22,7 @@ class FanPostReportController extends Controller
             ->join('members as reporter', 'reporter.idx', '=', 'r.member_idx')
             ->join('members as author', 'author.idx', '=', 'p.member_idx')
             ->when(in_array($status, ['pending', 'reviewing', 'reviewed', 'rejected'], true), fn ($q) => $q->where('r.status', $status))
+            ->when(in_array($reason, ['spam', 'harassment_hate', 'inappropriate_content', 'copyright', 'misinformation', 'other'], true), fn ($q) => $q->where('r.reason', $reason))
             ->when($search !== '', fn ($q) => $q->where(function ($inner) use ($search) {
                 $inner->where('p.title', 'like', '%'.$search.'%')->orWhere('reporter.nickname', 'like', '%'.$search.'%');
             }))
@@ -28,7 +30,7 @@ class FanPostReportController extends Controller
             ->orderBy($allowed[$sort],$direction)->orderByDesc('r.idx')
             ->paginate(20)->withQueryString();
 
-        return view('admin.fan-post-reports.index', compact('reports', 'status', 'search','sort','direction'));
+        return view('admin.fan-post-reports.index', compact('reports', 'status', 'reason', 'search','sort','direction'));
     }
 
     public function showPost(int $idx)

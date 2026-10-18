@@ -6,6 +6,10 @@ if (modal) {
     const form = modal.querySelector('form');
     const submit = form.querySelector('.sign-in-submit');
     const error = form.querySelector('[data-sign-in-error]');
+    const returnUrlInput = form.querySelector('[name="return_url"]');
+    const defaultReturnUrl = returnUrlInput.value;
+    const googleLink = modal.querySelector('.sign-in-google');
+    const defaultGoogleHref = googleLink.href;
     const setPasswordVisible = (visible) => {
         password.type = visible ? 'text' : 'password';
         visibility.setAttribute('aria-pressed', String(visible));
@@ -16,9 +20,18 @@ if (modal) {
     const open = (trigger = document.activeElement) => {
         if (modal.open) return;
         const drawer = document.querySelector('#main-navigation');
+        const guestAccount = trigger instanceof Element ? trigger.closest('[data-guest-account]') : null;
         const fromDrawer = trigger instanceof Element && drawer?.contains(trigger)
             && window.matchMedia('(max-width: 639px)').matches;
-        returnFocus = fromDrawer ? document.querySelector('.menu-toggle') : trigger;
+        returnFocus = guestAccount?.querySelector('[data-guest-account-trigger]')
+            || (fromDrawer ? document.querySelector('.menu-toggle') : trigger);
+        const requestedReturnUrl = trigger instanceof Element ? trigger.dataset.signInReturnUrl : null;
+        returnUrlInput.value = requestedReturnUrl || defaultReturnUrl;
+        if (requestedReturnUrl) {
+            const googleUrl = new URL(defaultGoogleHref, window.location.href);
+            googleUrl.searchParams.set('return_url', requestedReturnUrl);
+            googleLink.href = googleUrl.toString();
+        }
         if (drawer?.classList.contains('is-open')) drawer.querySelector('.drawer-close').click();
         modal.showModal();
         document.documentElement.classList.add('sign-in-open');
@@ -53,6 +66,8 @@ if (modal) {
         error.hidden = true;
         error.textContent = '';
         setPasswordVisible(false);
+        returnUrlInput.value = defaultReturnUrl;
+        googleLink.href = defaultGoogleHref;
         returnFocus?.focus();
     });
     form.addEventListener('submit', async (event) => {
@@ -69,7 +84,7 @@ if (modal) {
             });
             const result = await response.json();
             if (!response.ok) {
-                error.textContent = result.message || 'Unable to sign in.';
+                error.textContent = result.message || window.idolRankingT('sign_in_failed');
                 error.hidden = false;
                 return;
             }
@@ -77,7 +92,7 @@ if (modal) {
             modal.close();
             window.location.assign(result.redirect || window.location.href);
         } catch {
-            error.textContent = 'Unable to sign in. Please try again.';
+            error.textContent = window.idolRankingT('sign_in_try_again');
             error.hidden = false;
         } finally {
             submit.disabled = false;

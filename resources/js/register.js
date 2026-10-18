@@ -53,23 +53,23 @@ if (registerForm) {
         const nicknameLength = Array.from(nicknameInput.value.trim()).length;
 
         if (!emailInput.validity.valid) {
-            invalidate('email', 'Enter a valid email address.', emailInput);
+            invalidate('email', window.idolRankingT('valid_email'), emailInput);
         } else if (!verified || normalizeEmail(emailInput.value) !== verificationEmail) {
-            invalidate('email_verification', 'Verify this email address before continuing.', emailInput);
+            invalidate('email_verification', window.idolRankingT('verify_email'), emailInput);
         }
 
         if (passwordLength < 8 || passwordLength > 64) {
-            invalidate('password', 'Password must be between 8 and 64 characters.', passwordInput);
+            invalidate('password', window.idolRankingT('password_length'), passwordInput);
         } else if (!/[A-Za-z]/.test(passwordInput.value) || !/[0-9]/.test(passwordInput.value)) {
-            invalidate('password', 'Password must contain at least one letter and one number.', passwordInput);
+            invalidate('password', window.idolRankingT('password_complexity'), passwordInput);
         }
 
         if (passwordConfirmationInput.value !== passwordInput.value) {
-            invalidate('password_confirmation', 'Passwords do not match.', passwordConfirmationInput);
+            invalidate('password_confirmation', window.idolRankingT('password_mismatch'), passwordConfirmationInput);
         }
 
         if (nicknameLength < 2 || nicknameLength > 20) {
-            invalidate('nickname', 'Nickname must be between 2 and 20 characters.', nicknameInput);
+            invalidate('nickname', window.idolRankingT('nickname_length'), nicknameInput);
         }
 
         firstInvalid?.focus();
@@ -100,17 +100,17 @@ if (registerForm) {
         verifyButton.disabled = verified;
 
         if (verified) {
-            verificationStatus.textContent = 'Email verified.';
+            verificationStatus.textContent = window.idolRankingT('email_verified');
             verificationTimer.textContent = '';
-            sendButton.textContent = 'Verified';
+            sendButton.textContent = window.idolRankingT('verified');
             sendButton.disabled = true;
             return;
         }
 
         sendButton.disabled = resendRemaining > 0;
-        sendButton.textContent = resendRemaining > 0 ? `Resend in ${resendRemaining}s` : (verificationEmail ? 'Resend Code' : 'Send Code');
+        sendButton.textContent = resendRemaining > 0 ? window.idolRankingT('resend_in', { seconds: resendRemaining }) : window.idolRankingT(verificationEmail ? 'resend_code' : 'send_code');
         verificationTimer.textContent = verificationEmail
-            ? (expiresRemaining > 0 ? `Code expires in ${formatTime(expiresRemaining)}` : 'Code expired. Request a new code.')
+            ? (expiresRemaining > 0 ? window.idolRankingT('code_expires', { time: formatTime(expiresRemaining) }) : window.idolRankingT('code_expired'))
             : '';
     };
 
@@ -147,7 +147,7 @@ if (registerForm) {
                 email: emailInput.value,
             });
             if (!response.ok) {
-                showError('email', result.errors?.email?.[0] || result.message || 'Unable to send the verification code.');
+                showError('email', result.errors?.email?.[0] || result.message || window.idolRankingT('verification_email_failed'));
                 if (result.retry_after) resendAt = Math.floor(Date.now() / 1000) + Number(result.retry_after);
                 return;
             }
@@ -162,7 +162,7 @@ if (registerForm) {
             verificationStatus.hidden = true;
             codeInput.focus();
         } catch {
-            showError('email', 'Unable to send the verification code. Please try again.');
+            showError('email', window.idolRankingT('verification_failed'));
         } finally {
             updateVerificationUI();
         }
@@ -177,7 +177,7 @@ if (registerForm) {
                 code: codeInput.value,
             });
             if (!response.ok) {
-                showError('email_verification', result.errors?.code?.[0] || result.message || 'Unable to verify this code.');
+                showError('email_verification', result.errors?.code?.[0] || result.message || window.idolRankingT('verification_code_failed'));
                 return;
             }
 
@@ -186,7 +186,7 @@ if (registerForm) {
             verificationStatus.textContent = result.message;
             verificationStatus.hidden = false;
         } catch {
-            showError('email_verification', 'Unable to verify this code. Please try again.');
+            showError('email_verification', window.idolRankingT('verification_invalid'));
         } finally {
             updateVerificationUI();
         }
@@ -197,7 +197,7 @@ if (registerForm) {
         clearErrors();
 
         if (!validateRegistrationFields()) {
-            message.textContent = 'Please check your registration details.';
+            message.textContent = window.idolRankingT('registration_check');
             message.hidden = false;
             return;
         }
@@ -213,14 +213,14 @@ if (registerForm) {
             const result = await response.json();
             if (!response.ok) {
                 Object.entries(result.errors || {}).forEach(([field, errors]) => showError(field, errors[0]));
-                message.textContent = result.message || 'Unable to create your account.';
+                message.textContent = result.message || window.idolRankingT('account_create_failed');
                 message.hidden = false;
                 return;
             }
 
             window.location.assign(result.redirect);
         } catch {
-            message.textContent = 'Unable to create your account. Please try again.';
+            message.textContent = window.idolRankingT('account_create_try_again');
             message.hidden = false;
         } finally {
             submit.disabled = false;
@@ -236,6 +236,6 @@ document.querySelectorAll('.register-visibility').forEach((button) => {
         const visible = input.type === 'password';
         input.type = visible ? 'text' : 'password';
         button.setAttribute('aria-pressed', String(visible));
-        button.setAttribute('aria-label', `${visible ? 'Hide' : 'Show'} ${input.id.includes('confirm') ? 'confirm password' : 'password'}`);
+        button.setAttribute('aria-label', window.idolRankingT(visible ? 'password_hide' : 'password_show') + (input.id.includes('confirm') ? ` ${window.idolRankingT('confirm_password')}` : ''));
     });
 });

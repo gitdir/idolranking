@@ -74,6 +74,8 @@
             <div class="admin-attention-list">
                 <a href="{{ route('admin.idol-requests.index') }}"><span>대기 중인 아이돌 등록 신청</span><strong>{{ number_format($attention['idol_requests']) }}</strong></a>
                 <a href="{{ route('admin.fan-post-reports.index') }}"><span>대기 중인 팬포스트 신고</span><strong>{{ number_format($attention['fan_post_reports']) }}</strong></a>
+                <a href="{{ route('admin.fan-post-reports.index', ['status' => 'pending', 'reason' => 'copyright']) }}"><span>대기 중인 권리 침해 신고</span><strong>{{ number_format($attention['rights_reports']) }}</strong></a>
+                <a href="{{ route('admin.fan-post-comment-reports.index', ['status' => 'pending']) }}"><span>대기 중인 댓글 신고</span><strong>{{ number_format($attention['fan_post_comment_reports']) }}</strong></a>
                 <a href="{{ route('admin.members.index') }}"><span>정지 회원</span><strong>{{ number_format($attention['suspended_members']) }}</strong></a>
                 <a href="{{ route('admin.ip-access.index') }}"><span>현재 차단된 IP</span><strong>{{ $attention['blocked_ips'] === null ? '집계 안 함' : number_format($attention['blocked_ips']) }}</strong></a>
             </div>

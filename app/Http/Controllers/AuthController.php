@@ -60,7 +60,7 @@ class AuthController extends Controller
         if ($validator->fails()) {
             return response()->json([
                 'success' => false,
-                'message' => 'Please enter an available email address.',
+                'message' => __('messages.email_required'),
                 'errors' => $validator->errors(),
             ], 422);
         }
@@ -85,7 +85,7 @@ class AuthController extends Controller
 
                 return response()->json([
                     'success' => false,
-                    'message' => 'Too many verification emails have been requested. Please try again later.',
+                    'message' => __('messages.verification_rate_limit'),
                     'retry_after' => $retryAfter,
                 ], 429);
             }
@@ -102,7 +102,7 @@ class AuthController extends Controller
 
             return response()->json([
                 'success' => false,
-                'message' => 'The verification email could not be sent. Please try again later.',
+                'message' => __('messages.verification_send_failed'),
             ], 503);
         }
 
@@ -125,7 +125,7 @@ class AuthController extends Controller
 
         return response()->json([
             'success' => true,
-            'message' => 'A verification code has been sent to your email.',
+            'message' => __('messages.verification_sent'),
             'email' => $email,
             'expires_at' => $now + $expiresIn,
             'resend_available_at' => $now + $resendAfter,
@@ -144,7 +144,7 @@ class AuthController extends Controller
         if ($validator->fails()) {
             return response()->json([
                 'success' => false,
-                'message' => 'Enter the 6-digit verification code.',
+                'message' => __('messages.verification_code_six_digits'),
                 'errors' => $validator->errors(),
             ], 422);
         }
@@ -153,12 +153,12 @@ class AuthController extends Controller
         if (!is_array($state) || ($state['email'] ?? null) !== $email) {
             return response()->json([
                 'success' => false,
-                'message' => 'Request a verification code for this email first.',
+                'message' => __('messages.verification_request_first'),
             ], 422);
         }
 
         if (($state['verified'] ?? false) === true) {
-            return response()->json(['success' => true, 'message' => 'Email verified.', 'email' => $email]);
+            return response()->json(['success' => true, 'message' => __('messages.email_verified'), 'email' => $email]);
         }
 
         if ((int) ($state['expires_at'] ?? 0) <= now()->timestamp) {
@@ -166,7 +166,7 @@ class AuthController extends Controller
 
             return response()->json([
                 'success' => false,
-                'message' => 'The verification code has expired. Request a new code.',
+                'message' => __('messages.verification_expired'),
             ], 422);
         }
 
@@ -183,7 +183,7 @@ class AuthController extends Controller
 
                 return response()->json([
                     'success' => false,
-                    'message' => 'Too many incorrect attempts. Request a new code.',
+                    'message' => __('messages.verification_attempts_limit'),
                 ], 422);
             }
 
@@ -192,7 +192,7 @@ class AuthController extends Controller
 
             return response()->json([
                 'success' => false,
-                'message' => 'The verification code is incorrect.',
+                'message' => __('messages.verification_invalid'),
                 'attempts_remaining' => $maximumAttempts - $attempts,
             ], 422);
         }
@@ -203,7 +203,7 @@ class AuthController extends Controller
         $state['attempts'] = $attempts;
         $request->session()->put(self::EMAIL_VERIFICATION_SESSION_KEY, $state);
 
-        return response()->json(['success' => true, 'message' => 'Email verified.', 'email' => $email]);
+        return response()->json(['success' => true, 'message' => __('messages.email_verified'), 'email' => $email]);
     }
 
     public function resetEmailVerification(Request $request)
@@ -239,7 +239,7 @@ class AuthController extends Controller
         if ($validator->fails()) {
             return response()->json([
                 'success' => false,
-                'message' => 'Please check your registration details.',
+                'message' => __('messages.registration_invalid'),
                 'errors' => $validator->errors(),
             ], 422);
         }
@@ -250,7 +250,7 @@ class AuthController extends Controller
             || !hash_equals((string) ($verification['email'] ?? ''), $email)) {
             return response()->json([
                 'success' => false,
-                'message' => 'Verify your email address before creating your account.',
+                'message' => __('messages.verify_email'),
                 'errors' => ['email_verification' => ['Verify this email address before continuing.']],
             ], 422);
         }
@@ -259,7 +259,7 @@ class AuthController extends Controller
         $inviterIdx = $heartRewards->eligibleInviterIdx($request->session()->get(HeartRewardManager::REFERRAL_SESSION_KEY));
 
         try {
-            $memberIdx = DB::transaction(function () use ($request, $inviterIdx) {
+            $memberIdx = DB::transaction(function () use ($request, $inviterIdx, $heartRewards) {
                 $memberIdx = app(MemberCreator::class)->create([
                     'email' => $request->string('email')->toString(),
                     'password_hash' => Hash::make($request->string('password')->toString()),
@@ -270,6 +270,8 @@ class AuthController extends Controller
                     'email_verified_at' => now(), 'created_at' => now(), 'updated_at' => now(),
                 ]);
                 app(HeartRewardManager::class)->award($memberIdx, 'signup', 'signup:'.$memberIdx);
+                $heartRewards->awardReferral($memberIdx);
+
                 return $memberIdx;
             });
         } catch (QueryException $exception) {
@@ -278,7 +280,7 @@ class AuthController extends Controller
 
                 return response()->json([
                     'success' => false,
-                    'message' => 'Registration could not be completed. Please try again.',
+                    'message' => __('messages.registration_failed'),
                 ], 500);
             }
 
@@ -290,17 +292,20 @@ class AuthController extends Controller
                 $errors['nickname'] = ['This nickname is already in use.'];
             }
 
+            if ($errors === []) {
+                report($exception);
+
+                return response()->json([
+                    'success' => false,
+                    'message' => __('messages.registration_failed'),
+                ], 500);
+            }
+
             return response()->json([
                 'success' => false,
-                'message' => 'This email address or nickname is already in use.',
+                'message' => __('messages.duplicate_account_fields'),
                 'errors' => $errors,
             ], 422);
-        }
-
-        try {
-            $heartRewards->awardReferral($memberIdx);
-        } catch (\Throwable $exception) {
-            report($exception);
         }
 
         $request->session()->regenerate();
@@ -309,7 +314,7 @@ class AuthController extends Controller
 
         return response()->json([
             'success' => true,
-            'message' => 'Your account has been created.',
+            'message' => __('messages.account_created'),
             'redirect' => route('my-page'),
         ], 201);
     }
@@ -325,7 +330,7 @@ class AuthController extends Controller
         if ($validator->fails()) {
             return response()->json([
                 'success' => false,
-                'message' => 'Please enter your email and password.',
+                'message' => __('messages.email_password_required'),
                 'errors' => $validator->errors(),
             ], 422);
         }
@@ -349,7 +354,7 @@ class AuthController extends Controller
 
             return response()->json([
                 'success' => false,
-                'message' => 'Email or password is incorrect.',
+                'message' => __('messages.login_failed'),
             ], 401);
         }
 
@@ -367,7 +372,7 @@ class AuthController extends Controller
 
         return response()->json([
             'success' => true,
-            'message' => 'You are signed in.',
+            'message' => __('messages.login_success'),
             'redirect' => $redirect,
         ]);
     }

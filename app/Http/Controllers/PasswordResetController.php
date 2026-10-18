@@ -32,7 +32,7 @@ class PasswordResetController extends Controller
         if ($validator->fails()) {
             return response()->json([
                 'success' => false,
-                'message' => 'Please enter a valid email address.',
+                'message' => __('ui.password_email_invalid'),
                 'errors' => $validator->errors(),
             ], 422);
         }
@@ -91,7 +91,7 @@ class PasswordResetController extends Controller
                 if (!$this->mailerIsSafe($mailer)) {
                     throw new \RuntimeException('Password reset mail must use a non-logging mail transport.');
                 }
-                Mail::mailer($mailer)->to($email)->send(new PasswordResetLink($resetUrl));
+                Mail::mailer($mailer)->to($email)->locale(app()->getLocale())->send(new PasswordResetLink($resetUrl));
             } catch (\Throwable $exception) {
                 DB::table('password_reset_tokens')->where('idx', $tokenIdx)->update(['used_at' => now()]);
                 Log::warning('Password reset email delivery failed.', ['exception_class' => $exception::class]);
@@ -120,7 +120,7 @@ class PasswordResetController extends Controller
                 function ($attribute, $value, $fail) {
                     if (is_string($value) && config('hashing.driver', 'bcrypt') === 'bcrypt'
                         && (strlen($value) > 72 || str_contains($value, "\0"))) {
-                        $fail('The password must fit within 72 bytes and contain no null characters.');
+                        $fail(__('messages.password_byte_limit'));
                     }
                 },
             ],
@@ -130,7 +130,7 @@ class PasswordResetController extends Controller
         if ($validator->fails()) {
             return response()->json([
                 'success' => false,
-                'message' => 'Please check your password entries.',
+                'message' => __('ui.password_entries_invalid'),
                 'errors' => $validator->errors(),
             ], 422);
         }
@@ -178,19 +178,19 @@ class PasswordResetController extends Controller
         if (!$result) {
             return response()->json([
                 'success' => false,
-                'message' => 'This password reset link is invalid, expired, or has already been used. Please request a new one.',
+                'message' => __('ui.password_link_invalid'),
             ], 422);
         }
 
         return response()->json([
             'success' => true,
-            'message' => 'Your password has been reset. You can now sign in with your new password.',
+            'message' => __('messages.password_reset_success'),
         ]);
     }
 
     private function genericRequestResponse(Request $request, int $status = 200, ?string $message = null)
     {
-        $message ??= 'If an account exists for that email address, a password reset link has been sent.';
+        $message ??= __('messages.password_reset_sent_generic');
         if ($request->expectsJson()) {
             return response()->json(['success' => $status === 200, 'message' => $message], $status);
         }
@@ -203,7 +203,7 @@ class PasswordResetController extends Controller
         $key = 'password-reset:request:ip:'.hash('sha256', (string) $request->ip());
         $maximum = (int) config('password_reset.rate_limits.ip_per_hour', 10);
         if (RateLimiter::tooManyAttempts($key, $maximum)) {
-            return 'Too many password reset requests. Please try again later.';
+            return __('messages.password_reset_requests_limited');
         }
         RateLimiter::hit($key, 3600);
 
@@ -215,7 +215,7 @@ class PasswordResetController extends Controller
         $key = 'password-reset:submit:ip:'.hash('sha256', (string) $request->ip());
         $maximum = (int) config('password_reset.rate_limits.submit_per_hour', 20);
         if (RateLimiter::tooManyAttempts($key, $maximum)) {
-            return 'Too many password reset attempts. Please request a new link later.';
+            return __('messages.password_reset_attempts_limited');
         }
         RateLimiter::hit($key, 3600);
 

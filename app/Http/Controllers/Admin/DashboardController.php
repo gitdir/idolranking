@@ -57,6 +57,8 @@ class DashboardController extends Controller
         $attention = [
             'idol_requests' => DB::table('idol_registration_requests')->where('status', 'pending')->count(),
             'fan_post_reports' => DB::table('fan_post_reports')->where('status', 'pending')->count(),
+            'rights_reports' => DB::table('fan_post_reports')->where('status', 'pending')->where('reason', 'copyright')->count(),
+            'fan_post_comment_reports' => DB::table('fan_post_comment_reports')->where('status', 'pending')->count(),
             'suspended_members' => DB::table('members')->where('status', 'suspended')->whereNull('deleted_at')->count(),
             'blocked_ips' => Schema::hasTable('blocked_ips') ? DB::table('blocked_ips')->where('is_active', 1)->where(fn ($q) => $q->whereNull('expires_at')->orWhere('expires_at', '>', now()))->count() : 0,
         ];

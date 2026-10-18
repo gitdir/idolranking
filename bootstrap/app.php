@@ -3,11 +3,13 @@
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
+use App\Console\Commands\CreateDummyMembers;
 use App\Http\Middleware\ResolveMember;
 use App\Http\Middleware\ResolveActivityMember;
 use App\Http\Middleware\CaptureReferral;
 use App\Http\Middleware\BlockRestrictedIp;
 use App\Http\Middleware\TrackVisitor;
+use App\Http\Middleware\SetPublicLocale;
 
 $app = Application::configure(basePath: dirname(__DIR__))
     ->withRouting(
@@ -15,12 +17,19 @@ $app = Application::configure(basePath: dirname(__DIR__))
         commands: __DIR__.'/../routes/console.php',
         health: '/up',
     )
+    ->withCommands([CreateDummyMembers::class])
     ->withMiddleware(function (Middleware $middleware): void {
+        // Comment text is source content for later translation and must remain byte-for-byte as submitted.
+        $middleware->trimStrings(except: [
+            fn ($request) => $request->is('fan-post/*/comments'),
+            fn ($request) => $request->isMethod('post') && $request->is('idol-registration/request'),
+        ]);
         $middleware->prependToGroup('web', BlockRestrictedIp::class);
         $middleware->appendToGroup('web', ResolveMember::class);
         $middleware->appendToGroup('web', ResolveActivityMember::class);
         $middleware->appendToGroup('web', CaptureReferral::class);
         $middleware->appendToGroup('web', TrackVisitor::class);
+        $middleware->appendToGroup('web', SetPublicLocale::class);
     })
     ->withExceptions(function (Exceptions $exceptions): void {
         //

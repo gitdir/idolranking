@@ -1,5 +1,5 @@
 @extends('layouts.app')
-@section('title', 'Reset Your Password | IdolRanking')
+@section('title', __('ui.reset_your_password').' | IdolRanking')
 @section('content')
     @include('auth.partials.password-page', ['reset' => true])
 @endsection

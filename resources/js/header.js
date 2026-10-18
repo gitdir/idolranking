@@ -4,6 +4,7 @@ const overlay = document.querySelector('#navigation-overlay');
 const closeButton = navigation?.querySelector('.drawer-close');
 const drawerLogoutDialog = document.querySelector('#drawer-logout-dialog');
 const drawerLogoutTrigger = navigation?.querySelector('[data-drawer-logout-open]');
+const searchDialog = document.querySelector('#site-search-dialog');
 
 if (toggle && navigation && overlay && closeButton) {
     const mobile = window.matchMedia('(max-width: 639px)');
@@ -27,13 +28,13 @@ if (toggle && navigation && overlay && closeButton) {
     });
 
     navigation.addEventListener('click', (event) => {
-        if (event.target.closest('[data-drawer-logout-open]')) return;
+        if (event.target.closest('[data-drawer-logout-open], [data-search-open]')) return;
         if (mobile.matches && event.target.closest('a, button')) setOpen(false);
     });
     overlay.addEventListener('click', () => setOpen(false));
 
     document.addEventListener('keydown', (event) => {
-        if (drawerLogoutDialog?.open) return;
+        if (drawerLogoutDialog?.open || searchDialog?.open) return;
         if (toggle.getAttribute('aria-expanded') !== 'true') return;
         if (event.key === 'Escape') {
             event.preventDefault();
@@ -75,21 +76,24 @@ if (drawerLogoutDialog && drawerLogoutTrigger) {
     });
 }
 
-const inviteTrigger = document.querySelector('[data-invite-friends-open]');
+const inviteTriggers = document.querySelectorAll('[data-invite-friends-open]');
 const inviteDialog = document.querySelector('#invite-friends-dialog');
 const inviteIntentKey = 'idolranking_invite_friends_intent';
+let inviteReturnFocus = document.querySelector('[data-header-account] .header-account-trigger')
+    || document.querySelector('[data-invite-friends-open]');
 
-if (inviteTrigger) {
-    inviteTrigger.addEventListener('click', () => {
-        if (inviteTrigger.dataset.signedIn !== 'true') {
+inviteTriggers.forEach((trigger) => {
+    trigger.addEventListener('click', () => {
+        if (trigger.dataset.signedIn !== 'true') {
             sessionStorage.setItem(inviteIntentKey, 'true');
             return;
         }
 
+        inviteReturnFocus = trigger;
         inviteDialog?.showModal();
         document.documentElement.classList.add('invite-friends-open');
     });
-}
+});
 
 if (inviteDialog) {
     const referralInput = inviteDialog.querySelector('[data-referral-url]');
@@ -117,26 +121,26 @@ if (inviteDialog) {
     });
     inviteDialog.addEventListener('close', () => {
         document.documentElement.classList.remove('invite-friends-open');
-        inviteTrigger?.focus();
+        inviteReturnFocus?.focus();
     });
     copyButton.addEventListener('click', async () => {
         try {
             await navigator.clipboard.writeText(referralInput.value);
-            copyStatus.textContent = 'Referral link copied.';
+            copyStatus.textContent = window.idolRankingT('invite_copied');
         } catch {
             referralInput.select();
             document.execCommand('copy');
-            copyStatus.textContent = 'Referral link copied.';
+            copyStatus.textContent = window.idolRankingT('invite_copied');
         }
         copyStatus.hidden = false;
         showCopiedState();
     });
     inviteDialog.querySelector('[data-invite-share="kakao"]').addEventListener('click', async () => {
         if (navigator.share) {
-            await navigator.share({ title: 'Invite Friends', url: referralInput.value }).catch(() => {});
+            await navigator.share({ title: window.idolRankingT('invite_friends'), url: referralInput.value }).catch(() => {});
         } else {
             await navigator.clipboard.writeText(referralInput.value).catch(() => {});
-            copyStatus.textContent = 'Referral link copied for KakaoTalk.';
+            copyStatus.textContent = window.idolRankingT('invite_kakao_copied');
             copyStatus.hidden = false;
         }
     });
@@ -181,4 +185,39 @@ if (headerAccount && accountTrigger && accountMenu) {
 
     desktop.addEventListener('change', () => setAccountOpen(false));
     setAccountOpen(false);
+}
+
+const guestAccount = document.querySelector('[data-guest-account]');
+const guestAccountTrigger = guestAccount?.querySelector('[data-guest-account-trigger]');
+const guestAccountMenu = guestAccount?.querySelector('.guest-account-menu');
+
+if (guestAccount && guestAccountTrigger && guestAccountMenu) {
+    const desktop = window.matchMedia('(min-width: 640px)');
+    const setGuestAccountOpen = (open, restoreFocus = false) => {
+        const wasOpen = guestAccountTrigger.getAttribute('aria-expanded') === 'true';
+        open = open && desktop.matches;
+        guestAccountTrigger.setAttribute('aria-expanded', String(open));
+        guestAccountMenu.hidden = !open;
+        if (!open && wasOpen && restoreFocus) guestAccountTrigger.focus();
+    };
+
+    guestAccountTrigger.addEventListener('click', () => {
+        setGuestAccountOpen(guestAccountTrigger.getAttribute('aria-expanded') !== 'true');
+    });
+    guestAccountMenu.addEventListener('click', (event) => {
+        if (event.target.closest('[data-sign-in-open]')) setGuestAccountOpen(false);
+    });
+    document.addEventListener('click', (event) => {
+        if (guestAccountTrigger.getAttribute('aria-expanded') === 'true' && !guestAccount.contains(event.target)) {
+            setGuestAccountOpen(false);
+        }
+    });
+    document.addEventListener('keydown', (event) => {
+        if (event.key === 'Escape' && guestAccountTrigger.getAttribute('aria-expanded') === 'true') {
+            event.preventDefault();
+            setGuestAccountOpen(false, true);
+        }
+    });
+    desktop.addEventListener('change', () => setGuestAccountOpen(false));
+    setGuestAccountOpen(false);
 }

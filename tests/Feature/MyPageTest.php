@@ -18,8 +18,8 @@ class MyPageTest extends TestCase
         $this->assertSame('sqlite', config('database.default'));
         // Test-only SQL, never applied to the application database.
         DB::statement('CREATE TABLE members (idx INTEGER PRIMARY KEY, member_code TEXT UNIQUE, email TEXT, nickname TEXT, country_code TEXT, profile_image_path TEXT, referred_by_member_idx INTEGER, heart_balance INTEGER DEFAULT 0, password_hash TEXT, member_level INTEGER DEFAULT 1, is_dummy INTEGER DEFAULT 0, status TEXT DEFAULT \'active\', deleted_at TEXT, password_changed_at TEXT, created_at TEXT, updated_at TEXT)');
-        DB::statement('CREATE TABLE fan_posts (idx INTEGER PRIMARY KEY, idol_idx INTEGER DEFAULT 1, member_idx INTEGER, media_type TEXT DEFAULT \'text\', image_path TEXT, youtube_video_id TEXT, content TEXT, view_count INTEGER DEFAULT 0, status TEXT DEFAULT \'published\', deleted_at TEXT, created_at TEXT)');
-        DB::statement('CREATE TABLE fan_post_likes (fan_post_idx INTEGER, member_idx INTEGER)');
+        DB::statement('CREATE TABLE fan_posts (idx INTEGER PRIMARY KEY, idol_idx INTEGER DEFAULT 1, member_idx INTEGER, media_type TEXT DEFAULT \'text\', language_code TEXT, image_path TEXT, youtube_video_id TEXT, content TEXT, view_count INTEGER DEFAULT 0, status TEXT DEFAULT \'published\', deleted_at TEXT, created_at TEXT)');
+        DB::statement('CREATE TABLE fan_post_likes (fan_post_idx INTEGER, member_idx INTEGER, created_at TEXT)');
         DB::statement('CREATE TABLE fan_post_comments (idx INTEGER PRIMARY KEY, fan_post_idx INTEGER, status TEXT DEFAULT \'published\', deleted_at TEXT)');
         DB::statement('CREATE TABLE heart_histories (idx INTEGER PRIMARY KEY, member_idx INTEGER, actor_member_idx INTEGER, amount INTEGER, reason TEXT, operation_key TEXT, vote_idx INTEGER, created_at TEXT)');
         DB::statement('CREATE TABLE idol_votes (idx INTEGER PRIMARY KEY, idol_idx INTEGER)');
@@ -86,6 +86,7 @@ class MyPageTest extends TestCase
         for ($idx = 1; $idx <= 14; $idx++) {
             DB::table('fan_posts')->insert(['idx' => $idx, 'member_idx' => $idx === 14 ? 2 : 1,
                 'content' => 'Post '.$idx, 'image_path' => 'uploads/fan-posts/'.$idx.'.png',
+                'language_code' => 'en',
                 'status' => $idx === 13 ? 'hidden' : 'published', 'deleted_at' => $idx === 12 ? '2026-09-01' : null,
                 'created_at' => '2026-09-01 00:00:00']);
         }
@@ -95,6 +96,8 @@ class MyPageTest extends TestCase
             ->assertSee('Like Ranking')
             ->assertSee('Fan Posts')
             ->assertSee('Comments')
+            ->assertSee('fan-post-card-language-badge', false)
+            ->assertSee('>EN</span>', false)
             ->assertViewHas('memberStats', fn ($stats) => $stats === [
                 'like_ranking' => 'Top 5%',
                 'fan_post_count' => 11,
@@ -114,6 +117,7 @@ class MyPageTest extends TestCase
             3,
             substr_count($response->getContent(), 'href="'.route('fan-post.show', ['idx' => 11]).'"')
         );
+        $response->assertSee(asset('images/flags/kr.svg'), false);
     }
 
     public function test_heart_history_is_member_scoped_newest_first_and_keeps_tab_on_next_page(): void
@@ -175,6 +179,93 @@ class MyPageTest extends TestCase
         $this->withSession(['member_idx' => 1])->get('/my-page')->assertOk()
             ->assertViewHas('heartHistories', fn ($histories) => $histories->total() === 0)
             ->assertSee('No Heart history yet.');
+    }
+
+    public function test_dedicated_heart_history_requires_login_and_is_not_indexed(): void
+    {
+        $this->get(route('my-page.heart-history'))->assertRedirect('/')->assertSessionHas('open_sign_in');
+
+        $this->database();
+        $response = $this->withSession(['member_idx' => 1])->get(route('my-page.heart-history'))->assertOk()
+            ->assertSee('<meta name="robots" content="noindex,nofollow">', false)
+            ->assertSee('Current Heart Balance')
+            ->assertSee('0 Heart');
+        $this->assertSame('all', $response->viewData('filter'));
+    }
+
+    public function test_dedicated_history_shows_only_the_current_members_transactions_and_zero_rewards(): void
+    {
+        $this->database();
+        DB::table('idols')->insert(['idx' => 3, 'type' => 'group']);
+        DB::table('idol_votes')->insert(['idx' => 4, 'idol_idx' => 3]);
+        DB::table('heart_histories')->insert([
+            ['idx' => 1, 'member_idx' => 1, 'amount' => 17, 'reason' => 'invite_friend_reward', 'vote_idx' => null, 'created_at' => now()->subMinutes(2)->toDateTimeString()],
+            ['idx' => 2, 'member_idx' => 1, 'amount' => 0, 'reason' => 'comment_reward', 'vote_idx' => null, 'created_at' => now()->subMinute()->toDateTimeString()],
+            ['idx' => 3, 'member_idx' => 1, 'amount' => -100, 'reason' => 'vote', 'vote_idx' => 4, 'created_at' => now()->toDateTimeString()],
+            ['idx' => 4, 'member_idx' => 2, 'amount' => 9000, 'reason' => 'signup_reward', 'vote_idx' => null, 'created_at' => now()->toDateTimeString()],
+        ]);
+
+        $this->withSession(['member_idx' => 1])->get(route('my-page.heart-history'))->assertOk()
+            ->assertSee('+17 Heart')->assertSee('+0 Heart')->assertSee('-100 Heart')
+            ->assertSee('Vote for Group')
+            ->assertDontSee('+9,000 Heart')->assertDontSee('operation_key')->assertDontSee('member_idx');
+    }
+
+    public function test_dedicated_history_earned_and_spent_filters_include_zero_rewards_as_earned(): void
+    {
+        $this->database();
+        DB::table('heart_histories')->insert([
+            ['idx' => 1, 'member_idx' => 1, 'amount' => 0, 'reason' => 'comment_reward', 'created_at' => now()->toDateTimeString()],
+            ['idx' => 2, 'member_idx' => 1, 'amount' => 12, 'reason' => 'daily_attendance', 'created_at' => now()->toDateTimeString()],
+            ['idx' => 3, 'member_idx' => 1, 'amount' => -25, 'reason' => 'vote', 'created_at' => now()->toDateTimeString()],
+        ]);
+
+        $this->withSession(['member_idx' => 1])->get(route('my-page.heart-history', ['filter' => 'earned']))
+            ->assertOk()->assertSee('+0 Heart')->assertSee('+12 Heart')->assertDontSee('-25 Heart')
+            ->assertSee('aria-current="page"', false);
+        $this->withSession(['member_idx' => 1])->get(route('my-page.heart-history', ['filter' => 'spent']))
+            ->assertOk()->assertSee('-25 Heart')->assertDontSee('+12 Heart')->assertDontSee('+0 Heart');
+    }
+
+    public function test_dedicated_history_is_paginated_newest_first_and_preserves_filter(): void
+    {
+        $this->database();
+        for ($idx = 1; $idx <= 21; $idx++) {
+            DB::table('heart_histories')->insert([
+                'idx' => $idx, 'member_idx' => 1, 'amount' => $idx,
+                'reason' => 'daily_attendance', 'created_at' => now()->subSeconds(21 - $idx)->toDateTimeString(),
+            ]);
+        }
+
+        $this->withSession(['member_idx' => 1])->get(route('my-page.heart-history', ['filter' => 'earned']))
+            ->assertOk()->assertViewHas('heartHistories', function ($histories) {
+                $this->assertSame(21, $histories->total());
+                $this->assertCount(20, $histories->items());
+                $this->assertSame(21, (int) $histories->items()[0]->idx);
+                $this->assertStringContainsString('filter=earned', $histories->url(2));
+                return true;
+            });
+    }
+
+    public function test_my_balance_card_shows_hearts_stars_and_disabled_purchase_without_history_link(): void
+    {
+        $this->database();
+
+        $this->withSession(['member_idx' => 1])->get('/my-page')->assertOk()
+            ->assertDontSee('href="'.route('my-page.heart-history').'"', false)
+            ->assertDontSee('View Heart History')
+            ->assertSee('<span>Hearts</span>', false)
+            ->assertSee('<span>Stars</span>', false)
+            ->assertSee('<button class="my-stars-buy" type="button" disabled><span class="my-stars-buy-desktop">Star Buy</span><span class="my-stars-buy-mobile">Star Buy</span></button>', false);
+    }
+
+    public function test_dedicated_history_uses_the_selected_korean_locale(): void
+    {
+        $this->database();
+
+        $this->withSession(['member_idx' => 1, 'locale' => 'ko'])->get(route('my-page.heart-history'))->assertOk()
+            ->assertSee('하트 내역')->assertSee('현재 하트 잔액')->assertSee('전체')
+            ->assertSee('하트');
     }
 
     public function test_invites_show_actual_referrals_and_only_their_paid_rewards(): void
@@ -268,6 +359,7 @@ class MyPageTest extends TestCase
                 'idx' => $idx,
                 'member_idx' => 1,
                 'content' => 'Member post '.$idx,
+                'language_code' => 'en',
                 'image_path' => null,
                 'status' => 'published',
                 'created_at' => sprintf('2026-09-%02d 00:00:00', $idx),
@@ -284,8 +376,12 @@ class MyPageTest extends TestCase
         $response = $this->get('/member/memberCodeA1/fan-posts?sort=latest')
             ->assertOk()
             ->assertSee('Posts written by member_one')
-            ->assertSee('Most Liked')
+            ->assertSee('This Month Likes')
+            ->assertSee('All-Time Likes')
             ->assertSee('Most Commented')
+            ->assertSee('fan-post-card-language-badge', false)
+            ->assertSee('>EN</span>', false)
+            ->assertSee(asset('images/flags/kr.svg'), false)
             ->assertDontSee('Another member post');
 
         $response->assertViewHas('fanPosts', function ($posts) {
@@ -347,6 +443,11 @@ class MyPageTest extends TestCase
             ['fan_post_idx' => 2, 'member_idx' => 1],
             ['fan_post_idx' => 2, 'member_idx' => 2],
         ]);
+        DB::table('fan_post_likes')->insert([
+            ['fan_post_idx' => 2, 'member_idx' => 3, 'created_at' => now('UTC')->subMonths(2)->format('Y-m-d H:i:s')],
+            ['fan_post_idx' => 3, 'member_idx' => 4, 'created_at' => now('UTC')->startOfMonth()->format('Y-m-d H:i:s')],
+            ['fan_post_idx' => 3, 'member_idx' => 5, 'created_at' => now('UTC')->format('Y-m-d H:i:s')],
+        ]);
         DB::table('fan_post_comments')->insert([
             ['idx' => 1, 'fan_post_idx' => 3, 'status' => 'published'],
             ['idx' => 2, 'fan_post_idx' => 3, 'status' => 'published'],
@@ -355,6 +456,9 @@ class MyPageTest extends TestCase
 
         $this->get('/member/memberCodeA1/fan-posts?sort=liked')
             ->assertOk()->assertViewHas('fanPosts', fn ($posts) => $posts->items()[0][2] === 'Sorted post 2');
+        $this->get('/member/memberCodeA1/fan-posts?sort=monthly_liked')
+            ->assertOk()->assertViewHas('sort', 'monthly_liked')
+            ->assertViewHas('fanPosts', fn ($posts) => $posts->items()[0][2] === 'Sorted post 3');
         $this->get('/member/memberCodeA1/fan-posts?sort=commented')
             ->assertOk()->assertViewHas('fanPosts', fn ($posts) => $posts->items()[0][2] === 'Sorted post 3')
             ->assertViewHas('memberSummary', fn ($summary) => $summary['fan_post_count'] === 3

@@ -3,7 +3,9 @@
 @section('title', ($idol->type === 'group' ? '그룹' : '아이돌').' 정보 수정')
 
 @section('content')
-@php($isIndividual = $idol->type === 'individual')
+@php
+    $isIndividual = $idol->type === 'individual';
+@endphp
 <header class="admin-page-heading">
     <div><h1>{{ $isIndividual ? '아이돌 정보 수정' : '그룹 정보 수정' }}</h1><p>등록 정보와 공개 상태를 수정합니다.</p></div>
 </header>
@@ -24,24 +26,47 @@
     </section>
 
     <div class="admin-review-grid">
-        <label><span>이름 *</span><input name="name" value="{{ old('name', $idol->name) }}" maxlength="200" required></label>
         <label><span>영문 이름 *</span><input name="english_name" value="{{ old('english_name', $idol->english_name) }}" maxlength="200" required></label>
+        <label><span>한국어 이름</span><input name="name" value="{{ old('name', $idol->name) }}" maxlength="200"></label>
 
         @if($isIndividual)
-            <label class="admin-review-full"><span>그룹</span><select name="group_idx"><option value="">소속 그룹 없음</option>@foreach($groups as $group)<option value="{{ $group->idx }}" @selected((string) old('group_idx', $groupIdx) === (string) $group->idx)>{{ $group->name }}{{ $group->status === 'inactive' ? ' (비공개)' : '' }}</option>@endforeach</select></label>
+            @php
+                $selectedGroupLabel = '';
+                if ($selectedGroup) {
+                    $selectedEnglish = trim((string) ($selectedGroup->localized_english_name ?: $selectedGroup->english_name ?: $selectedGroup->name));
+                    $selectedKorean = trim((string) ($selectedGroup->localized_korean_name ?: $selectedGroup->name));
+                    $selectedGroupLabel = $selectedEnglish;
+                    if ($selectedKorean !== '' && mb_strtolower($selectedKorean) !== mb_strtolower($selectedEnglish)) $selectedGroupLabel .= ' · '.$selectedKorean;
+                    if ($selectedGroup->status !== 'active') $selectedGroupLabel .= ' (비공개)';
+                }
+            @endphp
+            <div class="admin-review-full admin-idol-group-field">
+                <label for="admin-idol-group-search">그룹</label>
+                <div class="idol-group-autocomplete" data-admin-group-autocomplete data-search-url="{{ route('idol-registration.groups') }}" data-request-type="{{ $idol->gender === 'male' ? 'boy' : 'girl' }}">
+                    <input id="admin-idol-group-search" name="group_search" type="search" value="{{ old('group_search', $selectedGroupLabel) }}" maxlength="200" autocomplete="off" placeholder="그룹 이름을 검색하세요" role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="admin-idol-group-results" aria-describedby="admin-idol-group-help" data-group-search data-selected-gender="{{ $selectedGroup->gender ?? '' }}" data-no-group-selected="false">
+                    <input type="hidden" name="group_idx" value="{{ old('group_idx', $groupIdx) }}" data-group-id>
+                    <button type="button" class="idol-group-no-group" data-group-none>소속 그룹 없음</button>
+                    <div class="idol-group-results" id="admin-idol-group-results" role="listbox" hidden data-group-results></div>
+                    <small id="admin-idol-group-help">영문명, 한글명, 다국어 이름 또는 별칭으로 검색할 수 있습니다.</small>
+                    <p class="idol-group-search-status" aria-live="polite" data-group-status></p>
+                </div>
+            </div>
             <label><span>생년월일</span><input type="date" name="birth_date" value="{{ old('birth_date', $idol->birth_date) }}"></label>
-            <label><span>국적</span><input name="nationality" value="{{ old('nationality', $idol->nationality) }}" maxlength="100"></label>
             <label><span>키 (cm)</span><input type="number" step="0.01" min="50" max="300" name="height_cm" value="{{ old('height_cm', $idol->height_cm) }}"></label>
             <label><span>몸무게 (kg)</span><input type="number" step="0.01" min="10" max="500" name="weight_kg" value="{{ old('weight_kg', $idol->weight_kg) }}"></label>
             <label><span>혈액형</span><select name="blood_type"><option value="">선택 안 함</option>@foreach(['A', 'B', 'AB', 'O'] as $blood)<option value="{{ $blood }}" @selected(old('blood_type', $idol->blood_type) === $blood)>{{ $blood }}</option>@endforeach</select></label>
-            <label><span>포지션</span><input name="position" value="{{ old('position', $idol->position) }}" maxlength="200"></label>
         @else
-            <label class="admin-review-full"><span>국가</span><input name="nationality" value="{{ old('nationality', $idol->nationality) }}" maxlength="100"></label>
         @endif
 
         <label><span>소속사</span><input name="agency" value="{{ old('agency', $idol->agency) }}" maxlength="200"></label>
-        <label><span>데뷔일</span><input type="date" name="debut_date" value="{{ old('debut_date', $idol->debut_date) }}"></label>
-        <label class="admin-review-full"><span>SNS</span><input name="sns" value="{{ old('sns', $idol->sns) }}" maxlength="1000"></label>
+        <div class="admin-review-full"><label class="idol-debut-date-label">데뷔일</label>@include('partials.debut-date-inputs', ['debutDateRows' => $debutDateRows, 'idPrefix' => 'admin-idol-debut-country', 'namePrefix' => 'debut_dates', 'admin' => true])</div>
+        @if($isIndividual)
+            <label><span>포지션</span><input name="position" value="{{ old('position', $idol->position) }}" maxlength="200"></label>
+        @else
+            <label><span>장르</span><input name="genre" value="{{ old('genre', $idol->genre) }}" maxlength="200"></label>
+            <label><span>리더</span><input name="leader" value="{{ old('leader', $idol->leader) }}" maxlength="200"></label>
+        @endif
+        <div class="admin-review-full"><x-social-link-inputs :values="$idol->snsLinkValues" label="SNS" id-prefix="admin-idol-sns" :admin="true" /></div>
 
         <div class="admin-review-full admin-image-field">
             <span>프로필 이미지 변경</span>
@@ -58,6 +83,32 @@
         <label><span>공개 상태</span><select name="status"><option value="active" @selected(old('status', $idol->status) === 'active')>공개</option><option value="inactive" @selected(old('status', $idol->status) === 'inactive')>비공개</option></select></label>
         <label><span>상태 변경 사유</span><input name="visibility_reason" maxlength="1000" placeholder="공개 상태를 바꿀 때 입력"></label>
     </div>
+
+    @php($nextLocalizationIndex = count($multilingualLocalizations))
+    @php($canonicalEnglishName = old('english_name', $idol->english_name))
+    <section class="admin-multilingual-editor" data-localization-editor data-canonical-english-name="{{ $canonicalEnglishName }}">
+        <header class="admin-multilingual-heading">
+            <div><h2>다국어 정보 관리</h2><p>아래 항목은 선택 언어에만 적용되는 선택 정보입니다. 비어 있는 항목은 기본 프로필 정보를 유지하며, 영어 대표 이름은 위 영문 이름과 연동됩니다.</p></div>
+            <button class="admin-action-button" type="button" data-add-localization>언어 추가</button>
+        </header>
+        <input type="hidden" name="multilingual_data_present" value="1">
+        <p class="admin-multilingual-feedback" data-language-feedback role="status" aria-live="polite"></p>
+        <p class="admin-multilingual-empty" data-localization-empty @if(count($multilingualLocalizations) > 0) hidden @endif>등록된 다국어 정보가 없습니다. 오른쪽 위 언어 추가 버튼으로 첫 언어를 추가할 수 있습니다.</p>
+        <div class="admin-multilingual-rows" data-localization-rows data-next-index="{{ $nextLocalizationIndex }}">
+            @foreach($multilingualLocalizations as $index => $localization)
+                @include('admin.idols.partials.localization-row', ['index' => $index, 'localization' => $localization, 'canonicalEnglishName' => $canonicalEnglishName, 'isIndividual' => $isIndividual])
+            @endforeach
+        </div>
+        <template data-localization-template>
+            @include('admin.idols.partials.localization-row', [
+                'index' => '__INDEX__',
+                'localization' => ['language_code' => '', 'localized_name' => '', 'description' => '', 'aliases' => []],
+                'canonicalEnglishName' => $canonicalEnglishName,
+                'isIndividual' => $isIndividual,
+                'template' => true,
+            ])
+        </template>
+    </section>
 
     <div class="admin-review-actions">
         <a class="admin-action-button" href="{{ route($isIndividual ? 'admin.idols.index' : 'admin.groups.index') }}">목록으로</a>

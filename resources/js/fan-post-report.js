@@ -1,13 +1,15 @@
-const reportButton = document.querySelector('[data-fan-post-report-open]');
+const reportButtons = document.querySelectorAll('[data-fan-post-report-open], [data-comment-report-open]');
 const reportModal = document.querySelector('#fan-post-report-modal');
 
-if (reportButton && reportModal) {
+if (reportButtons.length && reportModal) {
     const form = reportModal.querySelector('[data-fan-post-report-form]');
     const details = form.querySelector('[name="details"]');
     const error = form.querySelector('[data-fan-post-report-error]');
     const submit = form.querySelector('[type="submit"]');
     const success = document.querySelector('[data-fan-post-report-success]');
-    let returnFocus = reportButton;
+    const title = reportModal.querySelector('#fan-post-report-title');
+    let activeButton = reportButtons[0];
+    let returnFocus = activeButton;
 
     const selectedReason = () => form.querySelector('[name="reason"]:checked')?.value;
     const updateDetailsRequirement = () => {
@@ -15,17 +17,20 @@ if (reportButton && reportModal) {
     };
     const close = () => reportModal.close();
 
-    reportButton.addEventListener('click', () => {
-        if (reportButton.dataset.signedIn !== 'true') {
+    reportButtons.forEach((button) => button.addEventListener('click', () => {
+        if (button.dataset.signedIn !== 'true') {
             document.dispatchEvent(new CustomEvent('idolranking:sign-in'));
             return;
         }
-        returnFocus = reportButton;
+        activeButton = button;
+        returnFocus = button;
+        form.action = button.dataset.endpoint;
+        title.textContent = button.dataset.reportTitle;
         error.hidden = true;
         reportModal.showModal();
         document.documentElement.classList.add('fan-post-report-open');
         form.querySelector('[name="reason"]').focus();
-    });
+    }));
     form.addEventListener('change', updateDetailsRequirement);
     reportModal.querySelectorAll('[data-fan-post-report-cancel]').forEach((button) => {
         button.addEventListener('click', close);
@@ -56,7 +61,7 @@ if (reportButton && reportModal) {
             });
             const result = await response.json();
             if (!response.ok || !result.success) {
-                error.textContent = result.message ?? Object.values(result.errors ?? {})[0]?.[0] ?? 'Unable to submit the report.';
+                error.textContent = result.message ?? Object.values(result.errors ?? {})[0]?.[0] ?? window.idolRankingT('report_failed');
                 error.hidden = false;
                 return;
             }
@@ -65,9 +70,9 @@ if (reportButton && reportModal) {
             close();
             success.textContent = result.message;
             success.hidden = false;
-            reportButton.disabled = true;
+            activeButton.disabled = true;
         } catch (requestError) {
-            error.textContent = 'Unable to submit the report. Please try again.';
+            error.textContent = window.idolRankingT('report_try_again');
             error.hidden = false;
         } finally {
             submit.disabled = false;

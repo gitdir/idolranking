@@ -43,14 +43,14 @@ class ReferralRewardTest extends TestCase
             idx INTEGER PRIMARY KEY AUTOINCREMENT, member_idx INTEGER, login_type TEXT, result TEXT,
             ip_address TEXT, user_agent TEXT, failure_reason TEXT, created_at TEXT
         )");
-        DB::statement("CREATE TABLE idols (idx INTEGER PRIMARY KEY, name TEXT, gender TEXT, type TEXT, status TEXT, image_path TEXT)");
+        DB::statement("CREATE TABLE idols (idx INTEGER PRIMARY KEY, name TEXT, english_name TEXT, content TEXT, gender TEXT, type TEXT, status TEXT, image_path TEXT, view_count INTEGER DEFAULT 0)");
         DB::statement("CREATE TABLE idol_votes (idx INTEGER PRIMARY KEY, idol_idx INTEGER, member_idx INTEGER, heart_amount INTEGER, created_at TEXT)");
         DB::statement('CREATE TABLE idol_group_members (individual_idx INTEGER, group_idx INTEGER)');
         DB::statement("CREATE TABLE fan_posts (
-            idx INTEGER PRIMARY KEY, member_idx INTEGER, idol_idx INTEGER, media_type TEXT, image_path TEXT,
+            idx INTEGER PRIMARY KEY, member_idx INTEGER, idol_idx INTEGER, media_type TEXT, language_code TEXT, image_path TEXT,
             youtube_video_id TEXT, content TEXT, view_count INTEGER DEFAULT 0, status TEXT, deleted_at TEXT, created_at TEXT
         )");
-        DB::statement('CREATE TABLE fan_post_likes (fan_post_idx INTEGER, member_idx INTEGER)');
+        DB::statement('CREATE TABLE fan_post_likes (fan_post_idx INTEGER, member_idx INTEGER, created_at TEXT)');
         DB::statement("CREATE TABLE fan_post_comments (idx INTEGER PRIMARY KEY, fan_post_idx INTEGER, status TEXT, deleted_at TEXT)");
         DB::statement('CREATE TABLE partner_banners (idx INTEGER PRIMARY KEY AUTOINCREMENT, title TEXT, image_path TEXT, target_url TEXT, heart_reward INTEGER DEFAULT 10, reward_enabled INTEGER DEFAULT 0, is_active INTEGER DEFAULT 1, display_order INTEGER DEFAULT 0, starts_at TEXT, ends_at TEXT, created_at TEXT, updated_at TEXT)');
 
@@ -92,6 +92,13 @@ class ReferralRewardTest extends TestCase
         ];
     }
 
+    private function failInviteRewardWrites(): void
+    {
+        DB::statement("CREATE TRIGGER fail_invite_reward BEFORE INSERT ON heart_histories
+            WHEN NEW.reason = 'invite_friend_reward'
+            BEGIN SELECT RAISE(ABORT, 'simulated referral reward failure'); END");
+    }
+
     private function assertReferralReward(int $inviterIdx, int $newMemberIdx): void
     {
         $this->assertDatabaseHas('heart_histories', [
@@ -109,12 +116,12 @@ class ReferralRewardTest extends TestCase
         $this->database();
         $inviterIdx = $this->inviter();
 
-        $this->get('/?ref='.self::REFERRAL_CODE)->assertRedirect(route('register'))
+        $this->get('/?ref='.self::REFERRAL_CODE)->assertOk()->assertSee('Fan Posts')
             ->assertSessionHas(HeartRewardManager::REFERRAL_SESSION_KEY, self::REFERRAL_CODE);
         $this->get('/get-hearts')->assertOk()
             ->assertSessionHas(HeartRewardManager::REFERRAL_SESSION_KEY, self::REFERRAL_CODE);
         $this->get('/register')->assertOk()
-            ->assertSee("You've been invited to IdolRanking!", false)
+            ->assertSee('You&#039;ve been invited to IdolRanking!', false)
             ->assertSessionHas(HeartRewardManager::REFERRAL_SESSION_KEY, self::REFERRAL_CODE);
 
         $this->withSession($this->verifiedEmailSession('new.member@example.test') + [HeartRewardManager::REFERRAL_SESSION_KEY => self::REFERRAL_CODE])
@@ -137,7 +144,8 @@ class ReferralRewardTest extends TestCase
     {
         $this->database();
         $inviterIdx = $this->inviter();
-        $this->get('/?ref='.self::REFERRAL_CODE)->assertRedirect(route('register'));
+        $this->get('/?ref='.self::REFERRAL_CODE)->assertOk()
+            ->assertSessionHas(HeartRewardManager::REFERRAL_SESSION_KEY, self::REFERRAL_CODE);
 
         $this->postJson('/register', $this->emailRegistration())
             ->assertUnprocessable()
@@ -163,7 +171,8 @@ class ReferralRewardTest extends TestCase
             'member_level' => 1, 'is_dummy' => 0, 'status' => 'active', 'country_code' => 'US',
             'heart_balance' => 0, 'created_at' => now(), 'updated_at' => now(),
         ]);
-        $this->get('/?ref='.self::REFERRAL_CODE)->assertRedirect(route('register'));
+        $this->get('/?ref='.self::REFERRAL_CODE)->assertOk()
+            ->assertSessionHas(HeartRewardManager::REFERRAL_SESSION_KEY, self::REFERRAL_CODE);
 
         $this->postJson('/login', ['email' => 'existing@example.test', 'password' => 'Existing-password1!'])
             ->assertOk()->assertSessionMissing(HeartRewardManager::REFERRAL_SESSION_KEY);
@@ -196,7 +205,8 @@ class ReferralRewardTest extends TestCase
         DB::table('heart_reward_settings')->where('action_code', 'invite_friend')->update(['daily_limit' => 1]);
 
         foreach ([['one@example.test', 'member_one'], ['two@example.test', 'member_two']] as [$email, $nickname]) {
-            $this->get('/?ref='.self::REFERRAL_CODE)->assertRedirect(route('register'));
+            $this->get('/?ref='.self::REFERRAL_CODE)->assertOk()
+                ->assertSessionHas(HeartRewardManager::REFERRAL_SESSION_KEY, self::REFERRAL_CODE);
             $this->withSession($this->verifiedEmailSession($email))->postJson('/register', $this->emailRegistration($email, $nickname))
                 ->assertCreated();
             $this->assertSame($inviterIdx, (int) DB::table('members')->where('email', $email)->value('referred_by_member_idx'));
@@ -213,7 +223,8 @@ class ReferralRewardTest extends TestCase
     {
         $this->database();
         $inviterIdx = $this->inviter();
-        $this->get('/?ref='.self::REFERRAL_CODE)->assertRedirect(route('register'));
+        $this->get('/?ref='.self::REFERRAL_CODE)->assertOk()
+            ->assertSessionHas(HeartRewardManager::REFERRAL_SESSION_KEY, self::REFERRAL_CODE);
 
         $google = (new User)->setRaw([
             'id' => 'new-google-sub', 'name' => 'Google New', 'email' => 'google.new@example.test', 'verified_email' => true,
@@ -263,7 +274,8 @@ class ReferralRewardTest extends TestCase
         $this->get('/?ref=invalid-code')->assertOk()
             ->assertSessionMissing(HeartRewardManager::REFERRAL_SESSION_KEY);
         $this->assertSame($inviterIdx, app(HeartRewardManager::class)->eligibleInviterIdx(self::REFERRAL_CODE));
-        $this->get('/?ref='.self::REFERRAL_CODE)->assertRedirect(route('register'));
+        $this->get('/?ref='.self::REFERRAL_CODE)->assertOk()
+            ->assertSessionHas(HeartRewardManager::REFERRAL_SESSION_KEY, self::REFERRAL_CODE);
         DB::table('heart_reward_settings')->where('action_code', 'invite_friend')->update(['is_enabled' => 0]);
 
         $this->withSession($this->verifiedEmailSession('new.member@example.test') + [HeartRewardManager::REFERRAL_SESSION_KEY => self::REFERRAL_CODE])
@@ -271,5 +283,87 @@ class ReferralRewardTest extends TestCase
         $newMember = DB::table('members')->where('email', 'new.member@example.test')->first();
         $this->assertSame(1, (int) $newMember->referred_by_member_idx);
         $this->assertSame(0, DB::table('heart_histories')->where('reason', HeartRewardManager::ACTIONS['invite_friend']['reason'])->count());
+    }
+
+    public function test_admin_and_dummy_accounts_cannot_receive_referral_rewards(): void
+    {
+        $this->database();
+        $adminIdx = $this->inviter([
+            'member_code' => 'AdminInviter01', 'email' => 'admin.inviter@example.test', 'nickname' => 'admin_inviter',
+            'member_level' => 10,
+        ]);
+        $dummyIdx = $this->inviter([
+            'member_code' => 'DummyInviter01', 'email' => 'dummy.inviter@example.test', 'nickname' => 'dummy_inviter',
+            'is_dummy' => 1,
+        ]);
+
+        $this->assertNull(app(HeartRewardManager::class)->eligibleInviterIdx('AdminInviter01'));
+        $this->assertNull(app(HeartRewardManager::class)->eligibleInviterIdx('DummyInviter01'));
+
+        foreach ([['admin-referred@example.test', $adminIdx], ['dummy-referred@example.test', $dummyIdx]] as [$email, $inviterIdx]) {
+            $newMemberIdx = DB::table('members')->insertGetId([
+                'member_code' => 'NewMember'.DB::table('members')->count(), 'email' => $email,
+                'nickname' => 'new_member_'.DB::table('members')->count(), 'member_level' => 1,
+                'is_dummy' => 0, 'status' => 'active', 'referred_by_member_idx' => $inviterIdx,
+                'heart_balance' => 0, 'created_at' => now(), 'updated_at' => now(),
+            ]);
+
+            $this->assertSame(0, app(HeartRewardManager::class)->awardReferral($newMemberIdx));
+        }
+
+        $this->assertSame(0, DB::table('heart_histories')->where('reason', HeartRewardManager::ACTIONS['invite_friend']['reason'])->count());
+        $this->assertSame(20, (int) DB::table('members')->where('idx', $adminIdx)->value('heart_balance'));
+        $this->assertSame(20, (int) DB::table('members')->where('idx', $dummyIdx)->value('heart_balance'));
+    }
+
+    public function test_email_signup_rolls_back_instead_of_succeeding_without_referral_reward(): void
+    {
+        $this->database();
+        $inviterIdx = $this->inviter();
+        $this->get('/?ref='.self::REFERRAL_CODE)->assertOk()
+            ->assertSessionHas(HeartRewardManager::REFERRAL_SESSION_KEY, self::REFERRAL_CODE);
+        $this->failInviteRewardWrites();
+
+        $response = $this->withSession($this->verifiedEmailSession('new.member@example.test') + [
+            HeartRewardManager::REFERRAL_SESSION_KEY => self::REFERRAL_CODE,
+        ])->postJson('/register', $this->emailRegistration());
+        $response->assertServerError()->assertSessionHas(HeartRewardManager::REFERRAL_SESSION_KEY, self::REFERRAL_CODE);
+
+        $this->assertDatabaseMissing('members', ['email' => 'new.member@example.test']);
+        $this->assertSame(0, DB::table('heart_histories')->count());
+        $this->assertSame(20, (int) DB::table('members')->where('idx', $inviterIdx)->value('heart_balance'));
+    }
+
+    public function test_google_signup_rolls_back_and_keeps_signup_state_when_referral_reward_fails(): void
+    {
+        $this->database();
+        $inviterIdx = $this->inviter();
+        $this->get('/?ref='.self::REFERRAL_CODE)->assertOk()
+            ->assertSessionHas(HeartRewardManager::REFERRAL_SESSION_KEY, self::REFERRAL_CODE);
+        $google = (new User)->setRaw([
+            'id' => 'failing-google-sub', 'name' => 'Google New',
+            'email' => 'google.failure@example.test', 'verified_email' => true,
+        ])->map([
+            'id' => 'failing-google-sub', 'name' => 'Google New',
+            'email' => 'google.failure@example.test', 'verified_email' => true,
+        ]);
+        $provider = Mockery::mock();
+        $provider->shouldReceive('scopes')->once()->with(['openid', 'email', 'profile'])->andReturnSelf();
+        $provider->shouldReceive('redirect')->once()->andReturn(new RedirectResponse('https://accounts.google.com/oauth'));
+        $provider->shouldReceive('user')->once()->andReturn($google);
+        Socialite::shouldReceive('driver')->twice()->with('google')->andReturn($provider);
+        $this->get('/auth/google')->assertRedirect('https://accounts.google.com/oauth');
+        $this->get('/auth/google/callback')->assertRedirect('/auth/google/complete');
+        $this->failInviteRewardWrites();
+
+        $this->post('/auth/google/complete', ['nickname' => 'google_failure', 'country_code' => 'US'])
+            ->assertRedirect()
+            ->assertSessionHasErrors('registration')
+            ->assertSessionHas(HeartRewardManager::REFERRAL_SESSION_KEY, self::REFERRAL_CODE)
+            ->assertSessionHas('google_signup');
+
+        $this->assertDatabaseMissing('members', ['email' => 'google.failure@example.test']);
+        $this->assertSame(0, DB::table('heart_histories')->count());
+        $this->assertSame(20, (int) DB::table('members')->where('idx', $inviterIdx)->value('heart_balance'));
     }
 }

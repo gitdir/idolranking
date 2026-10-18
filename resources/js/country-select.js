@@ -1,4 +1,6 @@
-document.querySelectorAll('[data-country-picker]').forEach((picker) => {
+const initializeCountryPicker = (picker) => {
+    if (!picker || picker.dataset.countryPickerInitialized === 'true') return;
+    picker.dataset.countryPickerInitialized = 'true';
     const trigger = picker.querySelector('[data-country-trigger]');
     const label = picker.querySelector('[data-country-label]');
     const code = picker.querySelector('[data-country-code]');
@@ -92,12 +94,17 @@ document.querySelectorAll('[data-country-picker]').forEach((picker) => {
     document.addEventListener('pointerdown', (event) => {
         if (!panel.hidden && !picker.contains(event.target)) close();
     });
-    trigger.form?.addEventListener('submit', (event) => {
-        if (code.value) return;
-        event.preventDefault();
-        event.stopImmediatePropagation();
-        open();
-        search.setCustomValidity('Select a country from the list.');
-        search.reportValidity();
-    }, { capture: true });
-});
+    if (picker.dataset.countryRequired === 'true') {
+        trigger.form?.addEventListener('submit', (event) => {
+            if (code.value) return;
+            event.preventDefault();
+            event.stopImmediatePropagation();
+            open();
+            search.setCustomValidity('Select a country from the list.');
+            search.reportValidity();
+        }, { capture: true });
+    }
+};
+
+window.initializeCountryPicker = initializeCountryPicker;
+document.querySelectorAll('[data-country-picker]').forEach(initializeCountryPicker);

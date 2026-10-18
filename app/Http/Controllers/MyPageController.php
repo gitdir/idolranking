@@ -66,7 +66,7 @@ class MyPageController extends Controller
             'success' => true,
             'available' => true,
             'reason' => 'available',
-            'message' => 'This nickname is available.',
+            'message' => __('messages.nickname_available'),
             'nickname' => $request->string('nickname')->toString(),
         ]);
     }
@@ -115,7 +115,7 @@ class MyPageController extends Controller
             ManagedImageStorage::deleteIfUnreferenced($member->profile_image_path);
         }
 
-        return response()->json(['success'=>true,'message'=>'Profile updated.','data'=>[
+        return response()->json(['success'=>true,'message'=>__('ui.profile_updated'),'data'=>[
             'rewarded_hearts'=>$rewardedHearts,
             'profile_image_url'=>ManagedImageStorage::publicUrl($newImagePath),
         ]]);
@@ -130,20 +130,26 @@ class MyPageController extends Controller
             ->where('p.member_idx', $member->idx)
             ->where('p.status', 'published')
             ->whereNull('p.deleted_at');
+        $monthStart = now('UTC')->startOfMonth();
         $posts = $activeTab === 'posts' ? (clone $publishedPosts)
-                ->select(['p.idx', 'p.media_type', 'p.image_path', 'p.youtube_video_id', 'p.content', 'p.view_count'])
+                ->select(['p.idx', 'p.media_type', 'p.image_path', 'p.youtube_video_id', 'p.content', 'p.view_count', 'p.language_code'])
                 ->selectSub(DB::table('fan_post_likes as l')->selectRaw('COUNT(*)')->whereColumn('l.fan_post_idx', 'p.idx'), 'likes')
+                ->selectSub(DB::table('fan_post_likes as l')->selectRaw('COUNT(*)')->whereColumn('l.fan_post_idx', 'p.idx')
+                    ->where('l.created_at', '>=', $monthStart)->where('l.created_at', '<', $monthStart->copy()->addMonth()), 'monthly_likes')
                 ->selectSub(DB::table('fan_post_comments as c')->selectRaw('COUNT(*)')->whereColumn('c.fan_post_idx', 'p.idx')
                     ->where('c.status', 'published')->whereNull('c.deleted_at'), 'comments')
                 ->orderByDesc('p.created_at')->orderByDesc('p.idx')->limit(10)->get()
                 ->map(fn ($post) => [
                     'portrait-rose', $member->nickname, $post->content ?? '', $post->view_count, $post->likes, $post->comments, 'square',
                     'member_code' => $member->member_code,
+                    'country_code' => $member->country_code,
                     'author_image_url' => $member->profile_image_path,
                     'media_type' => $post->media_type,
                     'youtube_video_id' => $post->youtube_video_id,
                     'image_url' => \App\Support\ManagedImageStorage::publicUrl($post->image_path),
                     'fan_post_idx' => (int) $post->idx,
+                    'monthly_like_count' => (int) $post->monthly_likes,
+                    'language_code' => $post->language_code,
                 ])->all() : [];
 
         $heartHistories = null;
@@ -157,31 +163,7 @@ class MyPageController extends Controller
                 ->orderByDesc('h.created_at')->orderByDesc('h.idx')
                 ->paginate(20)->appends(['tab' => 'hearts'])->fragment('my-page-lower-tabs');
 
-            $heartHistories->through(function ($history) {
-                [$history->activity, $history->icon] = match ($history->reason) {
-                    'signup_reward' => ['Sign Up', 'heart'],
-                    'profile_complete' => ['Complete Profile', 'heart'],
-                    'daily_attendance' => ['Daily Check-in', 'heart'],
-                    'fan_post_reward' => ['Create Fan Post', 'post'],
-                    'comment_reward' => ['Write Comment', 'comment'],
-                    'comment_reward_reversal' => ['Comment Reward Reversed', 'comment'],
-                    'fan_post_recommend_received' => ['Get Recommended', 'heart'],
-                    'invite_friend_reward' => ['Invite Friends', 'people'],
-                    HeartRewardManager::PARTNER_BANNER_REASON => ['Partner Banner', 'heart'],
-                    'idol_registration_approved' => ['Register Idol / Group', 'heart'],
-                    'vote' => [match ($history->voted_idol_type) {
-                        'group' => 'Vote for Group',
-                        'individual' => 'Vote for Idol',
-                        default => 'Vote',
-                    }, 'vote'],
-                    'admin_adjustment' => ['Heart Adjustment', 'heart'],
-                    'ad_reward' => ['Watch Ads', 'heart'],
-                    'event_reward' => ['Event Reward', 'heart'],
-                    default => ['Other Heart Activity', 'heart'],
-                };
-
-                return $history;
-            });
+            $heartHistories->through(fn ($history) => $this->presentHeartHistory($history));
         }
 
         $invitedMembers = null;
@@ -227,11 +209,67 @@ class MyPageController extends Controller
             'activeTab' => $activeTab, 'heartHistories' => $heartHistories, 'invitedMembers' => $invitedMembers]);
     }
 
+    public function heartHistory(Request $request)
+    {
+        $member = $request->attributes->get('currentMember');
+        $filter = in_array($request->query('filter'), ['all', 'earned', 'spent'], true)
+            ? $request->query('filter') : 'all';
+
+        $histories = DB::table('heart_histories as h')
+            ->leftJoin('idol_votes as v', 'v.idx', '=', 'h.vote_idx')
+            ->leftJoin('idols as i', 'i.idx', '=', 'v.idol_idx')
+            ->where('h.member_idx', $member->idx)
+            ->when($filter === 'earned', fn ($query) => $query->where('h.amount', '>=', 0))
+            ->when($filter === 'spent', fn ($query) => $query->where('h.amount', '<', 0))
+            ->select('h.idx', 'h.created_at', 'h.reason', 'h.amount', 'i.type as voted_idol_type')
+            ->orderByDesc('h.created_at')->orderByDesc('h.idx')
+            ->paginate(20)->appends(['filter' => $filter])
+            ->through(fn ($history) => $this->presentHeartHistory($history));
+
+        return view('my-page.heart-history', [
+            'currentMember' => $member,
+            'heartHistories' => $histories,
+            'filter' => $filter,
+            'seo' => [
+                'title' => __('ui.heart_history').' | IdolRanking',
+                'description' => __('ui.heart_history_description'),
+                'robots' => 'noindex,nofollow',
+            ],
+        ]);
+    }
+
+    private function presentHeartHistory(object $history): object
+    {
+        [$history->activity, $history->icon] = match ($history->reason) {
+            'signup_reward' => [__('ui.history_signup'), 'heart'],
+            'profile_complete' => [__('ui.history_profile'), 'heart'],
+            'daily_attendance' => [__('ui.activity_daily_attendance'), 'heart'],
+            'fan_post_reward' => [__('ui.activity_fan_post'), 'post'],
+            'comment_reward' => [__('ui.activity_comment'), 'comment'],
+            'comment_reward_reversal' => [__('ui.history_comment_reversed'), 'comment'],
+            'fan_post_recommend_received' => [__('ui.activity_recommend'), 'heart'],
+            'invite_friend_reward' => [__('ui.activity_invite'), 'people'],
+            HeartRewardManager::PARTNER_BANNER_REASON => [__('ui.partner_banners'), 'heart'],
+            'idol_registration_approved' => [__('ui.activity_idol_registration'), 'heart'],
+            'vote' => [match ($history->voted_idol_type) {
+                'group' => __('ui.vote_for_group'),
+                'individual' => __('ui.vote_for_idol_generic'),
+                default => __('ui.vote'),
+            }, 'vote'],
+            'admin_adjustment' => [__('ui.history_adjustment'), 'heart'],
+            'ad_reward' => [__('ui.activity_watch_ads'), 'heart'],
+            'event_reward' => [__('ui.history_event_reward'), 'heart'],
+            default => [__('ui.history_other'), 'heart'],
+        };
+
+        return $history;
+    }
+
     public function changePassword(Request $request)
     {
         $member = $request->attributes->get('currentMember');
         if ($member === null) {
-            return response()->json(['success' => false, 'message' => 'Please sign in to change your password.'], 401);
+            return response()->json(['success' => false, 'message' => __('messages.signin_to_change_password')], 401);
         }
         $validator = Validator::make($request->all(), [
             'current_password' => ['required', 'string'],
@@ -248,7 +286,7 @@ class MyPageController extends Controller
             'password_confirmation' => ['required', 'string'],
         ]);
         if ($validator->fails()) {
-            return response()->json(['success' => false, 'message' => 'Please check your password entries.', 'errors' => $validator->errors()], 422);
+            return response()->json(['success' => false, 'message' => __('messages.password_entries_invalid'), 'errors' => $validator->errors()], 422);
         }
 
         return DB::transaction(function () use ($request, $member) {
@@ -256,20 +294,20 @@ class MyPageController extends Controller
             if (!$record || $record->member_level <= 0 || $record->status !== 'active' || $record->deleted_at !== null) {
                 $request->session()->invalidate();
                 $request->session()->regenerateToken();
-                return response()->json(['success' => false, 'message' => 'Please sign in again.'], 401);
+                return response()->json(['success' => false, 'message' => __('messages.signin_again')], 401);
             }
             if ($record->password_hash === null) {
-                return response()->json(['success' => false, 'message' => 'This account has no password. Continue using your existing Google sign-in.'], 409);
+                return response()->json(['success' => false, 'message' => __('messages.google_only_password')], 409);
             }
             if (!Hash::check($request->string('current_password')->toString(), $record->password_hash)) {
-                return response()->json(['success' => false, 'message' => 'The current password is incorrect.', 'errors' => ['current_password' => ['The current password is incorrect.']]], 422);
+                return response()->json(['success' => false, 'message' => __('messages.current_password_incorrect'), 'errors' => ['current_password' => [__('messages.current_password_incorrect')]]], 422);
             }
             DB::table('members')->where('idx', $record->idx)->update([
                 'password_hash' => Hash::make($request->string('password')->toString()),
                 'password_changed_at' => now(), 'updated_at' => now(),
             ]);
 
-            return response()->json(['success' => true, 'message' => 'Your password has been changed.', 'data' => (object) []]);
+            return response()->json(['success' => true, 'message' => __('messages.password_change_success'), 'data' => (object) []]);
         });
     }
 }

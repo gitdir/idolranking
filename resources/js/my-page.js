@@ -58,7 +58,7 @@ if (profileForm) {
                 nicknameResult.hidden = true;
                 return;
             }
-            nicknameResult.textContent = data.message || 'Unable to check this nickname.';
+            nicknameResult.textContent = data.message || window.idolRankingT('nickname_check_failed');
             nicknameResult.classList.toggle('is-available', response.ok && data.available === true);
             nicknameResult.classList.toggle('is-error', !response.ok || data.available !== true);
             nicknameResult.hidden = false;
@@ -66,7 +66,7 @@ if (profileForm) {
             if (checkedNickname !== null) nicknameInput.value = checkedNickname;
         } catch {
             checkedNickname = null;
-            nicknameResult.textContent = 'Unable to check this nickname. Please try again.';
+            nicknameResult.textContent = window.idolRankingT('nickname_check_retry');
             nicknameResult.classList.remove('is-available');
             nicknameResult.classList.add('is-error');
             nicknameResult.hidden = false;
@@ -108,7 +108,7 @@ if (profileForm) {
                 imageInput.value = '';
             }
         } catch {
-            status.textContent = 'The connection was interrupted. Please try again.';
+                status.textContent = window.idolRankingT('network_error');
             status.hidden = false;
         } finally {
             profilePending = false;
@@ -128,7 +128,7 @@ if (myInviteCopy) {
             inviteUrl.select();
             document.execCommand('copy');
         }
-        status.textContent = 'Invite link copied.';
+        status.textContent = window.idolRankingT('invite_copied');
         status.hidden = false;
     });
 }
@@ -194,10 +194,10 @@ if (passwordModal) {
                 return;
             }
             if (requestGeneration !== generation) return;
-            message.textContent = response.status === 419 ? 'Your session expired. Refresh the page and sign in again.'
+            message.textContent = response.status === 419 ? window.idolRankingT('session_expired')
                 : response.status === 429 ? 'Too many attempts. Please wait a minute and try again.'
                 : response.status >= 500 ? 'Unable to change your password right now. Please try again later.'
-                : data.message || 'Unable to change your password. Please try again.';
+                : data.message || window.idolRankingT('please_try_again');
             message.hidden = false;
             for (const [name, errors] of Object.entries(data.errors || {})) {
                 const target = form.querySelector(`[data-password-error="${name}"]`);
@@ -209,7 +209,7 @@ if (passwordModal) {
             form.querySelector('[aria-invalid]')?.focus();
         } catch {
             if (requestGeneration === generation) {
-                message.textContent = 'The connection was interrupted. Check your connection before trying again.';
+                message.textContent = window.idolRankingT('network_check');
                 message.hidden = false;
             }
         } finally {

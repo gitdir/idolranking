@@ -1,14 +1,14 @@
 @extends('layouts.app')
 
-@section('title', 'Get Hearts | IdolRanking')
+@section('title', __('ui.get_hearts_title').' | IdolRanking')
 
 @section('content')
 <div class="get-hearts-page">
     <section class="get-hearts-hero" aria-labelledby="get-hearts-title">
         <div>
-            <h1 id="get-hearts-title">Get <span>Hearts</span></h1>
-            <strong>Hearts are earned, not bought.</strong>
-            <p>Join various fan activities and collect Hearts<br>to support your favorite idols!</p>
+            <h1 id="get-hearts-title">{{ __('ui.get_hearts_title') }}</h1>
+            <strong>{{ __('ui.hearts_earned_not_bought') }}</strong>
+            <p>{{ __('ui.get_hearts_intro') }}</p>
         </div>
         <svg viewBox="0 0 420 190" aria-hidden="true">
             <defs><linearGradient id="heart-gradient" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#ff8fc2"/><stop offset="1" stop-color="#ff2488"/></linearGradient></defs>
@@ -19,26 +19,26 @@
     </section>
 
     @if($member)
-        <section class="get-hearts-summary" aria-label="My Heart summary">
+        <section class="get-hearts-summary" aria-label="{{ __('ui.my_heart_summary') }}">
             <div class="get-hearts-summary-item">
                 <svg aria-hidden="true"><use href="#icon-heart"/></svg>
-                <span>My Hearts<strong data-get-hearts-balance>{{ number_format((int) $member->heart_balance) }}</strong></span>
+                <span>{{ __('ui.my_hearts_page') }}<strong data-get-hearts-balance>{{ number_format((int) $member->heart_balance) }}</strong></span>
             </div>
             <div class="get-hearts-summary-item get-hearts-summary-item--today">
                 <span class="get-hearts-calendar" aria-hidden="true"><svg viewBox="0 0 24 24"><use href="#icon-heart"/></svg></span>
-                <span>Today Earned<strong data-get-hearts-today-earned>+ {{ number_format($todayEarned) }}</strong><small>{{ now()->format('Y. m. d (D)') }}</small></span>
+                <span>{{ __('ui.today_earned_label') }}<strong data-get-hearts-today-earned>+ {{ number_format($todayEarned) }}</strong></span>
             </div>
-            <p>Complete various fan activities and collect Hearts!</p>
+            <p>{{ __('ui.collect_hearts') }}</p>
         </section>
     @else
         <section class="get-hearts-guest-summary">
-            <div><svg aria-hidden="true"><use href="#icon-heart"/></svg><p><strong>Sign in to see your Hearts</strong><span>Track today’s rewards and activity progress.</span></p></div>
-            <button type="button" data-sign-in-open aria-haspopup="dialog" aria-controls="sign-in-modal">Sign In</button>
+            <div><svg aria-hidden="true"><use href="#icon-heart"/></svg><p><strong>{{ __('ui.sign_in_to_hearts') }}</strong><span>{{ __('ui.track_rewards') }}</span></p></div>
+            <button type="button" data-sign-in-open aria-haspopup="dialog" aria-controls="sign-in-modal">{{ __('ui.sign_in') }}</button>
         </section>
     @endif
 
     <section class="get-hearts-activities" aria-labelledby="ways-to-get-hearts">
-        <header><h2 id="ways-to-get-hearts">Ways to Get Hearts</h2><p>Complete these activities and earn Hearts. Daily limits may vary by activity.</p></header>
+        <header><h2 id="ways-to-get-hearts">{{ __('ui.ways_to_earn') }}</h2><p>{{ __('ui.complete_activities') }}</p></header>
         <div class="get-hearts-list">
             @foreach($activities as $activity)
                 @php($complete = $activity->daily_limit > 0 && $activity->progress !== null && $activity->progress >= $activity->daily_limit)
@@ -46,54 +46,56 @@
                     <div class="get-hearts-activity-main">
                         <span class="get-hearts-activity-icon get-hearts-activity-icon--{{ $activity->icon }}" aria-hidden="true">
                             @switch($activity->icon)
-                                @case('calendar') 📅 @break
-                                @case('play') ▶ @break
-                                @case('post') 📝 @break
-                                @case('comment') 💬 @break
-                                @case('recommend') 👍 @break
-                                @case('invite') 👥 @break
-                                @default ♛
+                                @case('calendar') <svg viewBox="0 0 24 24"><use href="#icon-calendar-check"/></svg>@break
+                                @case('play') <svg viewBox="0 0 24 24"><use href="#icon-play-circle"/></svg>@break
+                                @case('post') <svg viewBox="0 0 24 24"><use href="#icon-image-plus"/></svg>@break
+                                @case('comment') <svg viewBox="0 0 24 24"><use href="#icon-message-circle"/></svg>@break
+                                @case('recommend') <svg viewBox="0 0 24 24"><use href="#icon-thumbs-up"/></svg>@break
+                                @case('invite') <svg viewBox="0 0 24 24"><use href="#icon-user-plus"/></svg>@break
+                                @case('crown') <svg viewBox="0 0 24 24"><use href="#icon-users"/></svg>@break
+                                @default
                             @endswitch
                         </span>
                         <span><strong>{{ $activity->name }}</strong><small>{{ $activity->description }}</small></span>
                     </div>
                     <div class="get-hearts-reward">
-                        <strong><svg aria-hidden="true"><use href="#icon-heart"/></svg>+ {{ number_format($activity->heart_amount) }}</strong>
-                        <small>@if(!$activity->is_enabled)Unavailable @elseif($activity->daily_limit > 0)Up to {{ number_format($activity->daily_limit) }} {{ Str::plural('time', $activity->daily_limit) }} per day @else No daily limit @endif</small>
+                        <strong><svg aria-hidden="true"><use href="#icon-heart"/></svg>@if($activity->code === 'daily_attendance' && $activity->min_heart_amount !== $activity->max_heart_amount)+ {{ number_format($activity->min_heart_amount) }}–{{ number_format($activity->max_heart_amount) }}@else+ {{ number_format($activity->heart_amount) }}@endif</strong>
+                        <small>@if(!$activity->is_enabled){{ __('ui.unavailable') }} @elseif($activity->daily_limit > 0){{ __('ui.per_day', ['limit' => number_format($activity->daily_limit)]) }} @else {{ __('ui.no_daily_limit') }} @endif</small>
                     </div>
                     @if($activity->daily_limit > 0)
                         <div class="get-hearts-progress">
                         @if($member === null)
-                            <span class="get-hearts-progress-guest">Sign in to track progress</span>
+                            <span class="get-hearts-progress-guest">{{ __('ui.sign_in_track') }}</span>
                         @else
                             <span class="get-hearts-progress-track"><i style="width: {{ $activity->progress_percent }}%" @if($activity->code === 'daily_attendance') data-daily-check-in-progress-bar @endif></i></span>
                             <strong @if($activity->code === 'daily_attendance') data-daily-check-in-progress @endif>{{ number_format($activity->progress) }} / {{ number_format($activity->daily_limit) }}</strong>
                         @endif
                         </div>
                     @elseif($activity->code === 'invite_friend')
-                        <p class="get-hearts-activity-note">@if($activity->is_enabled)When your friend completes their registration, you will receive {{ number_format($activity->heart_amount) }} Hearts.@else This activity is currently unavailable.@endif</p>
+                        <p class="get-hearts-activity-note">@if($activity->is_enabled){{ __('ui.invite_reward_description', ['amount' => number_format($activity->heart_amount)]) }}@else {{ __('ui.activity_unavailable') }}@endif</p>
                     @elseif($activity->code === 'idol_registration_approved')
                         <p class="get-hearts-activity-note">@if($activity->is_enabled)When your idol or group registration is approved, you will receive {{ number_format($activity->heart_amount) }} Hearts.@else This activity is currently unavailable.@endif</p>
                     @else
                         <div class="get-hearts-progress">
-                            <span class="get-hearts-unlimited">@if($activity->is_enabled)∞ <small>No daily limit</small>@else<small>Unavailable</small>@endif</span>
+                            <span class="get-hearts-unlimited">@if($activity->is_enabled)??<small>{{ __('ui.no_daily_limit') }}</small>@else<small>{{ __('ui.unavailable') }}</small>@endif</span>
                         </div>
                     @endif
                     @if($activity->code === 'daily_attendance')
-                        @if(!$member)
-                            <button class="get-hearts-action" type="button" data-sign-in-open aria-haspopup="dialog" aria-controls="sign-in-modal">Sign In</button>
-                        @elseif($activity->is_enabled && !$complete)
-                            <button class="get-hearts-action" type="button" data-daily-check-in data-endpoint="{{ route('get-hearts.daily-check-in') }}" data-csrf="{{ csrf_token() }}">Check In</button>
-                        @endif
+                        <a class="get-hearts-action" href="{{ route('attendance') }}">{{ __('ui.view_attendance') }}</a>
+                    @elseif($activity->code === 'invite_friend')
+                        <button class="get-hearts-action" type="button" data-invite-friends-open
+                            data-signed-in="{{ $member ? 'true' : 'false' }}"
+                            @unless($member) data-sign-in-open aria-controls="sign-in-modal" @else aria-controls="invite-friends-dialog" @endunless
+                            aria-haspopup="dialog">{{ $member ? __('ui.share_invitation') : __('ui.sign_in') }}</button>
                     @elseif($activity->code === 'watch_ads')
                         @if(!$activity->is_enabled)
-                            <span class="get-hearts-status get-hearts-status--muted">Unavailable</span>
+                            <span class="get-hearts-status get-hearts-status--muted">{{ __('ui.unavailable') }}</span>
                         @elseif(!$member)
-                            <button class="get-hearts-action" type="button" data-sign-in-open aria-haspopup="dialog" aria-controls="sign-in-modal">Sign In</button>
+                            <button class="get-hearts-action" type="button" data-sign-in-open aria-haspopup="dialog" aria-controls="sign-in-modal">{{ __('ui.sign_in') }}</button>
                         @elseif($complete)
-                            <span class="get-hearts-status get-hearts-status--muted">Daily limit reached</span>
+                            <span class="get-hearts-status get-hearts-status--muted">{{ __('ui.daily_limit_reached') }}</span>
                         @else
-                            <button class="get-hearts-action" type="button" data-watch-ad-open aria-haspopup="dialog" aria-controls="watch-ad-dialog">Watch Ad</button>
+                            <button class="get-hearts-action" type="button" data-watch-ad-open aria-haspopup="dialog" aria-controls="watch-ad-dialog">{{ __('ui.watch_ad') }}</button>
                         @endif
                     @endif
                 </article>
@@ -102,7 +104,7 @@
     </section>
 
     <section class="get-hearts-sponsors" aria-labelledby="sponsor-banners-title">
-        <header><h2 id="sponsor-banners-title">Partner Banners</h2><p>Discover our partner pages.</p></header>
+        <header><h2 id="sponsor-banners-title">{{ __('ui.partner_banners') }}</h2><p>{{ __('ui.discover_partners') }}</p></header>
         <div class="get-hearts-sponsor-grid{{ $partnerBanners->isNotEmpty() ? ' has-banners' : '' }}">
             @forelse($partnerBanners as $banner)
                 <a class="get-hearts-sponsor" href="{{ $banner->click_url }}" target="_blank" rel="noopener noreferrer"
@@ -120,32 +122,32 @@
                     <img src="{{ $banner->image_url }}" alt="{{ $banner->title }}" loading="lazy">
                 </a>
             @empty
-                <p class="get-hearts-sponsor-empty">No partner banners are available yet.</p>
+                <p class="get-hearts-sponsor-empty">{{ __('ui.no_partner_banners') }}</p>
             @endforelse
         </div>
-        <p class="get-hearts-sponsor-note"><svg width="14" height="14" viewBox="0 0 24 24" aria-hidden="true"><use href="#icon-heart"/></svg> Heart rewards are available to eligible signed-in members only. Each banner can earn Hearts once per day.</p>
+        <p class="get-hearts-sponsor-note"><svg width="14" height="14" viewBox="0 0 24 24" aria-hidden="true"><use href="#icon-heart"/></svg> {{ __('ui.eligible_banner_rewards') }}</p>
     </section>
 
-    <aside class="get-hearts-notes" aria-label="Heart reward notes"><strong>ⓘ Notes</strong><ul><li>Hearts are given automatically when you complete each activity.</li><li>Daily limits may vary by activity.</li><li>Abuse or fraudulent activities may result in reward cancellation.</li></ul></aside>
+    <aside class="get-hearts-notes" aria-label="{{ __('ui.heart_notes') }}"><strong>&#9432; {{ __('ui.notes') }}</strong><ul><li>{{ __('ui.automatic_activity_rewards') }}</li><li>{{ __('ui.limits_vary') }}</li><li>{{ __('ui.fraud_cancellation') }}</li></ul></aside>
 
     @if($member)
         <dialog id="watch-ad-dialog" class="watch-ad-dialog" aria-labelledby="watch-ad-title">
-            <button class="watch-ad-close" type="button" data-watch-ad-close aria-label="Close">×</button>
-            <span class="watch-ad-icon" aria-hidden="true">▶</span>
-            <h2 id="watch-ad-title">Watch Ads</h2>
-            <p>Watch a short ad and get Hearts!</p>
-            <div><span>Reward</span><strong>Configured in Heart Reward Settings</strong><span>Status</span><strong>Integration coming soon</strong></div>
-            <p class="watch-ad-notice">No Hearts are granted from this preview. Rewarded-ad integration will be added separately.</p>
-            <button type="button" disabled>Watch Ad</button>
+            <button class="watch-ad-close" type="button" data-watch-ad-close aria-label="{{ __('ui.close') }}">&times;</button>
+            <span class="watch-ad-icon" aria-hidden="true">&#9654;</span>
+            <h2 id="watch-ad-title">{{ __('ui.watch_ads') }}</h2>
+            <p>{{ __('ui.watch_ad_intro') }}</p>
+            <div><span>{{ __('ui.reward') }}</span><strong>{{ __('ui.heart_reward_settings') }}</strong><span>{{ __('ui.status') }}</span><strong>{{ __('ui.integration_soon') }}</strong></div>
+            <p class="watch-ad-notice">{{ __('ui.ad_preview_notice') }}</p>
+            <button type="button" disabled>{{ __('ui.watch_ad') }}</button>
         </dialog>
 
         @if($partnerBanners->contains(fn ($banner) => $banner->claim_url !== null || $banner->completed_today))
         <dialog id="partner-banner-reward-dialog" class="partner-banner-reward-dialog" aria-labelledby="partner-banner-reward-title">
-            <button class="watch-ad-close" type="button" data-partner-banner-close aria-label="Close">×</button>
-            <h2 id="partner-banner-reward-title">Partner Banner</h2>
+            <button class="watch-ad-close" type="button" data-partner-banner-close aria-label="{{ __('ui.close') }}">&times;</button>
+            <h2 id="partner-banner-reward-title">{{ __('ui.partner_banner') }}</h2>
             <p><strong data-partner-banner-amount></strong> Hearts are available for this banner.</p>
-            <p class="partner-banner-reward-message">The partner page opened in a new tab. Confirm below to request the reward.</p>
-            <button type="button" data-partner-banner-claim data-csrf="{{ csrf_token() }}">하트 받기</button>
+            <p class="partner-banner-reward-message">{{ __('ui.banner_reward_confirm') }}</p>
+            <button type="button" data-partner-banner-claim data-csrf="{{ csrf_token() }}">{{ __('ui.claim_reward') }}</button>
         </dialog>
         @endif
     @endif

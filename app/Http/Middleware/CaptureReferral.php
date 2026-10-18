@@ -20,10 +20,6 @@ class CaptureReferral
 
             if ($inviterIdx !== null) {
                 $request->session()->put(HeartRewardManager::REFERRAL_SESSION_KEY, $memberCode);
-
-                if ($request->isMethod('GET') && $request->getPathInfo() === '/') {
-                    return redirect()->route('register');
-                }
             }
         }
 

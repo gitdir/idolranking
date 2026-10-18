@@ -75,16 +75,24 @@ final class PublicFanPostList
 
     private function query(string $sort): Builder
     {
+        $monthStart = now('UTC')->startOfMonth();
         $query = $this->baseQuery()
             ->select([
                 'p.idx', 'p.media_type', 'p.image_path', 'p.youtube_video_id',
                 'p.content', 'p.view_count', 'p.created_at',
-                'm.idx as member_idx', 'm.member_code', 'm.nickname', 'm.profile_image_path',
+                'p.language_code', 'm.idx as member_idx', 'm.member_code', 'm.nickname', 'm.country_code', 'm.profile_image_path',
             ])
             ->selectSub(
                 DB::table('fan_post_likes as l')->selectRaw('COUNT(*)')
                     ->whereColumn('l.fan_post_idx', 'p.idx'),
                 'like_count'
+            )
+            ->selectSub(
+                DB::table('fan_post_likes as l')->selectRaw('COUNT(*)')
+                    ->whereColumn('l.fan_post_idx', 'p.idx')
+                    ->where('l.created_at', '>=', $monthStart)
+                    ->where('l.created_at', '<', $monthStart->copy()->addMonth()),
+                'monthly_like_count'
             )
             ->selectSub(
                 DB::table('fan_post_comments as c')->selectRaw('COUNT(*)')
@@ -94,6 +102,7 @@ final class PublicFanPostList
             );
 
         match ($sort) {
+            'monthly_liked' => $query->orderByDesc('monthly_like_count')->orderByDesc('p.created_at')->orderByDesc('p.idx'),
             'liked' => $query->orderByDesc('like_count')->orderByDesc('p.created_at')->orderByDesc('p.idx'),
             'commented' => $query->orderByDesc('comment_count')->orderByDesc('p.created_at')->orderByDesc('p.idx'),
             default => $query->orderByDesc('p.created_at')->orderByDesc('p.idx'),
@@ -146,8 +155,12 @@ final class PublicFanPostList
             (int) $post->comment_count,
             'square',
             'member_code' => $post->member_code,
+            'language_code' => $post->language_code,
+            'country_code' => $post->country_code,
+            'country_name' => Countries::localizedName($post->country_code, app()->getLocale()),
             'author_image_url' => $post->profile_image_path,
             'fan_post_idx' => (int) $post->idx,
+            'monthly_like_count' => (int) $post->monthly_like_count,
             'media_type' => $post->media_type,
             'youtube_video_id' => $post->youtube_video_id,
             'image_url' => ManagedImageStorage::publicUrl($post->image_path),

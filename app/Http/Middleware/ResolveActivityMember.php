@@ -2,6 +2,7 @@
 
 namespace App\Http\Middleware;
 
+use App\Support\RandomDummyActivity;
 use Closure;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -14,8 +15,11 @@ class ResolveActivityMember
     {
         $actor = $request->attributes->get('currentMember');
         $activityMember = $actor;
+        $randomMode = app(RandomDummyActivity::class)->enabled($request);
 
-        if ($actor !== null && (int) $actor->member_level === 10 && $request->session()->has(self::SESSION_KEY)) {
+        if ($randomMode) {
+            $request->session()->forget(self::SESSION_KEY);
+        } elseif ($actor !== null && (int) $actor->member_level === 10 && $request->session()->has(self::SESSION_KEY)) {
             $selectedIdx = $request->session()->get(self::SESSION_KEY);
             $activityMember = is_scalar($selectedIdx) && ctype_digit((string) $selectedIdx)
                 ? DB::table('members')->where('idx', $selectedIdx)
@@ -30,10 +34,14 @@ class ResolveActivityMember
             }
         } else {
             $request->session()->forget(self::SESSION_KEY);
+            if ((int) ($actor?->member_level ?? 0) !== 10) {
+                $request->session()->forget(RandomDummyActivity::SESSION_KEY);
+            }
         }
 
         $request->attributes->set('activityActor', $actor);
         $request->attributes->set('activityMember', $activityMember);
+        $request->attributes->set('randomDummyMode', $randomMode);
 
         return $next($request);
     }

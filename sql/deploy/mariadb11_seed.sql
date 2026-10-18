@@ -11,3 +11,8 @@ INSERT INTO heart_reward_settings (action_code, action_name, heart_amount, daily
 ('profile_complete', '프로필 완성', 100, 0, 1),
 ('signup', '가입 완료', 1000, 0, 1),
 ('watch_ads', 'Watch Ads', 50, 10, 0);
+
+-- Existing fixed reward actions remain unchanged; Daily Check-in starts with its current 100-Heart fixed range.
+UPDATE heart_reward_settings
+SET min_heart_amount = heart_amount, max_heart_amount = heart_amount
+WHERE action_code = 'daily_attendance';

@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 180 170" fill="none">
+ <path stroke="#448E55" stroke-width="8" stroke-linecap="round" d="M90 142V77m-2 43-32-24m35 13 31-29"/>
+ <path fill="#65BB69" d="M58 100c-21-13-33 1-17 14 9 7 15 3 17-14Zm35 9c17-19 34-10 23 8-8 11-16 10-23-8Z"/>
+ <g stroke="#6689E8" stroke-width="2"><circle cx="60" cy="52" r="18" fill="#8DB5FF"/><circle cx="78" cy="38" r="18" fill="#C0ABFF"/><circle cx="100" cy="43" r="18" fill="#829CEF"/><circle cx="117" cy="56" r="18" fill="#B7C8FF"/><circle cx="104" cy="75" r="18" fill="#8E9BEB"/><circle cx="81" cy="72" r="18" fill="#C5AEFF"/><circle cx="60" cy="52" r="8" fill="#F4E884"/><circle cx="78" cy="38" r="8" fill="#F4E884"/><circle cx="100" cy="43" r="8" fill="#F4E884"/><circle cx="117" cy="56" r="8" fill="#F4E884"/><circle cx="104" cy="75" r="8" fill="#F4E884"/><circle cx="81" cy="72" r="8" fill="#F4E884"/></g>
+ <path fill="#FFF" d="M36 143h108l-12 24H48z"/><path fill="#E8EEFF" d="M43 143h94l-7 18H50z"/><path stroke="#C7D3EF" stroke-width="2" d="M42 143h96"/>
+</svg>

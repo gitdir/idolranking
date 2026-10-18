@@ -1,5 +1,6 @@
     @php
         $headerMember = request()->attributes->get('currentMember');
+        $headerSearchQuery = request()->routeIs('search') && is_string(request()->query('q')) ? request()->query('q') : '';
         $headerActivityMember = request()->attributes->get('activityMember') ?? $headerMember;
         $isHeaderAdmin = $headerMember !== null && (int) $headerMember->member_level === 10;
         $dummyMembers = $isHeaderAdmin
@@ -26,7 +27,7 @@
         @endif
         <div class="modal-overlay" id="navigation-overlay" hidden aria-hidden="true"></div>
         <div class="page-width header-inner">
-            <a class="brand" href="{{ url('/') }}" aria-label="IdolRanking home">
+            <a class="brand" href="{{ url('/') }}" aria-label="{{ __('ui.home_aria') }}">
                 <svg class="brand-crown" viewBox="0 0 48 40" aria-hidden="true">
                     <path fill="#ff4596" d="m5 11 11 7L24 3l8 15 11-7-6 23H11Z"/>
                     <path fill="#ff80b6" d="m5 11 11 7L24 3v31H11Z"/>
@@ -35,12 +36,7 @@
                 </svg>
                 <span><span class="brand-accent brand-accent--animated">IDOL</span> RANKING</span>
             </a>
-            <div class="site-search" role="search">
-                <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="10" cy="10" r="6.5"/><path d="m15 15 5 5"/></svg>
-                <label class="sr-only" for="idol-search">Search for idols, groups, or fan posts</label>
-                <input id="idol-search" type="search" placeholder="Search for idols, groups, or fan posts..." spellcheck="false">
-            </div>
-            <button class="menu-toggle" type="button" aria-controls="main-navigation" aria-expanded="false" aria-label="Toggle navigation">
+            <button class="menu-toggle" type="button" aria-controls="main-navigation" aria-expanded="false" aria-label="{{ __('ui.toggle_navigation') }}">
                 <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 6h18M3 12h18M3 18h18"/></svg>
             </button>
             @php
@@ -50,17 +46,18 @@
                     request()->routeIs('ranking.group') || in_array($detailCategory, ['boy-group', 'girl-group'], true) => 'group',
                     request()->routeIs('fan-posts.index', 'fan-post.*') => 'fan-posts',
                     request()->routeIs('get-hearts', 'get-hearts.*') => 'get-hearts',
+                    request()->routeIs('attendance', 'attendance.*') => 'attendance',
                     default => null,
                 };
             @endphp
-            <nav id="main-navigation" class="main-nav" aria-label="Main navigation">
+            <nav id="main-navigation" class="main-nav" aria-label="{{ __('ui.toggle_navigation') }}">
                 <div class="drawer-content">
-                @foreach (['idol' => 'Idol', 'group' => 'Group'] as $key => $label)
+                @foreach (['idol' => __('ui.idol'), 'group' => __('ui.group')] as $key => $label)
                     @php
                         $routeName = 'ranking.'.$key;
                         $isActive = $activeMainMenu === $key;
                     @endphp
-                    <a class="drawer-category-link" href="{{ route($routeName) }}" @if ($isActive) aria-current="page" @endif>
+                    <a class="drawer-category-link header-{{ $key }}" href="{{ route($routeName) }}" @if ($isActive) aria-current="page" @endif>
                         <svg class="drawer-category-icon" viewBox="0 0 24 24" aria-hidden="true">
                             @if ($key === 'idol')
                                 <path d="m4 8 4 3 4-7 4 7 4-3-2 10H6Z"/><path d="M6 21h12"/>
@@ -74,49 +71,64 @@
                 @endforeach
                 <a class="drawer-category-link header-fan-posts" href="{{ route('fan-posts.index') }}" @if ($activeMainMenu === 'fan-posts') aria-current="page" @endif>
                     <svg class="drawer-category-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 3h14v18H5Z"/><path d="M8 8h8M8 12h8M8 16h5"/></svg>
-                    <span>Fan Posts</span>
+                    <span>{{ __('ui.fan_posts') }}</span>
                     <svg class="drawer-category-chevron" viewBox="0 0 16 16" aria-hidden="true"><path d="m6 3 5 5-5 5"/></svg>
                 </a>
                 <a class="drawer-category-link header-get-hearts" href="{{ route('get-hearts') }}" @if ($activeMainMenu === 'get-hearts') aria-current="page" @endif>
                     <svg class="drawer-category-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 21S3 15.5 3 9.5A5 5 0 0 1 12 6a5 5 0 0 1 9 3.5C21 15.5 12 21 12 21Z"/></svg>
-                    <span>Get Hearts</span>
+                    <span>{{ __('ui.get_hearts') }}</span>
                     <svg class="drawer-category-chevron" viewBox="0 0 16 16" aria-hidden="true"><path d="m6 3 5 5-5 5"/></svg>
                 </a>
+                <a class="drawer-category-link header-attendance" href="{{ route('attendance') }}" @if ($activeMainMenu === 'attendance') aria-current="page" @endif>
+                    <svg class="drawer-category-icon" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="4" width="18" height="17" rx="2"/><path d="M8 2v4m8-4v4M3 9h18m-13 5 2 2 4-4"/></svg>
+                    <span>{{ __('ui.attendance') }}</span>
+                    <svg class="drawer-category-chevron" viewBox="0 0 16 16" aria-hidden="true"><path d="m6 3 5 5-5 5"/></svg>
+                </a>
+                <button class="header-search-trigger" type="button" data-search-open aria-label="{{ __('ui.search') }}" aria-haspopup="dialog" aria-controls="site-search-dialog">
+                    <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="10.8" cy="10.8" r="6.8"/><path d="m16 16 5 5"/></svg>
+                    <span class="header-search-label">{{ __('ui.search') }}</span>
+                </button>
                 @if ($headerMember)
                     <a class="drawer-category-link header-register-idol drawer-register-idol-cta" href="{{ route('idol-registration.create') }}" @if (request()->routeIs('idol-registration.*')) aria-current="page" @endif>
                         <svg class="drawer-category-icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="8" r="4"/><path d="M4 21c.7-4.2 3.4-6.3 8-6.3s7.3 2.1 8 6.3M19 3v6m-3-3h6"/></svg>
-                        <span>Register Idol</span>
+                        <span>{{ __('ui.register_idol') }}</span>
                         <svg class="drawer-category-chevron" viewBox="0 0 16 16" aria-hidden="true"><path d="m6 3 5 5-5 5"/></svg>
                     </a>
                 @else
                     <button class="drawer-category-link header-register-idol drawer-register-idol-cta" type="button" data-sign-in-open aria-haspopup="dialog" aria-controls="sign-in-modal">
                         <svg class="drawer-category-icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="8" r="4"/><path d="M4 21c.7-4.2 3.4-6.3 8-6.3s7.3 2.1 8 6.3M19 3v6m-3-3h6"/></svg>
-                        <span>Register Idol</span>
+                        <span>{{ __('ui.register_idol') }}</span>
                         <svg class="drawer-category-chevron" viewBox="0 0 16 16" aria-hidden="true"><path d="m6 3 5 5-5 5"/></svg>
                     </button>
                 @endif
                 <button class="drawer-invite-card" type="button" data-invite-friends-open data-signed-in="{{ $headerMember ? 'true' : 'false' }}" @unless($headerMember) data-sign-in-open aria-controls="sign-in-modal" @else aria-controls="invite-friends-dialog" @endunless aria-haspopup="dialog">
                     <svg class="drawer-invite-gift" viewBox="0 0 48 48" aria-hidden="true"><path d="M7 20h34v23H7Zm-3-8h40v10H4Z"/><path d="M24 12v31M9 20h30"/><path d="M24 12c-8 0-12-2-12-6 0-3 3-4 5-3 4 1 7 9 7 9Zm0 0c8 0 12-2 12-6 0-3-3-4-5-3-4 1-7 9-7 9Z"/></svg>
-                    <span class="drawer-invite-content"><strong>Invite Friends</strong><small>Invite your friends and get <b>{{ $inviteRewardAmount }} Hearts!</b></small></span>
-                    <span class="desktop-invite-label">Invite</span>
+                    <span class="drawer-invite-content"><strong>{{ __('ui.invite_friends') }}</strong><small>{{ __('ui.invite_cta', ['amount' => $inviteRewardAmount]) }}</small></span>
+                    <span class="desktop-invite-label">{{ __('ui.invite_friends') }}</span>
                     <svg class="drawer-invite-chevron" viewBox="0 0 16 16" aria-hidden="true"><path d="m6 3 5 5-5 5"/></svg>
                 </button>
                 @if ($headerMember)
-                    <section class="drawer-member" aria-label="Account">
+                    <section class="drawer-member" aria-label="{{ __('ui.account') }}">
                         <x-member-link :member-code="$headerMember->member_code" :label="'View '.$headerMember->nickname.' Fan Posts'" class="drawer-member-avatar-link">
                             <img class="drawer-member-avatar" src="{{ $headerAvatar }}" width="54" height="54" alt="{{ $headerMember->nickname }} profile image">
                         </x-member-link>
                         <div class="drawer-member-details">
-                            <strong title="{{ $headerMember->nickname }}"><x-member-link :member-code="$headerMember->member_code">{{ $headerMember->nickname }}</x-member-link></strong>
+                            <strong class="drawer-member-nickname" title="{{ $headerMember->nickname }}">
+                                <x-country-flag :code="$headerMember->country_code" />
+                                <x-member-link :member-code="$headerMember->member_code" class="drawer-member-nickname-link">{{ $headerMember->nickname }}</x-member-link>
+                            </strong>
+                            @if ($isHeaderAdmin)
+                                @include('partials.random-dummy-toggle', ['location' => 'drawer'])
+                            @endif
                             <span title="{{ $headerMember->email }}">{{ $headerMember->email }}</span>
                             <div class="drawer-member-actions">
                                 <a href="{{ route('my-page') }}">
                                     <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="8" r="4"/><path d="M4 21c.7-4.2 3.4-6.3 8-6.3s7.3 2.1 8 6.3"/></svg>
-                                    My Page
+                                    {{ __('ui.my_page') }}
                                 </a>
                                 <button type="button" data-drawer-logout-open aria-haspopup="dialog" aria-controls="drawer-logout-dialog">
                                     <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M10 5V3H4v18h6v-2M14 8l4 4-4 4m4-4H8"/></svg>
-                                    Log Out
+                                    {{ __('ui.log_out') }}
                                 </button>
                             </div>
                             @if ($isHeaderAdmin)
@@ -124,22 +136,22 @@
                             @endif
                         </div>
                     </section>
-                    <section class="drawer-stats" aria-label="Account statistics">
+                    <section class="drawer-stats" aria-label="{{ __('ui.account_statistics') }}">
                         <div class="drawer-stat drawer-stat--pink">
                             <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 4h8v5a4 4 0 0 1-8 0ZM8 6H4v2a4 4 0 0 0 4 4m8-6h4v2a4 4 0 0 1-4 4M12 13v4m-4 3h8m-6-3h4"/></svg>
                             <strong>{{ $drawerStats['ranking_rate'] }}</strong><span>Ranking Rate</span>
                         </div>
                         <div class="drawer-stat drawer-stat--blue">
                             <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 3h9l4 4v14H6Z"/><path d="M15 3v5h4M9 12h7M9 16h7"/></svg>
-                            <strong>{{ $drawerStats['fan_posts'] }}</strong><span>Fan Posts</span>
+                            <strong>{{ $drawerStats['fan_posts'] }}</strong><span>{{ __('ui.fan_posts') }}</span>
                         </div>
                         <div class="drawer-stat drawer-stat--blue">
                             <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M21 11.5a8.5 8.5 0 0 1-12.7 7.4L3 21l1.7-5A8.5 8.5 0 1 1 21 11.5Z"/><path d="M8 12h.01M12 12h.01M16 12h.01"/></svg>
-                            <strong>{{ $drawerStats['comments'] }}</strong><span>Comments</span>
+                            <strong>{{ $drawerStats['comments'] }}</strong><span>{{ __('ui.comments') }}</span>
                         </div>
                         <div class="drawer-stat drawer-stat--pink drawer-stat--heart">
                             <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 21S3 15.5 3 9.5A5 5 0 0 1 12 6a5 5 0 0 1 9 3.5C21 15.5 12 21 12 21Z"/></svg>
-                            <strong data-member-heart-balance>{{ $drawerStats['hearts'] }}</strong><span>My Hearts</span>
+                            <strong data-member-heart-balance>{{ $drawerStats['hearts'] }}</strong><span>{{ __('ui.my_hearts') }}</span>
                         </div>
                     </section>
                     <div class="header-account" data-header-account>
@@ -154,76 +166,140 @@
                                     <img src="{{ $headerAvatar }}" width="42" height="42" alt="">
                                 </x-member-link>
                                 <div class="header-account-identity">
-                                    <strong title="{{ $headerMember->nickname }}"><x-member-link :member-code="$headerMember->member_code">{{ $headerMember->nickname }}</x-member-link></strong>
+                                    <div class="header-account-identity-name-row">
+                                        <strong class="header-account-nickname" title="{{ $headerMember->nickname }}">
+                                            <x-country-flag :code="$headerMember->country_code" />
+                                            <x-member-link :member-code="$headerMember->member_code">{{ $headerMember->nickname }}</x-member-link>
+                                        </strong>
+                                        @if ($isHeaderAdmin)
+                                            @include('partials.random-dummy-toggle', ['location' => 'desktop'])
+                                        @endif
+                                    </div>
                                     <span title="{{ $headerMember->email }}">{{ $headerMember->email }}</span>
                                     <div class="header-account-hearts" aria-label="{{ number_format((int) ($headerActivityMember->heart_balance ?? 0)) }} Hearts">
                                         <span class="header-account-heart-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><use href="#icon-heart"/></svg></span>
-                                        <span>{{ number_format((int) ($headerActivityMember->heart_balance ?? 0)) }} Hearts</span>
+                                        <span>{{ number_format((int) ($headerActivityMember->heart_balance ?? 0)) }} {{ __('ui.my_hearts') }}</span>
                                     </div>
                                 </div>
                             </div>
                             @if ($isHeaderAdmin)
                                 @include('partials.acting-dummy-selector', ['location' => 'desktop', 'dummyMembers' => $dummyMembers, 'selectedDummyIdx' => $selectedDummyIdx])
                             @endif
+                            <a class="header-account-action" href="{{ route('idol-registration.create') }}" role="menuitem">
+                                <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="8" r="4"/><path d="M4 21c.7-4.2 3.4-6.3 8-6.3s7.3 2.1 8 6.3M19 3v6m-3-3h6"/></svg>
+                                <span>{{ __('ui.register_idol') }}</span>
+                            </a>
+                            <button class="header-account-action" type="button" data-invite-friends-open data-signed-in="true" aria-haspopup="dialog" aria-controls="invite-friends-dialog" role="menuitem">
+                                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 12v9H4v-9m-2-5h20v5H2Zm10 0v14m0-14H7.5a2.5 2.5 0 1 1 0-5C11 3 12 7 12 7Zm0 0h4.5a2.5 2.5 0 1 0 0-5C13 3 12 7 12 7Z"/></svg>
+                                <span>{{ __('ui.invite_friends') }}</span>
+                            </button>
                             <a class="header-account-action" href="{{ route('my-page') }}" role="menuitem">
                                 <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="8" r="4"/><path d="M4 21c.7-4.2 3.4-6.3 8-6.3s7.3 2.1 8 6.3"/></svg>
-                                <span>My Page</span>
+                                <span>{{ __('ui.my_page') }}</span>
                             </a>
                             <button class="header-account-action header-account-logout" type="submit" form="header-logout-form" role="menuitem">
                                 <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M10 5V3H4v18h6v-2M14 8l4 4-4 4m4-4H8"/></svg>
-                                <span>Log Out</span>
+                                <span>{{ __('ui.log_out') }}</span>
                             </button>
                         </div>
                     </div>
                 @else
-                    <button class="desktop-sign-in" type="button" data-sign-in-open aria-haspopup="dialog" aria-controls="sign-in-modal">Sign In</button>
+                    <div class="guest-account" data-guest-account>
+                        <button class="guest-account-trigger" type="button" data-guest-account-trigger aria-label="{{ __('ui.account') }}" aria-haspopup="menu" aria-expanded="false" aria-controls="guest-account-menu">
+                            <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="8" r="4"/><path d="M4 21c.7-4.2 3.4-6.3 8-6.3s7.3 2.1 8 6.3"/></svg>
+                        </button>
+                        <div id="guest-account-menu" class="header-account-menu guest-account-menu" role="menu" hidden>
+                            <button class="header-account-action" type="button" data-sign-in-open data-sign-in-return-url="{{ route('idol-registration.create') }}" role="menuitem">
+                                <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="8" r="4"/><path d="M4 21c.7-4.2 3.4-6.3 8-6.3s7.3 2.1 8 6.3M19 3v6m-3-3h6"/></svg>
+                                <span>{{ __('ui.register_idol') }}</span>
+                            </button>
+                            <button class="header-account-action" type="button" data-invite-friends-open data-signed-in="false" data-sign-in-open role="menuitem">
+                                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 12v9H4v-9m-2-5h20v5H2Zm10 0v14m0-14H7.5a2.5 2.5 0 1 1 0-5C11 3 12 7 12 7Zm0 0h4.5a2.5 2.5 0 1 0 0-5C13 3 12 7 12 7Z"/></svg>
+                                <span>{{ __('ui.invite_friends') }}</span>
+                            </button>
+                            <button class="header-account-action" type="button" data-sign-in-open aria-haspopup="dialog" aria-controls="sign-in-modal" role="menuitem">
+                                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M14 8l4 4-4 4m4-4H8m2 7v2H4V3h6v2"/></svg>
+                                <span>{{ __('ui.sign_in') }}</span>
+                            </button>
+                        </div>
+                    </div>
                 @endif
-                <div class="drawer-login" role="group" aria-label="Sign in options">
+                <div class="drawer-login" role="group" aria-label="{{ __('ui.sign_in_options') }}">
                     @unless ($headerMember)
-                        <a class="drawer-login-button drawer-login-google" href="{{ route('auth.google.redirect', ['return_url' => request()->fullUrl()]) }}"><svg viewBox="0 0 24 24" aria-hidden="true"><path fill="#4285f4" d="M21.6 12.2c0-.7-.1-1.5-.2-2.2H12v4.2h5.4a4.6 4.6 0 0 1-2 3v2.5h3.2c1.9-1.8 3-4.3 3-7.5Z"/><path fill="#34a853" d="M12 22c2.7 0 5-.9 6.6-2.3l-3.2-2.5c-.9.6-2 1-3.4 1-2.6 0-4.9-1.8-5.7-4.2H3v2.6A10 10 0 0 0 12 22Z"/><path fill="#fbbc05" d="M6.3 14a6 6 0 0 1 0-4V7.4H3a10 10 0 0 0 0 9.2Z"/><path fill="#ea4335" d="M12 5.8c1.5 0 2.8.5 3.8 1.5l2.9-2.9A9.6 9.6 0 0 0 12 2a10 10 0 0 0-9 5.4L6.3 10c.8-2.4 3.1-4.2 5.7-4.2Z"/></svg>Google Sign In</a>
-                        <button class="drawer-login-button drawer-login-email" type="button" data-sign-in-open aria-haspopup="dialog" aria-controls="sign-in-modal"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="m3 6 9 7 9-7"/></svg>Email Sign In</button>
-                        <div class="drawer-sign-up"><span>Don't have an account?</span><a href="{{ route('register') }}">Sign Up</a></div>
+                        <a class="drawer-login-button drawer-login-google" href="{{ route('auth.google.redirect', ['return_url' => request()->fullUrl()]) }}"><svg viewBox="0 0 24 24" aria-hidden="true"><path fill="#4285f4" d="M21.6 12.2c0-.7-.1-1.5-.2-2.2H12v4.2h5.4a4.6 4.6 0 0 1-2 3v2.5h3.2c1.9-1.8 3-4.3 3-7.5Z"/><path fill="#34a853" d="M12 22c2.7 0 5-.9 6.6-2.3l-3.2-2.5c-.9.6-2 1-3.4 1-2.6 0-4.9-1.8-5.7-4.2H3v2.6A10 10 0 0 0 12 22Z"/><path fill="#fbbc05" d="M6.3 14a6 6 0 0 1 0-4V7.4H3a10 10 0 0 0 0 9.2Z"/><path fill="#ea4335" d="M12 5.8c1.5 0 2.8.5 3.8 1.5l2.9-2.9A9.6 9.6 0 0 0 12 2a10 10 0 0 0-9 5.4L6.3 10c.8-2.4 3.1-4.2 5.7-4.2Z"/></svg>{{ __('ui.google_sign_in') }}</a>
+                        <button class="drawer-login-button drawer-login-email" type="button" data-sign-in-open aria-haspopup="dialog" aria-controls="sign-in-modal"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="m3 6 9 7 9-7"/></svg>{{ __('ui.email_sign_in') }}</button>
+                        <div class="drawer-sign-up"><span>{{ __('ui.no_account') }}</span><a href="{{ route('register') }}">{{ __('ui.sign_up') }}</a></div>
                     @endunless
                 </div>
+                <form class="language-selector" method="post" action="{{ route('language.update') }}">
+                    @csrf
+                    <input type="hidden" name="return_to" value="{{ request()->getRequestUri() }}">
+                    <span class="language-selector-label">
+                        <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3a14 14 0 0 1 0 18m0-18a14 14 0 0 0 0 18"/></svg>
+                        <span>{{ __('ui.language_settings') }}</span>
+                    </span>
+                    <select id="public-language" name="locale" aria-label="{{ __('ui.select_language') }}" onchange="this.form.submit()">
+                        <option value="en" @selected(app()->getLocale() === 'en')>{{ __('ui.english') }}</option>
+                        <option value="ko" @selected(app()->getLocale() === 'ko')>{{ __('ui.korean') }}</option>
+                    </select>
+                </form>
                 </div>
-                <button class="drawer-close" type="button" aria-label="Close navigation">
+                <button class="drawer-close" type="button" aria-label="{{ __('ui.close_navigation') }}">
                     <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m6 6 12 12M18 6 6 18"/></svg>
                 </button>
             </nav>
         </div>
+        <dialog id="site-search-dialog" class="search-dialog" aria-modal="true" aria-labelledby="site-search-title">
+            <div class="search-dialog-header">
+                <h2 id="site-search-title">{{ __('ui.search') }}</h2>
+                <button class="search-dialog-close" type="button" data-search-close aria-label="{{ __('ui.close') }}">
+                    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m6 6 12 12M18 6 6 18"/></svg>
+                </button>
+            </div>
+            <form action="{{ route('search') }}" method="get" role="search" data-site-search-form>
+                <label class="sr-only" for="idol-search">{{ __('ui.search_placeholder') }}</label>
+                <div class="search-dialog-input-wrap">
+                    <svg class="search-dialog-input-icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="10.8" cy="10.8" r="6.8"/><path d="m16 16 5 5"/></svg>
+                    <input id="idol-search" name="q" type="search" value="{{ $headerSearchQuery }}" placeholder="{{ __('ui.search_placeholder') }}" spellcheck="false" autocomplete="off">
+                </div>
+                <button class="search-dialog-submit" type="submit" aria-label="{{ __('ui.search') }}">
+                    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h14m-7-7 7 7-7 7"/></svg>
+                </button>
+            </form>
+        </dialog>
         @if ($headerMember)
             @php($referralUrl = url('/?ref='.rawurlencode($headerActivityMember->member_code)))
             <dialog id="invite-friends-dialog" class="invite-friends-dialog" aria-labelledby="invite-friends-title">
-                <button class="invite-friends-close" type="button" data-invite-friends-close aria-label="Close Invite Friends"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m6 6 12 12M18 6 6 18"/></svg></button>
-                <h2 id="invite-friends-title">Invite Friends</h2>
-                <p>Invite your friends and get {{ $inviteRewardAmount }} Hearts!</p>
+                <button class="invite-friends-close" type="button" data-invite-friends-close aria-label="{{ __('ui.close_invite') }}"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m6 6 12 12M18 6 6 18"/></svg></button>
+                <h2 id="invite-friends-title">{{ __('ui.invite_friends') }}</h2>
+                <p>{{ __('ui.invite_cta', ['amount' => $inviteRewardAmount]) }}</p>
                 <div class="invite-referral-link">
                     <svg class="invite-referral-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M10.5 13.5a4 4 0 0 0 5.7.1l3-3a4 4 0 0 0-5.7-5.7l-1.7 1.7M13.5 10.5a4 4 0 0 0-5.7-.1l-3 3a4 4 0 0 0 5.7 5.7l1.7-1.7"/></svg>
                     <div class="invite-referral-copy">
-                        <span>Your Invite Link</span>
-                        <input type="text" value="{{ $referralUrl }}" readonly data-referral-url aria-label="Your referral URL">
+                        <span>{{ __('ui.your_invite_link') }}</span>
+                        <input type="text" value="{{ $referralUrl }}" readonly data-referral-url aria-label="{{ __('ui.referral_url') }}">
                     </div>
-                    <button type="button" data-referral-copy aria-label="Copy invite link">
+                    <button type="button" data-referral-copy aria-label="{{ __('js.copy_invite_link') }}">
                         <svg data-referral-copy-icon viewBox="0 0 24 24" aria-hidden="true"><rect x="8" y="8" width="12" height="12" rx="2"/><path d="M16 8V6a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h2"/></svg>
-                        <span data-referral-copied hidden>✓ Copied</span>
+                        <span data-referral-copied hidden>✓ {{ __('js.copied') }}</span>
                     </button>
                 </div>
                 <p class="invite-copy-status" data-referral-copy-status role="status" hidden></p>
-                <div class="invite-share-actions" aria-label="Share invitation">
+                <div class="invite-share-actions" aria-label="{{ __('ui.share_invitation') }}">
                     <a href="https://social-plugins.line.me/lineit/share?url={{ urlencode($referralUrl) }}" target="_blank" rel="noopener">LINE</a>
                     <a href="https://twitter.com/intent/tweet?url={{ urlencode($referralUrl) }}" target="_blank" rel="noopener">X</a>
                     <button type="button" data-invite-share="kakao">KakaoTalk</button>
                     <a href="https://www.facebook.com/sharer/sharer.php?u={{ urlencode($referralUrl) }}" target="_blank" rel="noopener">Facebook</a>
                 </div>
-                <p class="invite-reward-message">When your friend signs up through your link, you'll get {{ $inviteRewardAmount }} Hearts!</p>
+                <p class="invite-reward-message">{{ __('ui.invite_reward_message', ['amount' => $inviteRewardAmount]) }}</p>
             </dialog>
             <dialog id="drawer-logout-dialog" class="drawer-logout-dialog" aria-labelledby="drawer-logout-title" aria-describedby="drawer-logout-description">
                 <div class="drawer-logout-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M10 5V3H4v18h6v-2M14 8l4 4-4 4m4-4H8"/></svg></div>
-                <h2 id="drawer-logout-title">Log out?</h2>
-                <p id="drawer-logout-description">You will need to sign in again<br>to use your account.</p>
+                <h2 id="drawer-logout-title">{{ __('ui.logout_confirm') }}</h2>
+                <p id="drawer-logout-description">{{ __('ui.logout_description') }}</p>
                 <div class="drawer-logout-actions">
-                    <button type="button" data-drawer-logout-cancel>Cancel</button>
-                    <button type="submit" form="header-logout-form">Log Out</button>
+                    <button type="button" data-drawer-logout-cancel>{{ __('ui.cancel') }}</button>
+                    <button type="submit" form="header-logout-form">{{ __('ui.log_out') }}</button>
                 </div>
             </dialog>
         @endif

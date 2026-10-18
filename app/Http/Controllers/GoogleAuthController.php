@@ -146,7 +146,7 @@ class GoogleAuthController extends Controller
         $inviterIdx = $heartRewards->eligibleInviterIdx($request->session()->get(HeartRewardManager::REFERRAL_SESSION_KEY));
 
         try {
-            $memberIdx = DB::transaction(function () use ($request, $signup, $inviterIdx) {
+            $memberIdx = DB::transaction(function () use ($request, $signup, $inviterIdx, $heartRewards) {
                 if (DB::table('member_social_accounts')->where('provider', 'google')
                     ->where('provider_user_id', $signup['provider_id'])->lockForUpdate()->exists()
                     || DB::table('members')->where('email', $signup['email'])->lockForUpdate()->exists()) {
@@ -175,26 +175,29 @@ class GoogleAuthController extends Controller
                     'updated_at' => now(),
                 ]);
                 app(HeartRewardManager::class)->award($memberIdx, 'signup', 'signup:'.$memberIdx);
+                $heartRewards->awardReferral($memberIdx);
                 $this->recordLogin($request, $memberIdx, 'success');
 
                 return $memberIdx;
             });
-        } catch (QueryException|\RuntimeException $exception) {
-            if ($exception instanceof QueryException && (string) $exception->getCode() !== '23000') {
-                report($exception);
+        } catch (QueryException $exception) {
+            $isDuplicateAccount = (string) $exception->getCode() === '23000'
+                && (DB::table('member_social_accounts')->where('provider', 'google')
+                        ->where('provider_user_id', $signup['provider_id'])->exists()
+                    || DB::table('members')->where('email', $signup['email'])->exists()
+                    || DB::table('members')->where('nickname', $request->string('nickname')->toString())->exists());
 
-                return back()->withErrors([
-                    'registration' => 'Sign-up could not be completed. Please try again.',
-                ])->withInput();
+            if ($isDuplicateAccount) {
+                return $this->authenticationError($request, 'This Google account, email, or nickname is already registered.');
             }
 
-            return $this->authenticationError($request, 'This Google account, email, or nickname is already registered.');
-        }
-
-        try {
-            $heartRewards->awardReferral($memberIdx);
-        } catch (\Throwable $exception) {
             report($exception);
+
+            return back()->withErrors([
+                'registration' => 'Sign-up could not be completed. Please try again.',
+            ])->withInput();
+        } catch (\RuntimeException $exception) {
+            return $this->authenticationError($request, 'This Google account, email, or nickname is already registered.');
         }
 
         $request->session()->regenerate();

@@ -16,8 +16,10 @@ class PartnerBannerRewardTest extends TestCase
         }
 
         DB::statement("CREATE TABLE members (idx INTEGER PRIMARY KEY, member_code TEXT, email TEXT, nickname TEXT, country_code TEXT, profile_image_path TEXT, heart_balance INTEGER DEFAULT 0, member_level INTEGER DEFAULT 1, is_dummy INTEGER DEFAULT 0, status TEXT DEFAULT 'active', deleted_at TEXT, updated_at TEXT)");
+        DB::statement('CREATE TABLE admin_activity_logs (idx INTEGER PRIMARY KEY AUTOINCREMENT, actor_member_idx INTEGER, action TEXT, target_type TEXT, target_idx INTEGER, reason TEXT, summary TEXT, created_at TEXT)');
         DB::statement('CREATE TABLE heart_reward_settings (idx INTEGER PRIMARY KEY AUTOINCREMENT, action_code TEXT UNIQUE, heart_amount INTEGER, daily_limit INTEGER DEFAULT 0, is_enabled INTEGER DEFAULT 1)');
         DB::statement('CREATE TABLE heart_histories (idx INTEGER PRIMARY KEY AUTOINCREMENT, member_idx INTEGER, amount INTEGER, balance_after INTEGER, reason TEXT, vote_idx INTEGER, comment_idx INTEGER, reversal_of_history_idx INTEGER, operation_key TEXT, actor_member_idx INTEGER, memo TEXT, created_at TEXT, UNIQUE (member_idx, operation_key))');
+        DB::statement('CREATE TABLE daily_check_ins (idx INTEGER PRIMARY KEY AUTOINCREMENT, member_idx INTEGER NOT NULL, check_in_date TEXT NOT NULL, UNIQUE (member_idx, check_in_date))');
         DB::statement('CREATE TABLE partner_banners (idx INTEGER PRIMARY KEY AUTOINCREMENT, title TEXT, image_path TEXT, target_url TEXT, heart_reward INTEGER DEFAULT 10, reward_enabled INTEGER DEFAULT 0, is_active INTEGER DEFAULT 1, display_order INTEGER DEFAULT 0, starts_at TEXT, ends_at TEXT, created_at TEXT, updated_at TEXT)');
         DB::table('members')->insert([
             'idx' => 1, 'member_code' => 'BannerMember1', 'email' => 'member@example.test', 'nickname' => 'banner_member',
@@ -161,7 +163,8 @@ class PartnerBannerRewardTest extends TestCase
 
         $this->withSession(['member_idx' => 2])->post(route('admin.acting-dummy-member'), [
             'dummy_member_idx' => 3,
-        ])->assertRedirect(route('home'));
+        ])->assertRedirect(route('home'))
+            ->assertSessionHas('admin_success', '더미 회원 활동을 선택했습니다.');
         $this->postJson(route('get-hearts.partner-banners.claim', $bannerIdx))->assertForbidden();
 
         $this->assertSame(0, (int) DB::table('members')->where('idx', 3)->value('heart_balance'));

@@ -4,7 +4,6 @@ namespace App\Support;
 
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
-use Illuminate\Support\Str;
 use Illuminate\Database\QueryException;
 
 final class HeartRewardManager
@@ -31,7 +30,7 @@ final class HeartRewardManager
         }
 
         $idx = DB::table('members')->where('member_code', $memberCode)
-            ->where('member_level', '>', 0)
+            ->where('member_level', 1)->where('is_dummy', 0)
             ->where('status', 'active')->whereNull('deleted_at')->value('idx');
 
         return $idx === null ? null : (int) $idx;
@@ -60,7 +59,7 @@ final class HeartRewardManager
 
             $inviterIdx = (int) $newMember->referred_by_member_idx;
             $inviterIsEligible = DB::table('members')->where('idx', $inviterIdx)
-                ->where('member_level', '>', 0)
+                ->where('member_level', 1)->where('is_dummy', 0)
                 ->where('status', 'active')->whereNull('deleted_at')->exists();
 
             if (!$inviterIsEligible) {
@@ -91,26 +90,56 @@ final class HeartRewardManager
         return max(0, (int) $setting->heart_amount);
     }
 
-    public function award(int $memberIdx, string $actionCode, string $operationKey, array $references = []): int
+    public function award(int $memberIdx, string $actionCode, string $operationKey, array $references = [], ?int $amountOverride = null): int
     {
+        // Ad rewards require verified completion from an ad provider; no such integration exists yet.
+        if ($actionCode === 'watch_ads') return 0;
+
         $definition = self::ACTIONS[$actionCode] ?? null;
         if ($definition === null) return 0;
+        if ($amountOverride !== null && $actionCode !== 'daily_attendance') return 0;
+        if ($actionCode === 'daily_attendance' && $amountOverride === null) return 0;
         $setting = DB::table('heart_reward_settings')->where('action_code', $actionCode)->first();
         if ($setting === null || ! (bool) $setting->is_enabled) return 0;
-        $amount = (int) $setting->heart_amount;
-        if ($amount <= 0) return 0;
+        $hasCommentRange = $actionCode === 'comment_create'
+            && $setting->min_heart_amount !== null && $setting->max_heart_amount !== null;
+        if ($hasCommentRange) {
+            $minimum = (int) $setting->min_heart_amount;
+            $maximum = (int) $setting->max_heart_amount;
+            if ($minimum < 0 || $maximum < $minimum) return 0;
+            $amount = random_int($minimum, $maximum);
+        } else {
+            $amount = $amountOverride ?? (int) $setting->heart_amount;
+        }
+        // Check-in and explicitly configured comment ranges may award zero; legacy fixed rewards remain positive-only.
+        if ($amount < 0 || ($amount === 0 && $actionCode !== 'daily_attendance' && ! $hasCommentRange)) return 0;
 
-        $member = DB::table('members')->where('idx', $memberIdx)->where('member_level', '>', 0)
+        // Dummy rewards are permitted only when a completed administrator random-mode action proves attribution.
+        $member = DB::table('members')->where('idx', $memberIdx)->where('member_level', 1)->where('is_dummy', 0)
             ->where('status', 'active')->whereNull('deleted_at')->lockForUpdate()->first(['idx', 'heart_balance']);
+        if ($member === null && isset($references['random_dummy_request_idx'])) {
+            $actorIdx = (int) ($references['actor_member_idx'] ?? 0);
+            $manager = app(RandomDummyActivity::class);
+            $eligible = $actionCode === 'fan_post_recommend_received'
+                ? $manager->permitsDummyRecommendationReward((int) $references['random_dummy_request_idx'], $memberIdx, $actorIdx)
+                : $manager->permitsDummyReward((int) $references['random_dummy_request_idx'], $memberIdx, $actorIdx, $actionCode);
+            if ($eligible) {
+                $member = DB::table('members')->where('idx', $memberIdx)->where('member_level', 1)->where('is_dummy', 1)
+                    ->where('status', 'active')->whereNull('deleted_at')->lockForUpdate()->first(['idx', 'heart_balance']);
+            }
+        }
         if ($member === null || DB::table('heart_histories')->where('member_idx', $memberIdx)->where('operation_key', $operationKey)->exists()) return 0;
 
         $dailyLimit = max(0, (int) $setting->daily_limit);
         // Zero means unlimited. Account/request rewards are made one-time by their stable operation key.
-        if ($definition['limit_type'] === 'daily' && $dailyLimit > 0) {
+        // Daily Check-in uniqueness is enforced by its UTC date key/table row, not a history timestamp window.
+        if ($actionCode !== 'daily_attendance' && $definition['limit_type'] === 'daily' && $dailyLimit > 0) {
+            $utcNow = now('UTC');
             $count = DB::table('heart_histories')->where('member_idx', $memberIdx)->where('reason', $definition['reason'])
-                ->whereBetween('created_at', [now()->startOfDay(), now()->endOfDay()])->count();
+                ->whereBetween('created_at', [$utcNow->copy()->startOfDay(), $utcNow->copy()->endOfDay()])->count();
             if ($count >= $dailyLimit) return 0;
         }
+        if ($actionCode === 'comment_create' && ! $this->eligibleCommentReward($memberIdx, $references)) return 0;
 
         $balance = (int) $member->heart_balance + $amount;
         DB::table('members')->where('idx', $memberIdx)->update(['heart_balance' => $balance, 'updated_at' => now()]);
@@ -124,9 +153,66 @@ final class HeartRewardManager
         return $amount;
     }
 
+    private function eligibleCommentReward(int $memberIdx, array $references): bool
+    {
+        $commentIdx = isset($references['comment_idx']) ? (int) $references['comment_idx'] : 0;
+        if ($commentIdx < 1) return false;
+
+        $comment = DB::table('fan_post_comments as comment')
+            ->join('fan_posts as post', 'post.idx', '=', 'comment.fan_post_idx')
+            ->where('comment.idx', $commentIdx)
+            ->where('comment.member_idx', $memberIdx)
+            ->first(['comment.content', 'comment.member_idx as comment_member_idx', 'post.member_idx as post_member_idx']);
+        if ($comment === null || (int) $comment->comment_member_idx === (int) $comment->post_member_idx
+            || ! is_string($comment->content)) {
+            return false;
+        }
+
+        $content = $comment->content;
+
+        $normalized = $this->normalizeCommentForReward($content);
+        if ($normalized === null) return false;
+        $compact = preg_replace('/[\p{Z}\s]+/u', '', $normalized);
+        if (! is_string($compact) || preg_match_all('/\X/u', $compact) < 5
+            || preg_match('/^(\X{1,4})\1+$/u', $compact) === 1) {
+            return false;
+        }
+
+        $previousComments = DB::table('heart_histories as history')
+            ->join('fan_post_comments as previous_comment', 'previous_comment.idx', '=', 'history.comment_idx')
+            ->where('history.member_idx', $memberIdx)
+            ->where('history.reason', self::ACTIONS['comment_create']['reason'])
+            ->whereNotNull('history.comment_idx')
+            ->where('history.comment_idx', '<>', $commentIdx)
+            ->where('previous_comment.member_idx', $memberIdx)
+            ->pluck('previous_comment.content');
+
+        foreach ($previousComments as $previousContent) {
+            if (! is_string($previousContent)) continue;
+            $previousNormalized = $this->normalizeCommentForReward($previousContent);
+            if ($previousNormalized !== null && hash_equals($normalized, $previousNormalized)) return false;
+        }
+
+        return true;
+    }
+
+    private function normalizeCommentForReward(string $content): ?string
+    {
+        if (class_exists(\Normalizer::class)) {
+            $content = \Normalizer::normalize($content, \Normalizer::FORM_C) ?: $content;
+        }
+
+        $content = preg_replace('/[\p{Z}\s]+/u', ' ', trim($content));
+        if (! is_string($content)) return null;
+
+        return function_exists('mb_convert_case')
+            ? mb_convert_case($content, MB_CASE_FOLD, 'UTF-8')
+            : strtolower($content);
+    }
+
     public function awardPartnerBanner(int $memberIdx, int $bannerIdx): array
     {
-        $now = now();
+        $now = now('UTC');
         $operationKey = 'partner_banner:'.$bannerIdx.':'.$memberIdx.':'.$now->format('Ymd');
 
         try {
@@ -190,17 +276,34 @@ final class HeartRewardManager
         }
     }
 
-    public function creditManually(int $memberIdx, int $amount, string $reason, int $adminIdx): void
+    public function creditManually(int $memberIdx, int $amount, string $reason, int $adminIdx, string $operationKey): bool
     {
         $member = DB::table('members')->where('idx', $memberIdx)->whereNull('deleted_at')->lockForUpdate()->first(['idx', 'heart_balance']);
         abort_if($member === null, 404);
+
+        $existing = DB::table('heart_histories')->where('member_idx', $memberIdx)
+            ->where('operation_key', $operationKey)->first(['amount', 'actor_member_idx', 'memo']);
+        if ($existing !== null) {
+            abort_unless(
+                (int) $existing->amount === $amount
+                    && (int) $existing->actor_member_idx === $adminIdx
+                    && $existing->memo === $reason,
+                409,
+                '이미 사용된 하트 지급 요청입니다. 새 지급은 화면을 새로 연 뒤 진행해 주세요.'
+            );
+
+            return false;
+        }
+
         $balance = (int) $member->heart_balance + $amount;
         DB::table('members')->where('idx', $memberIdx)->update(['heart_balance' => $balance, 'updated_at' => now()]);
         DB::table('heart_histories')->insert([
             'member_idx' => $memberIdx, 'amount' => $amount, 'balance_after' => $balance,
             'reason' => 'admin_adjustment', 'vote_idx' => null, 'comment_idx' => null,
-            'reversal_of_history_idx' => null, 'operation_key' => 'admin_credit:'.Str::uuid(),
+            'reversal_of_history_idx' => null, 'operation_key' => $operationKey,
             'actor_member_idx' => $adminIdx, 'memo' => $reason, 'created_at' => now(),
         ]);
+
+        return true;
     }
 }

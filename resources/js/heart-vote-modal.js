@@ -10,6 +10,7 @@ if (modal) {
     const voteImage = modal.querySelector('[data-heart-vote-image]');
     const defaultVoteImage = voteImage.src;
     const formatter = new Intl.NumberFormat('en-US');
+    const randomDummyMode = modal.dataset.randomDummyMode === 'true';
     let returnFocus;
     let target = {};
     let requestKey = '';
@@ -31,15 +32,15 @@ if (modal) {
         const value = integerValue();
         const maximum = Number(modal.dataset.myHearts);
         let message = '';
-        if (value === null || value < 1) message = 'Enter a whole number of at least 1 Heart.';
-        else if (value > maximum) message = `You can vote up to ${formatter.format(maximum)} Hearts.`;
+        if (value === null || value < 1) message = window.idolRankingT('vote_integer');
+        else if (!randomDummyMode && value > maximum) message = window.idolRankingT('vote_max', { amount: formatter.format(maximum) });
         error.textContent = message;
         error.hidden = !message;
         input.toggleAttribute('aria-invalid', Boolean(message));
         submit.disabled = Boolean(message);
         presets.forEach((button) => button.classList.toggle('is-active', value === Number(button.dataset.heartPreset)));
         const amount = value && value > 0 ? formatter.format(value) : '0';
-        submitLabel.textContent = `Vote ${amount} ${value === 1 ? 'Heart' : 'Hearts'}`;
+        submitLabel.textContent = window.idolRankingT(value === 1 ? 'vote_label_one' : 'vote_label', { amount });
         return !message;
     };
     const setAmount = (amount) => {
@@ -65,11 +66,16 @@ if (modal) {
         modal.querySelector('[data-heart-vote-meta]').textContent = target.meta;
         modal.querySelector('[data-heart-vote-total]').textContent = formatter.format(number(trigger.dataset.voteTotal));
         modal.querySelector('[data-heart-vote-posts]').textContent = formatter.format(number(trigger.dataset.votePosts));
-        modal.querySelector('[data-heart-vote-limit]').textContent = formatter.format(maximum);
-        modal.querySelector('[data-heart-vote-balance]').textContent = formatter.format(maximum);
-        input.max = String(maximum);
-        presets.forEach((button) => { button.disabled = Number(button.dataset.heartPreset) > maximum; });
-        setAmount(maximum >= 1 ? 1 : 0);
+        if (!randomDummyMode) {
+            modal.querySelector('[data-heart-vote-balance]').textContent = formatter.format(maximum);
+            input.max = String(maximum);
+            presets.forEach((button) => { button.disabled = Number(button.dataset.heartPreset) > maximum; });
+            setAmount(maximum >= 1 ? 1 : 0);
+        } else {
+            input.removeAttribute('max');
+            presets.forEach((button) => { button.disabled = false; });
+            setAmount(1);
+        }
         returnFocus = trigger;
         modal.showModal();
         document.documentElement.classList.add('heart-vote-open');
@@ -142,17 +148,18 @@ if (modal) {
             const payload = await response.json().catch(() => ({}));
             if (!response.ok || !payload.success) {
                 const validationMessage = payload.errors?.heart_amount?.[0];
-                throw new Error(validationMessage || payload.message || 'Unable to submit the vote. Please try again.');
+                throw new Error(validationMessage || payload.message || window.idolRankingT('vote_failed'));
             }
 
             const balance = number(payload.data?.heart_balance);
             const monthlyTotal = number(payload.data?.monthly_vote_total);
-            modal.dataset.myHearts = String(balance);
-            modal.querySelector('[data-heart-vote-limit]').textContent = formatter.format(balance);
-            modal.querySelector('[data-heart-vote-balance]').textContent = formatter.format(balance);
-            document.querySelectorAll('[data-member-heart-balance]').forEach((element) => {
-                element.textContent = formatter.format(balance);
-            });
+            if (!randomDummyMode) {
+                modal.dataset.myHearts = String(balance);
+                modal.querySelector('[data-heart-vote-balance]').textContent = formatter.format(balance);
+                document.querySelectorAll('[data-member-heart-balance]').forEach((element) => {
+                    element.textContent = formatter.format(balance);
+                });
+            }
             if (target.month === payload.data?.vote_month) {
                 document.querySelectorAll('[data-heart-vote-open]').forEach((trigger) => {
                     if (trigger.dataset.voteTargetId === String(target.idx)) {
@@ -172,9 +179,11 @@ if (modal) {
             document.dispatchEvent(new CustomEvent('idolranking:notify', {
                 detail: {
                     type: 'success',
-                    title: 'Vote Complete!',
-                    message: `You voted ${formatter.format(number(payload.data?.heart_amount))} ${number(payload.data?.heart_amount) === 1 ? 'Heart' : 'Hearts'} for ${payload.data?.target_name || target.name}.`,
-                    detail: `Remaining Hearts: ${formatter.format(balance)}`,
+                    title: window.idolRankingT('vote_complete'),
+                    message: window.idolRankingT(number(payload.data?.heart_amount) === 1 ? 'vote_success_one' : 'vote_success', {
+                        amount: formatter.format(number(payload.data?.heart_amount)), name: payload.data?.target_name || target.name,
+                    }),
+                    detail: randomDummyMode ? '' : window.idolRankingT('remaining_hearts', { amount: formatter.format(balance) }),
                     duration: 2600,
                 },
             }));
@@ -184,8 +193,8 @@ if (modal) {
             modal.close();
         }).catch((exception) => {
             error.textContent = exception instanceof TypeError
-                ? 'Unable to submit the vote. Please try again.'
-                : (exception.message || 'Unable to submit the vote. Please try again.');
+                ? window.idolRankingT('vote_failed')
+                : (exception.message || window.idolRankingT('vote_failed'));
             error.hidden = false;
             isSubmitting = false;
             form.removeAttribute('aria-busy');

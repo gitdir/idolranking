@@ -4,6 +4,27 @@ namespace App\Support;
 
 final class Countries
 {
+    public static function localizedName(?string $countryCode, string $locale): ?string
+    {
+        static $countries = null;
+        $countries ??= self::all();
+
+        if ($countryCode === null || !array_key_exists(strtoupper($countryCode), $countries)) {
+            return null;
+        }
+
+        $code = strtoupper($countryCode);
+        $localized = class_exists(\Locale::class)
+            ? \Locale::getDisplayRegion('und_'.$code, $locale)
+            : '';
+
+        return $localized !== '' && $localized !== 'und_'.$code
+            ? $localized
+            : ((str_starts_with(str_replace('-', '_', $locale), 'ko'))
+                ? (self::nativeNames()[$code] ?? $countries[$code])
+                : $countries[$code]);
+    }
+
     public static function all(): array
     {
         $countries = [

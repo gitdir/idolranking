@@ -4,7 +4,7 @@
     @isset($heading)
         {{ $heading }}
     @else
-        <h2 id="{{ $headingId }}">Latest Fan Posts</h2>
+        <h2 id="{{ $headingId }}">{{ __('ui.latest_fan_posts') }}</h2>
     @endisset
     @if (count($posts))
         <div class="fan-post-grid">

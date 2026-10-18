@@ -10,7 +10,7 @@ class PublicFanPostController extends Controller
     public function __invoke(Request $request, PublicFanPostList $fanPostList)
     {
         $sort = $request->string('sort')->toString();
-        if (!in_array($sort, ['latest', 'liked', 'commented'], true)) {
+        if (!in_array($sort, ['latest', 'monthly_liked', 'liked', 'commented'], true)) {
             $sort = 'latest';
         }
 

@@ -13,7 +13,9 @@ class HeartVotingTest extends TestCase
             $this->markTestSkipped('The isolated database tests require pdo_sqlite.');
         }
 
-        DB::statement("CREATE TABLE members (idx INTEGER PRIMARY KEY, member_code TEXT, heart_balance INTEGER DEFAULT 0, member_level INTEGER DEFAULT 1, is_dummy INTEGER DEFAULT 0, status TEXT DEFAULT 'active', deleted_at TEXT, updated_at TEXT)");
+        DB::statement("CREATE TABLE members (idx INTEGER PRIMARY KEY, member_code TEXT, email TEXT, nickname TEXT, country_code TEXT, profile_image_path TEXT, heart_balance INTEGER DEFAULT 0, member_level INTEGER DEFAULT 1, is_dummy INTEGER DEFAULT 0, status TEXT DEFAULT 'active', deleted_at TEXT, updated_at TEXT)");
+        DB::statement('CREATE TABLE admin_activity_logs (idx INTEGER PRIMARY KEY AUTOINCREMENT, actor_member_idx INTEGER, action TEXT, target_type TEXT, target_idx INTEGER, reason TEXT, summary TEXT, created_at TEXT)');
+        DB::statement("CREATE TABLE admin_dummy_activity_requests (idx INTEGER PRIMARY KEY AUTOINCREMENT, actor_member_idx INTEGER, member_idx INTEGER, action_code TEXT, request_key TEXT, payload_hash TEXT, result_type TEXT, result_idx INTEGER, created_at TEXT, completed_at TEXT, updated_at TEXT, UNIQUE(actor_member_idx, action_code, request_key))");
         DB::statement("CREATE TABLE idols (idx INTEGER PRIMARY KEY, name TEXT, type TEXT, status TEXT DEFAULT 'active')");
         DB::statement("CREATE TABLE idol_votes (idx INTEGER PRIMARY KEY AUTOINCREMENT, member_idx INTEGER, actor_member_idx INTEGER, idol_idx INTEGER, heart_amount INTEGER, request_key TEXT, created_at TEXT, UNIQUE (member_idx, request_key))");
         DB::statement("CREATE TABLE heart_histories (idx INTEGER PRIMARY KEY AUTOINCREMENT, member_idx INTEGER, amount INTEGER, balance_after INTEGER, reason TEXT, vote_idx INTEGER UNIQUE, comment_idx INTEGER, reversal_of_history_idx INTEGER, operation_key TEXT, actor_member_idx INTEGER, memo TEXT, created_at TEXT, UNIQUE (member_idx, operation_key))");
@@ -114,6 +116,172 @@ class HeartVotingTest extends TestCase
         $this->assertDatabaseHas('idol_votes', ['member_idx' => 3, 'actor_member_idx' => 3]);
     }
 
+    public function test_random_mode_vote_with_sufficient_balance_does_not_credit_extra_hearts_and_replays_once(): void
+    {
+        $this->database();
+        DB::table('members')->where('idx', 3)->update(['heart_balance' => 150]);
+        $request = [
+            'idol_idx' => 10, 'heart_amount' => 100, 'request_key' => 'random-vote-request-key-0001',
+        ];
+
+        $this->withSession(['member_idx' => 2, \App\Support\RandomDummyActivity::SESSION_KEY => true])
+            ->postJson('/votes', $request)->assertCreated()->assertJsonPath('data.heart_balance', 50);
+        $vote = DB::table('idol_votes')->first();
+        $this->assertSame(3, (int) $vote->member_idx);
+        $this->assertSame(2, (int) $vote->actor_member_idx);
+        $this->assertSame(50, (int) DB::table('members')->where('idx', 3)->value('heart_balance'));
+        $this->assertSame(40, (int) DB::table('members')->where('idx', 2)->value('heart_balance'));
+        $this->assertDatabaseHas('heart_histories', [
+            'member_idx' => 3, 'actor_member_idx' => 2, 'amount' => -100,
+            'operation_key' => 'vote:'.$vote->idx,
+        ]);
+
+        $this->postJson('/votes', $request)->assertOk()->assertJsonPath('data.duplicate', true);
+        $this->assertSame(1, DB::table('idol_votes')->count());
+        $this->assertSame(1, DB::table('heart_histories')->count());
+        $this->assertSame(50, (int) DB::table('members')->where('idx', 3)->value('heart_balance'));
+        $this->assertSame(0, DB::table('heart_histories')->where('reason', 'random_vote_topup')->count());
+    }
+
+    public function test_random_mode_credits_only_a_partial_shortage_and_replay_does_not_credit_again(): void
+    {
+        $this->database();
+        $request = ['idol_idx' => 10, 'heart_amount' => 100, 'request_key' => 'random-vote-partial-shortage-01'];
+
+        $this->withSession(['member_idx' => 2, \App\Support\RandomDummyActivity::SESSION_KEY => true])
+            ->postJson('/votes', $request)->assertCreated()->assertJsonPath('data.heart_balance', 0);
+        $reservation = DB::table('admin_dummy_activity_requests')->first();
+        $vote = DB::table('idol_votes')->first();
+        $this->assertSame(3, (int) $reservation->member_idx);
+        $this->assertSame(0, (int) DB::table('members')->where('idx', 3)->value('heart_balance'));
+        $this->assertDatabaseHas('heart_histories', [
+            'member_idx' => 3, 'actor_member_idx' => 2, 'amount' => 70,
+            'balance_after' => 100, 'reason' => 'random_vote_topup',
+            'operation_key' => 'random_dummy_vote_topup:'.$reservation->idx,
+        ]);
+        $this->assertDatabaseHas('heart_histories', [
+            'member_idx' => 3, 'actor_member_idx' => 2, 'amount' => -100,
+            'balance_after' => 0, 'reason' => 'vote', 'vote_idx' => $vote->idx,
+        ]);
+
+        $this->postJson('/votes', $request)->assertOk()->assertJsonPath('data.duplicate', true);
+        $this->assertSame(2, DB::table('heart_histories')->count());
+        $this->assertSame(1, DB::table('idol_votes')->count());
+        $this->assertSame(40, (int) DB::table('members')->where('idx', 2)->value('heart_balance'));
+    }
+
+    public function test_random_mode_credits_the_full_shortage_from_zero_balance(): void
+    {
+        $this->database();
+        DB::table('members')->where('idx', 3)->update(['heart_balance' => 0]);
+        $request = ['idol_idx' => 10, 'heart_amount' => 100, 'request_key' => 'random-vote-zero-balance-0001'];
+
+        $this->withSession(['member_idx' => 2, \App\Support\RandomDummyActivity::SESSION_KEY => true])
+            ->postJson('/votes', $request)->assertCreated()->assertJsonPath('data.heart_balance', 0);
+
+        $reservation = DB::table('admin_dummy_activity_requests')->first();
+        $this->assertDatabaseHas('heart_histories', [
+            'member_idx' => 3, 'actor_member_idx' => 2, 'amount' => 100,
+            'balance_after' => 100, 'reason' => 'random_vote_topup',
+            'operation_key' => 'random_dummy_vote_topup:'.$reservation->idx,
+        ]);
+        $this->assertSame(0, (int) DB::table('members')->where('idx', 3)->value('heart_balance'));
+        $this->assertSame(40, (int) DB::table('members')->where('idx', 2)->value('heart_balance'));
+    }
+
+    public function test_failed_random_vote_retry_keeps_the_reserved_dummy_and_completes_once(): void
+    {
+        $this->database();
+        DB::table('members')->insert([
+            'idx' => 4, 'member_code' => 'dummyMember2', 'email' => 'dummy2@example.test', 'nickname' => 'Dummy 2',
+            'heart_balance' => 0, 'member_level' => 1, 'is_dummy' => 1, 'status' => 'active',
+        ]);
+        DB::table('members')->where('idx', 3)->update(['heart_balance' => 0]);
+        $payload = ['idol_idx' => 10, 'heart_amount' => 100, 'request_key' => 'random-vote-failure-retry-001'];
+
+        DB::statement("CREATE TRIGGER fail_random_vote BEFORE INSERT ON idol_votes BEGIN SELECT RAISE(ABORT, 'simulated vote insert failure'); END");
+        $this->withoutExceptionHandling();
+        try {
+            $this->withSession(['member_idx' => 2, \App\Support\RandomDummyActivity::SESSION_KEY => true])
+                ->postJson('/votes', $payload);
+            $this->fail('The simulated vote insertion failure should abort the activity transaction.');
+        } catch (\Illuminate\Database\QueryException) {
+            // Expected: activity data rolls back while the earlier reservation remains committed.
+        }
+
+        DB::statement('DROP TRIGGER fail_random_vote');
+        $reservation = DB::table('admin_dummy_activity_requests')->where('request_key', $payload['request_key'])->first();
+        $this->assertNotNull($reservation);
+        $this->assertNull($reservation->completed_at);
+        $this->assertContains((int) $reservation->member_idx, [3, 4]);
+        $this->assertSame(0, DB::table('idol_votes')->count());
+        $this->assertSame(0, (int) DB::table('members')->where('idx', 3)->value('heart_balance'));
+        $this->assertSame(0, (int) DB::table('members')->where('idx', 4)->value('heart_balance'));
+        $this->assertSame(0, DB::table('heart_histories')->count());
+
+        $this->withExceptionHandling();
+        $this->withSession(['member_idx' => 2, \App\Support\RandomDummyActivity::SESSION_KEY => true])
+            ->postJson('/votes', $payload)->assertCreated();
+
+        $vote = DB::table('idol_votes')->first();
+        $completedReservation = DB::table('admin_dummy_activity_requests')->where('idx', $reservation->idx)->first();
+        $this->assertSame((int) $reservation->member_idx, (int) $vote->member_idx);
+        $this->assertSame((int) $reservation->member_idx, (int) $completedReservation->member_idx);
+        $this->assertNotNull($completedReservation->completed_at);
+        $this->assertSame(2, DB::table('heart_histories')->count());
+        $this->assertDatabaseHas('heart_histories', [
+            'member_idx' => (int) $reservation->member_idx,
+            'actor_member_idx' => 2,
+            'amount' => 100,
+            'reason' => 'random_vote_topup',
+            'operation_key' => 'random_dummy_vote_topup:'.$reservation->idx,
+        ]);
+
+        $this->postJson('/votes', $payload)->assertOk()->assertJsonPath('data.duplicate', true);
+        $this->assertSame(1, DB::table('idol_votes')->count());
+        $this->assertSame(2, DB::table('heart_histories')->count());
+    }
+
+    public function test_random_mode_keeps_distinct_request_tokens_as_independent_reservations(): void
+    {
+        $this->database();
+        DB::table('members')->insert([
+            'idx' => 4, 'member_code' => 'dummyMember2', 'email' => 'dummy2@example.test', 'nickname' => 'Dummy 2',
+            'heart_balance' => 30, 'member_level' => 1, 'is_dummy' => 1, 'status' => 'active',
+        ]);
+        $session = ['member_idx' => 2, \App\Support\RandomDummyActivity::SESSION_KEY => true];
+
+        $this->withSession($session)->postJson('/votes', [
+            'idol_idx' => 10, 'heart_amount' => 1, 'request_key' => 'random-vote-independent-key-01',
+        ])->assertCreated();
+        $this->postJson('/votes', [
+            'idol_idx' => 11, 'heart_amount' => 1, 'request_key' => 'random-vote-independent-key-02',
+        ])->assertCreated();
+
+        $reservations = DB::table('admin_dummy_activity_requests')->where('action_code', 'heart_vote')->orderBy('idx')->get();
+        $this->assertCount(2, $reservations);
+        $this->assertNotSame($reservations[0]->request_key, $reservations[1]->request_key);
+        $this->assertContains((int) $reservations[0]->member_idx, [3, 4]);
+        $this->assertContains((int) $reservations[1]->member_idx, [3, 4]);
+        $this->assertSame(2, DB::table('idol_votes')->count());
+        $this->assertSame(2, DB::table('heart_histories')->count());
+    }
+
+    public function test_random_mode_rejects_safely_when_no_active_dummy_is_available(): void
+    {
+        $this->database();
+        DB::table('members')->where('idx', 3)->update(['status' => 'suspended']);
+
+        $this->withSession(['member_idx' => 2, \App\Support\RandomDummyActivity::SESSION_KEY => true])
+            ->postJson('/votes', [
+                'idol_idx' => 10, 'heart_amount' => 5, 'request_key' => 'random-vote-no-dummy-0001',
+            ])->assertUnprocessable()->assertJsonValidationErrors('random_dummy');
+
+        $this->assertSame(0, DB::table('idol_votes')->count());
+        $this->assertSame(0, DB::table('heart_histories')->count());
+        $this->assertSame(0, DB::table('admin_dummy_activity_requests')->count());
+    }
+
     public function test_admin_can_vote_as_selected_dummy_without_changing_admin_identity(): void
     {
         $this->database();
@@ -133,6 +301,28 @@ class HeartVotingTest extends TestCase
         $this->assertDatabaseHas('idol_votes', ['idx' => $response->json('data.vote_idx'), 'member_idx' => 3, 'actor_member_idx' => 2]);
         $this->assertDatabaseHas('heart_histories', ['member_idx' => 3, 'actor_member_idx' => 2, 'amount' => -5]);
         $this->assertSame(2, (int) session('member_idx'));
+    }
+
+    public function test_manual_dummy_voting_does_not_receive_random_mode_shortage_credit(): void
+    {
+        $this->database();
+        DB::table('members')->where('idx', 3)->update(['heart_balance' => 0]);
+
+        $this->withSession(['member_idx' => 2])->post(route('admin.acting-dummy-member'), [
+            'dummy_member_idx' => 3,
+        ])->assertRedirect(route('home'));
+
+        $this->postJson('/votes', [
+            'idol_idx' => 10,
+            'heart_amount' => 5,
+            'request_key' => 'vote-request-manual-dummy-shortage',
+        ])->assertUnprocessable()->assertJsonValidationErrors('heart_amount');
+
+        $this->assertSame(0, (int) DB::table('members')->where('idx', 3)->value('heart_balance'));
+        $this->assertSame(40, (int) DB::table('members')->where('idx', 2)->value('heart_balance'));
+        $this->assertSame(0, DB::table('idol_votes')->count());
+        $this->assertSame(0, DB::table('heart_histories')->count());
+        $this->assertSame(0, DB::table('admin_dummy_activity_requests')->count());
     }
 
     public function test_admin_cannot_select_a_normal_member_or_another_admin(): void

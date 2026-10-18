@@ -18,7 +18,7 @@ class PasswordResetLink extends Mailable
 
     public function envelope(): Envelope
     {
-        return new Envelope(subject: 'IDOL RANKING - Reset Your Password');
+        return new Envelope(subject: __('messages.password_reset_subject'));
     }
 
     public function content(): Content

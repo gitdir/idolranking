@@ -32,22 +32,30 @@ class MemberFanPostController extends Controller
         }
 
         $sort = $request->string('sort')->toString();
-        if (!in_array($sort, ['latest', 'liked', 'commented'], true)) {
+        if (!in_array($sort, ['latest', 'monthly_liked', 'liked', 'commented'], true)) {
             $sort = 'latest';
         }
 
+        $monthStart = now('UTC')->startOfMonth();
         $query = DB::table('fan_posts as p')
             ->join('idols as i', 'i.idx', '=', 'p.idol_idx')
             ->where('p.member_idx', $member->idx)
             ->where('p.status', 'published')
             ->whereNull('p.deleted_at')
             ->where('i.status', 'active')
-            ->select(['p.idx', 'p.media_type', 'p.image_path', 'p.youtube_video_id', 'p.content', 'p.view_count', 'p.created_at'])
+            ->select(['p.idx', 'p.media_type', 'p.image_path', 'p.youtube_video_id', 'p.content', 'p.view_count', 'p.created_at', 'p.language_code'])
             ->selectSub(
                 DB::table('fan_post_likes as l')
                     ->selectRaw('COUNT(*)')
                     ->whereColumn('l.fan_post_idx', 'p.idx'),
                 'like_count'
+            )
+            ->selectSub(
+                DB::table('fan_post_likes as l')->selectRaw('COUNT(*)')
+                    ->whereColumn('l.fan_post_idx', 'p.idx')
+                    ->where('l.created_at', '>=', $monthStart)
+                    ->where('l.created_at', '<', $monthStart->copy()->addMonth()),
+                'monthly_like_count'
             )
             ->selectSub(
                 DB::table('fan_post_comments as c')
@@ -59,6 +67,7 @@ class MemberFanPostController extends Controller
             );
 
         match ($sort) {
+            'monthly_liked' => $query->orderByDesc('monthly_like_count')->orderByDesc('p.created_at')->orderByDesc('p.idx'),
             'liked' => $query->orderByDesc('like_count')->orderByDesc('p.created_at')->orderByDesc('p.idx'),
             'commented' => $query->orderByDesc('comment_count')->orderByDesc('p.created_at')->orderByDesc('p.idx'),
             default => $query->orderByDesc('p.created_at')->orderByDesc('p.idx'),
@@ -79,6 +88,9 @@ class MemberFanPostController extends Controller
             'youtube_video_id' => $post->youtube_video_id,
             'image_url' => \App\Support\ManagedImageStorage::publicUrl($post->image_path),
             'fan_post_idx' => (int) $post->idx,
+            'monthly_like_count' => (int) $post->monthly_like_count,
+            'country_code' => $member->country_code,
+            'language_code' => $post->language_code,
         ]);
 
         $publishedPosts = DB::table('fan_posts as p')

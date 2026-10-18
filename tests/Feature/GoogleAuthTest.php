@@ -36,7 +36,7 @@ class GoogleAuthTest extends TestCase
         DB::statement("CREATE TABLE idol_group_members (individual_idx INTEGER, group_idx INTEGER, PRIMARY KEY (individual_idx, group_idx))");
         DB::statement("CREATE TABLE idol_votes (idx INTEGER PRIMARY KEY, idol_idx INTEGER, heart_amount INTEGER, created_at TEXT)");
         DB::statement("CREATE TABLE fan_posts (idx INTEGER PRIMARY KEY, idol_idx INTEGER, member_idx INTEGER, status TEXT DEFAULT 'published', deleted_at TEXT)");
-        DB::statement('CREATE TABLE fan_post_likes (fan_post_idx INTEGER, member_idx INTEGER)');
+        DB::statement('CREATE TABLE fan_post_likes (fan_post_idx INTEGER, member_idx INTEGER, created_at TEXT)');
         DB::statement("CREATE TABLE fan_post_comments (idx INTEGER PRIMARY KEY, fan_post_idx INTEGER, status TEXT DEFAULT 'published', deleted_at TEXT)");
         DB::statement("CREATE TABLE heart_reward_settings (idx INTEGER PRIMARY KEY AUTOINCREMENT, action_code TEXT UNIQUE, heart_amount INTEGER, daily_limit INTEGER DEFAULT 0, is_enabled INTEGER DEFAULT 1)");
         DB::statement("CREATE TABLE heart_histories (idx INTEGER PRIMARY KEY AUTOINCREMENT, member_idx INTEGER, amount INTEGER, balance_after INTEGER, reason TEXT, vote_idx INTEGER, operation_key TEXT, created_at TEXT, UNIQUE (member_idx, operation_key))");
@@ -145,7 +145,7 @@ class GoogleAuthTest extends TestCase
         ]];
 
         $response = $this->withSession($session)->post('/auth/google/complete', [
-            'nickname' => 'global_fan', 'country_code' => 'KR',
+            'nickname' => 'global_fan', 'country_code' => 'KR', 'member_level' => 10, 'is_dummy' => 1,
         ]);
 
         $response->assertRedirect('/fan-post/7?sort=latest')->assertSessionHas('member_idx')->assertSessionMissing('google_signup');

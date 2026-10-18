@@ -14,20 +14,23 @@ class RankingController extends Controller
         abort_unless(in_array($type, ['idol', 'group'], true), 404);
 
         $gender = in_array($request->query('gender'), ['boy', 'girl'], true) ? $request->query('gender') : 'all';
-        $currentMonth = now()->startOfMonth();
+        $currentMonth = now('UTC')->startOfMonth();
         $month = $this->month($request->query('month'), $currentMonth);
         $databaseGender = match ($gender) { 'boy' => 'male', 'girl' => 'female', default => null };
         $idols = $publicRanking->ranking($type === 'idol' ? 'individual' : 'group', $databaseGender, $month);
         $featured = $idols[0] ?? null;
-        $featuredImages = $featured ? $publicRanking->popularImages((int) $featured['idx']) : [];
+        $featuredImages = $featured
+            ? $publicRanking->representativeImages((int) $featured['idx'], $featured['image_url'] ?? null)
+            : [];
         $topVoters = $featured ? $publicRanking->topVoters((int) $featured['idx'], $month) : [];
 
         $canonicalParameters = [];
         if ($gender !== 'all') $canonicalParameters['gender'] = $gender;
         if (!$month->equalTo($currentMonth)) $canonicalParameters['month'] = $month->format('Y-m');
+        $rankingTitle = $type === 'idol' ? __('ui.idol').' '.__('ui.ranking') : __('ui.group').' '.__('ui.ranking');
 
         return view('rankings.index', [
-            'title' => $type === 'idol' ? 'Idol Ranking' : 'Group Ranking',
+            'title' => $rankingTitle,
             'theme' => $type === 'idol' ? 'blue' : 'pink',
             'activeMenu' => 'ranking-'.$type,
             'heroType' => $type === 'idol'
@@ -45,7 +48,7 @@ class RankingController extends Controller
             'featuredImages' => $featuredImages,
             'topVoters' => $topVoters,
             'seo' => [
-                'title' => ($type === 'idol' ? 'Idol Ranking' : 'Group Ranking').' | IDOL RANKING',
+                'title' => $rankingTitle.' | IDOL RANKING',
                 'url' => route('ranking.'.$type, $canonicalParameters),
             ],
         ]);
@@ -57,7 +60,7 @@ class RankingController extends Controller
             return $currentMonth;
         }
 
-        $month = Carbon::create((int) $matches[1], (int) $matches[2], 1)->startOfDay();
+        $month = Carbon::create((int) $matches[1], (int) $matches[2], 1, 0, 0, 0, 'UTC')->startOfDay();
         return $month->gt($currentMonth) ? $currentMonth : $month;
     }
 }

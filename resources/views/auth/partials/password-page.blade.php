@@ -1,6 +1,6 @@
 @php
-    $title = $reset ? 'Reset Your Password' : 'Forgot Password?';
-    $description = $reset ? 'Create a new password for your account.' : "Enter your email address and we'll send you a link to reset your password.";
+    $title = $reset ? __('ui.reset_your_password') : __('ui.forgot_password_title');
+    $description = $reset ? __('ui.create_new_password_description') : __('ui.reset_email_description');
 @endphp
 <section class="password-page" aria-labelledby="password-page-title">
     <header class="password-page-heading">
@@ -21,38 +21,38 @@
             <path d="m12 78-6-4m8 21-8 2m199-22 6-5m-6 24 8 2" stroke="#ff70b9" stroke-width="4" stroke-linecap="round"/>
         </svg>
         <h2>{{ $title }}</h2>
-        <p class="password-card-description">{{ $reset ? 'Enter your new password below.' : $description }}</p>
+        <p class="password-card-description">{{ $reset ? __('ui.enter_new_password_below') : $description }}</p>
         <form class="password-preview-fields password-page-form" data-password-page-form method="post"
               action="{{ $reset ? route('password.update') : route('password.email') }}">
             @csrf
             @if ($reset)
                 <input type="hidden" name="email" value="{{ $resetEmail ?? '' }}">
                 <input type="hidden" name="token" data-reset-token>
-                @foreach (['password' => 'New Password', 'password_confirmation' => 'Confirm New Password'] as $key => $label)
+                @foreach (['password' => __('ui.new_password'), 'password_confirmation' => __('ui.confirm_new_password')] as $key => $label)
                     @php($inputId = $key === 'password' ? 'password-new' : 'password-confirm')
                     <div class="password-page-field">
                         <label for="{{ $inputId }}">{{ $label }} <span>*</span></label>
                         <div class="password-page-input">
                             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true"><rect x="5" y="10" width="14" height="11" rx="2"/><path d="M8 10V6a4 4 0 0 1 8 0v4"/></svg>
-                            <input id="{{ $inputId }}" name="{{ $key }}" type="password" autocomplete="new-password" placeholder="{{ $key === 'password' ? 'Enter new password' : 'Confirm new password' }}" minlength="8" maxlength="64" required disabled>
-                            <button type="button" class="password-page-eye" aria-controls="{{ $inputId }}" aria-label="Show {{ strtolower($label) }}" aria-pressed="false"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true"><path d="M2 12s4-7 10-7 10 7 10 7-4 7-10 7S2 12 2 12Z"/><circle cx="12" cy="12" r="3"/></svg></button>
+                            <input id="{{ $inputId }}" name="{{ $key }}" type="password" autocomplete="new-password" placeholder="{{ $key === 'password' ? __('ui.enter_new_password') : __('ui.confirm_new_password_placeholder') }}" minlength="8" maxlength="64" required disabled>
+                            <button type="button" class="password-page-eye" aria-controls="{{ $inputId }}" aria-label="{{ __('js.password_show') }}" aria-pressed="false"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true"><path d="M2 12s4-7 10-7 10 7 10 7-4 7-10 7S2 12 2 12Z"/><circle cx="12" cy="12" r="3"/></svg></button>
                         </div>
-                        @if ($key === 'password')<p class="password-page-hint">Use at least 8 characters with letters, numbers, and symbols.</p>@endif
+                        @if ($key === 'password')<p class="password-page-hint">{{ __('ui.password_reset_hint') }}</p>@endif
                     </div>
                 @endforeach
             @else
                 <div class="password-page-field">
-                    <label for="password-email">Email Address <span>*</span></label>
-                    <div class="password-page-input"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="m3 6 9 7 9-7"/></svg><input id="password-email" name="email" type="email" autocomplete="email" maxlength="254" placeholder="Enter your email address" required></div>
+                    <label for="password-email">{{ __('ui.email_address') }} <span>*</span></label>
+                    <div class="password-page-input"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="m3 6 9 7 9-7"/></svg><input id="password-email" name="email" type="email" autocomplete="email" maxlength="254" placeholder="{{ __('ui.enter_email') }}" required></div>
                 </div>
             @endif
             <p class="password-page-message" data-password-page-message role="status" aria-live="polite">@if(!$reset && session('status')){{ session('status') }}@endif</p>
-            <button type="submit" class="password-page-submit" @if($reset) disabled @endif>{{ $reset ? 'Reset Password' : 'Send Reset Link' }}</button>
+            <button type="submit" class="password-page-submit" @if($reset) disabled @endif>{{ $reset ? __('ui.reset_password_button') : __('ui.send_reset_link') }}</button>
         </form>
-        <div class="password-page-divider"><span>Back to</span></div>
-        <button type="button" class="password-page-sign-in" data-sign-in-open aria-haspopup="dialog" aria-controls="sign-in-modal"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M20 12H4m7-7-7 7 7 7"/></svg>Sign In</button>
+        <div class="password-page-divider"><span>{{ __('ui.back_to') }}</span></div>
+        <button type="button" class="password-page-sign-in" data-sign-in-open aria-haspopup="dialog" aria-controls="sign-in-modal"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M20 12H4m7-7-7 7 7 7"/></svg>{{ __('ui.sign_in') }}</button>
     </div>
-    <footer class="password-page-footer"><strong>IDOL RANKING</strong><p>&copy; {{ date('Y') }} IDOL RANKING. All rights reserved.</p></footer>
+    <footer class="password-page-footer"><strong>IDOL RANKING</strong><p>&copy; {{ date('Y') }} IDOL RANKING. {{ __('ui.copyright') }}</p></footer>
 </section>
 <script>
     (() => {
@@ -67,7 +67,7 @@
             form.querySelectorAll('input[type="password"], button[type="submit"]').forEach((control) => {
                 control.disabled = !/^[a-fA-F0-9]{64}$/.test(token);
             });
-            if (!token) message.textContent = 'This password reset link is invalid or has expired. Please request a new one.';
+            if (!token) message.textContent = window.idolRankingT('reset_invalid');
         }
 
         form.addEventListener('submit', async (event) => {
@@ -83,7 +83,7 @@
                     headers: { 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
                 });
                 const result = await response.json();
-                message.textContent = result.message || 'The request could not be completed. Please try again.';
+                message.textContent = result.message || window.idolRankingT('reset_failed');
                 if (result.success && resetTokenInput) {
                     form.querySelectorAll('input').forEach((input) => { input.disabled = true; });
                     window.history.replaceState(null, '', window.location.pathname + window.location.search);
@@ -91,7 +91,7 @@
                     submit.disabled = false;
                 }
             } catch {
-                message.textContent = 'The request could not be completed. Please try again later.';
+                message.textContent = window.idolRankingT('reset_failed_later');
                 submit.disabled = false;
             }
         });
@@ -104,7 +104,7 @@
                 const visible = input.type === 'password';
                 input.type = visible ? 'text' : 'password';
                 button.setAttribute('aria-pressed', String(visible));
-                button.setAttribute('aria-label', `${visible ? 'Hide' : 'Show'} ${input.id === 'password-new' ? 'new password' : 'confirm new password'}`);
+                button.setAttribute('aria-label', window.idolRankingT(visible ? 'password_hide' : 'password_show'));
             });
         });
     @endif

@@ -4,6 +4,7 @@ namespace App\Support;
 
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\ValidationException;
 
@@ -38,7 +39,9 @@ final class ManagedImageStorage
         // Individual idols and groups share the idols table, so this protects both types.
         $isStillReferenced = DB::table('idols')->where('image_path', $imagePath)->exists()
             || DB::table('idol_registration_requests')->where('image_path', $imagePath)->exists()
-            || DB::table('members')->where('profile_image_path', $imagePath)->exists();
+            || DB::table('members')->where('profile_image_path', $imagePath)->exists()
+            || (Schema::hasTable('idol_profile_image_reports')
+                && DB::table('idol_profile_image_reports')->where('reported_image_path', $imagePath)->exists());
 
         if (!$isStillReferenced) {
             Storage::disk('public')->delete(substr($imagePath, strlen(self::PUBLIC_PREFIX)));
