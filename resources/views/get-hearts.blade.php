@@ -59,7 +59,7 @@
                         <span><strong>{{ $activity->name }}</strong><small>{{ $activity->description }}</small></span>
                     </div>
                     <div class="get-hearts-reward">
-                        <strong><svg aria-hidden="true"><use href="#icon-heart"/></svg>@if($activity->code === 'daily_attendance' && $activity->min_heart_amount !== $activity->max_heart_amount)+ {{ number_format($activity->min_heart_amount) }}–{{ number_format($activity->max_heart_amount) }}@else+ {{ number_format($activity->heart_amount) }}@endif</strong>
+                        <strong><svg aria-hidden="true"><use href="#icon-heart"/></svg>@if($activity->code === 'daily_attendance' && $activity->min_heart_amount !== $activity->max_heart_amount)+ {{ number_format($activity->min_heart_amount) }}~{{ number_format($activity->max_heart_amount) }}@else+ {{ number_format($activity->heart_amount) }}@endif</strong>
                         <small>@if(!$activity->is_enabled){{ __('ui.unavailable') }} @elseif($activity->daily_limit > 0){{ __('ui.per_day', ['limit' => number_format($activity->daily_limit)]) }} @else {{ __('ui.no_daily_limit') }} @endif</small>
                     </div>
                     @if($activity->daily_limit > 0)
