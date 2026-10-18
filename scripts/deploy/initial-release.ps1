@@ -249,7 +249,7 @@ function Invoke-BoundedProcess {
                 $timedOut = $true
             }
             else {
-                $writeTask.GetAwaiter().GetResult()
+                $null = $writeTask.GetAwaiter().GetResult()
             }
         }
 
