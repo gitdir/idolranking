@@ -207,7 +207,7 @@ function Assert-LocalInputs {
 function Invoke-BoundedProcess {
     param(
         [Parameter(Mandatory = $true)][string]$FileName,
-        [Parameter(Mandatory = $true)][string[]]$Arguments,
+        [Parameter(Mandatory = $true)][AllowEmptyString()][string[]]$Arguments,
         [Parameter(Mandatory = $true)][ValidateRange(1, 3600)][int]$TimeoutSeconds,
         [string]$Operation = 'Native command',
         [byte[]]$StandardInputBytes
