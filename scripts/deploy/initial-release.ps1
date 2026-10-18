@@ -101,14 +101,14 @@ function Assert-SshIdentity {
     $derived = $keyResult.StdOut.Trim()
     $derivedParts = Get-SshPublicKeyParts -Text $derived
     $savedParts = Get-SshPublicKeyParts -Text (Get-Content -LiteralPath "$SshKey.pub" -Raw)
-    if ($keyResult.ExitCode -ne 0 -or $null -eq $derivedParts -or $null -eq $savedParts -or
+    if ($keyResult.TimedOut -or $keyResult.ExitCode -ne 0 -or $null -eq $derivedParts -or $null -eq $savedParts -or
         $derivedParts.Type -cne $savedParts.Type -or $derivedParts.Data -cne $savedParts.Data) {
         throw 'Dedicated SSH key-pair verification failed.'
     }
 
     $hostResult = Invoke-BoundedProcess -FileName $keygen -Arguments @('-F', '[145.79.26.175]:65002', '-f', $KnownHosts) `
         -TimeoutSeconds 15 -Operation 'SSH host-key lookup'
-    if ($hostResult.ExitCode -ne 0 -or -not $hostResult.StdOut) { throw 'The production host key is not pinned in known_hosts.' }
+    if ($hostResult.TimedOut -or $hostResult.ExitCode -ne 0 -or -not $hostResult.StdOut) { throw 'The production host key is not pinned in known_hosts.' }
 }
 
 function Assert-LocalInputs {
@@ -233,6 +233,7 @@ function Invoke-BoundedProcess {
     $process.StartInfo = $startInfo
     $timer = [System.Diagnostics.Stopwatch]::StartNew()
     $started = $false
+    $timedOut = $false
     try {
         if (-not $process.Start()) { throw "Could not start $Operation." }
         $started = $true
@@ -245,23 +246,32 @@ function Invoke-BoundedProcess {
             if (-not $writeTask.Wait($remaining)) {
                 try { $process.Kill() } catch { }
                 try { $null = $process.WaitForExit(5000) } catch { }
-                throw "$Operation timed out after $TimeoutSeconds seconds while sending input; the process was terminated."
+                $timedOut = $true
             }
-            $writeTask.GetAwaiter().GetResult()
-        }
-        $process.StandardInput.Close()
-
-        $remaining = [Math]::Max(1, ($TimeoutSeconds * 1000) - [int]$timer.ElapsedMilliseconds)
-        if (-not $process.WaitForExit($remaining)) {
-            try { $process.Kill() } catch { }
-            try { $null = $process.WaitForExit(5000) } catch { }
-            throw "$Operation timed out after $TimeoutSeconds seconds; the process was terminated."
+            else {
+                $writeTask.GetAwaiter().GetResult()
+            }
         }
 
+        if (-not $timedOut) {
+            $process.StandardInput.Close()
+            $remaining = [Math]::Max(1, ($TimeoutSeconds * 1000) - [int]$timer.ElapsedMilliseconds)
+            if (-not $process.WaitForExit($remaining)) {
+                try { $process.Kill() } catch { }
+                try { $null = $process.WaitForExit(5000) } catch { }
+                $timedOut = $true
+            }
+        }
+
+        $stdout = if ($stdoutTask.Wait(5000)) { $stdoutTask.GetAwaiter().GetResult() } else { '' }
+        $stderr = if ($stderrTask.Wait(5000)) { $stderrTask.GetAwaiter().GetResult() } else { '' }
+        if (-not $process.HasExited) { $timedOut = $true }
+        $exitCode = if ($process.HasExited -and -not $timedOut) { $process.ExitCode } else { $null }
         return [pscustomobject]@{
-            ExitCode = $process.ExitCode
-            StdOut = $stdoutTask.GetAwaiter().GetResult()
-            StdErr = $stderrTask.GetAwaiter().GetResult()
+            ExitCode = $exitCode
+            StdOut = $stdout
+            StdErr = $stderr
+            TimedOut = $timedOut
         }
     }
     finally {
@@ -325,6 +335,7 @@ function Invoke-SshHelper {
     $result = Invoke-BoundedProcess -FileName $ssh -Arguments (@($options) + @($Target, $remoteCommand)) `
         -TimeoutSeconds $SshCoordinatorTimeoutSeconds -Operation 'Remote coordinator' -StandardInputBytes $stdinBytes
     if ($result.StdErr) { [Console]::Error.WriteLine($result.StdErr.TrimEnd()) }
+    if ($result.TimedOut) { throw "Remote coordinator timed out after $SshCoordinatorTimeoutSeconds seconds; the process was terminated. Do not blindly retry if deployment had started." }
     if ($result.ExitCode -ne 0) { throw "Remote coordinator failed (exit $($result.ExitCode)). Review its last safe stage report; do not blindly retry." }
     return @($result.StdOut -split "`r?`n" | Where-Object { $_.Length -gt 0 })
 }
@@ -350,6 +361,7 @@ function Invoke-SshCommand {
     catch { throw "$FailureMessage $($_.Exception.Message)" }
     if ($result.StdOut) { [Console]::Out.Write($result.StdOut) }
     if ($result.StdErr) { [Console]::Error.WriteLine($result.StdErr.TrimEnd()) }
+    if ($result.TimedOut) { throw "$FailureMessage Standalone SSH command timed out after $SshCommandTimeoutSeconds seconds; the process was terminated." }
     if ($result.ExitCode -ne 0) { throw "$FailureMessage (SSH exit code $($result.ExitCode))." }
 }
 
@@ -507,6 +519,7 @@ try {
         (Join-Path $payload 'build'), (Join-Path $payload 'images'), (Join-Path $payload 'media'),
         (Join-Path $payload 'input.sql'), $RemoteCoordinator, "${Target}:$remoteStageRoot/")) `
         -TimeoutSeconds $ScpTimeoutSeconds -Operation 'Private staging upload'
+    if ($scpResult.TimedOut) { throw "Private staging upload timed out after $ScpTimeoutSeconds seconds; review $remoteStageRoot before cleanup." }
     if ($scpResult.ExitCode -ne 0) { throw "Private staging upload failed (exit $($scpResult.ExitCode)); review $remoteStageRoot before cleanup." }
     if ($scpResult.StdErr) { [Console]::Error.WriteLine($scpResult.StdErr.TrimEnd()) }
 
