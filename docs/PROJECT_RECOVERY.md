@@ -114,8 +114,8 @@ Verified configuration (recheck before deployment):
 
 - Git remote: `origin` → `https://github.com/gitdir/idolranking.git`; branch `main`.
 - Production URL: `https://orchid-oryx-674671.hostingersite.com`.
-- SSH: Windows OpenSSH to host `145.79.26.175`, port `65002`, account `u624668418`; enforce `StrictHostKeyChecking=yes` and the pinned `C:\Users\LEO\.ssh\known_hosts`.
-- Per-PC key path used by current scripts: `C:\Users\LEO\.ssh\idolranking_hostinger_ed25519`. A new PC needs its own key or securely provisioned identity, registered with Hostinger. Never transfer the private key through Git/chat and never trust a first-seen host key without an independently verified Hostinger fingerprint.
+- SSH: Windows OpenSSH to host `145.79.26.175`, port `65002`, account `u624668418`; enforce `StrictHostKeyChecking=yes` and the pinned `$env:USERPROFILE\.ssh\known_hosts` file.
+- The initial-release script defaults to `$env:USERPROFILE\.ssh\idolranking_hostinger_ed25519` and `$env:USERPROFILE\.ssh\known_hosts`; override these with `-SshKeyPath` and `-KnownHostsPath` when needed. A new PC needs its own key or securely provisioned identity, registered with Hostinger. Never transfer the private key through Git/chat and never trust a first-seen host key without an independently verified Hostinger fingerprint. The script requires the private-key ACL to grant full control only to the current Windows account.
 - Laravel path: `/home/u624668418/domains/orchid-oryx-674671.hostingersite.com/idolranking`; Apache root: `/home/u624668418/domains/orchid-oryx-674671.hostingersite.com/public_html`.
 - Production PHP: `/opt/alt/php84/usr/bin/php`; Composer: `/usr/local/bin/composer`; no Node/npm on production. The web root's `index.php` bootstraps Laravel from the separate app path; preserve it, `.htaccess`, `.env`, `APP_KEY`, storage, and server-only files.
 - Ordinary code deployment is `scripts/deploy/deploy.ps1` and never executes SQL. `-DryRun` validates only; `-Build` builds from an isolated Git archive; the no-switch production form deploys code/assets after strict SSH and fast-forward checks. See `scripts/deploy/README.md` for exact commands.
@@ -130,7 +130,7 @@ The initial production deployment is **not confirmed** by this guide. A historic
 
 1. **Initial release artifacts:** the one-time dump and uploads remain machine-local temporary artifacts, not Git recovery inputs. Keep them in approved protected storage and verify checksums before any transfer.
 2. **External data:** the full dump, initial idol/group records, and uploads are not recoverable from this Git repository. Establish encrypted, durable, access-controlled storage or a sanitized seed dataset.
-3. **Windows paths:** deployment PowerShell currently hardcodes the LEO profile's `.ssh` paths and one Hostinger identity/layout. Parameterize these for another operator or document the approved local edits before relying on them on a new PC.
+3. **Hostinger identity/layout:** deployment scripts target the verified Hostinger account and application layout. Local SSH key and `known_hosts` paths now default relative to the current Windows profile and can be overridden; each new PC still needs its own trusted host-key pin and registered SSH public key.
 4. **Apache PHP:** local XAMPP includes PHP 8.2.12 while standalone CLI PHP is 8.4.26. Confirm web runtime and configure Apache for PHP 8.4.
 5. **Runtime version:** current Node/npm came from an IDE-specific directory. Install a standard supported Node LTS on a new PC.
 6. **Production status:** no current production state is embedded in Git. Verify it live and read-only; never infer success from a local commit or prior conversation.

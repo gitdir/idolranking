@@ -5,8 +5,8 @@ These scripts deploy a specific Git commit from Windows to the verified Hostinge
 ## Verified deployment settings
 
 - SSH: `u624668418@145.79.26.175`, port `65002`
-- Identity: `C:\Users\LEO\.ssh\idolranking_hostinger_ed25519`
-- Host key: must already be pinned as `[145.79.26.175]:65002` in `C:\Users\LEO\.ssh\known_hosts`; SSH always uses `StrictHostKeyChecking=yes`.
+- Identity default: `$env:USERPROFILE\.ssh\idolranking_hostinger_ed25519`; override with `-SshKeyPath` when needed.
+- Host key default: `$env:USERPROFILE\.ssh\known_hosts`; override with `-KnownHostsPath`. The verified host key must already be pinned as `[145.79.26.175]:65002`; SSH always uses `StrictHostKeyChecking=yes`.
 - Laravel checkout: `/home/u624668418/domains/orchid-oryx-674671.hostingersite.com/idolranking`
 - Public web root and `APP_PUBLIC_PATH`: `/home/u624668418/domains/orchid-oryx-674671.hostingersite.com/public_html`
 - Production branch: `main`
@@ -14,6 +14,8 @@ These scripts deploy a specific Git commit from Windows to the verified Hostinge
 - Composer: `/usr/local/bin/composer`, invoked through PHP 8.4
 
 No private key, database password, or production `.env` belongs in this directory.
+
+The PowerShell driver verifies that the private-key ACL is protected and grants full control only to the current Windows account. Standalone SSH commands close/disable stdin and have a 30-second timeout; coordinator operations and staging uploads also have bounded timeouts. Coordinator streaming still sends its script on stdin, and the two destructive confirmations still use the existing interactive local prompt and remote TTY.
 
 ## One-time coordinated first release
 

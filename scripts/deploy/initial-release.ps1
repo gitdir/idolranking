@@ -30,6 +30,9 @@ param(
     [ValidateSet('APPROVED-NO-BACKUP')]
     [string]$BackupDecision,
 
+    [string]$SshKeyPath = (Join-Path $env:USERPROFILE '.ssh\idolranking_hostinger_ed25519'),
+    [string]$KnownHostsPath = (Join-Path $env:USERPROFILE '.ssh\known_hosts'),
+
     [switch]$Approved,
     [switch]$DryRun
 )
@@ -48,8 +51,11 @@ $ExpectedTables = 37
 $ExpectedForeignKeys = 58
 $ExpectedOldTables = 25
 $BaseUrlExpected = 'https://orchid-oryx-674671.hostingersite.com'
-$SshKey = 'C:\Users\LEO\.ssh\idolranking_hostinger_ed25519'
-$KnownHosts = 'C:\Users\LEO\.ssh\known_hosts'
+$SshKey = [IO.Path]::GetFullPath($SshKeyPath)
+$KnownHosts = [IO.Path]::GetFullPath($KnownHostsPath)
+$SshCommandTimeoutSeconds = 30
+$SshCoordinatorTimeoutSeconds = 300
+$ScpTimeoutSeconds = 900
 $Target = 'u624668418@145.79.26.175'
 $RemoteHome = '/home/u624668418'
 $RemoteApp = '/home/u624668418/domains/orchid-oryx-674671.hostingersite.com/idolranking'
@@ -84,31 +90,25 @@ function Assert-SshIdentity {
     if (-not $acl.AreAccessRulesProtected -or $entries.Count -ne 1 -or
         $entries[0].IdentityReference.Translate([System.Security.Principal.NTAccount]).Value -ne $account -or
         $entries[0].AccessControlType -ne [System.Security.AccessControl.AccessControlType]::Allow -or
-        $entries[0].FileSystemRights.ToString() -notmatch 'FullControl' -or $account -notmatch '\\LEO$') {
-        throw 'The dedicated SSH private-key ACL is not restricted to the current LEO account.'
+        $entries[0].FileSystemRights.ToString() -notmatch 'FullControl') {
+        throw 'The dedicated SSH private-key ACL is not restricted to the current Windows account.'
     }
 
     # Only the derived public half is held in memory. Private-key contents are never printed.
-    $keygenInfo = [System.Diagnostics.ProcessStartInfo]::new()
-    $keygenInfo.FileName = (Get-Command ssh-keygen.exe -ErrorAction Stop).Source
-    $keygenInfo.Arguments = '-y -P "" -f C:\Users\LEO\.ssh\idolranking_hostinger_ed25519'
-    $keygenInfo.UseShellExecute = $false
-    $keygenInfo.CreateNoWindow = $true
-    $keygenInfo.RedirectStandardOutput = $true
-    $keygenInfo.RedirectStandardError = $true
-    $process = [System.Diagnostics.Process]::Start($keygenInfo)
-    $derived = $process.StandardOutput.ReadToEnd().Trim()
-    $null = $process.StandardError.ReadToEnd()
-    $process.WaitForExit()
+    $keygen = (Get-Command ssh-keygen.exe -ErrorAction Stop).Source
+    $keyResult = Invoke-BoundedProcess -FileName $keygen -Arguments @('-y', '-P', '', '-f', $SshKey) `
+        -TimeoutSeconds 15 -Operation 'SSH key-pair verification'
+    $derived = $keyResult.StdOut.Trim()
     $derivedParts = Get-SshPublicKeyParts -Text $derived
     $savedParts = Get-SshPublicKeyParts -Text (Get-Content -LiteralPath "$SshKey.pub" -Raw)
-    if ($process.ExitCode -ne 0 -or $null -eq $derivedParts -or $null -eq $savedParts -or
+    if ($keyResult.ExitCode -ne 0 -or $null -eq $derivedParts -or $null -eq $savedParts -or
         $derivedParts.Type -cne $savedParts.Type -or $derivedParts.Data -cne $savedParts.Data) {
         throw 'Dedicated SSH key-pair verification failed.'
     }
 
-    $hostEntry = & (Get-Command ssh-keygen.exe).Source -F '[145.79.26.175]:65002' -f $KnownHosts 2>$null
-    if ($LASTEXITCODE -ne 0 -or -not $hostEntry) { throw 'The production host key is not pinned in known_hosts.' }
+    $hostResult = Invoke-BoundedProcess -FileName $keygen -Arguments @('-F', '[145.79.26.175]:65002', '-f', $KnownHosts) `
+        -TimeoutSeconds 15 -Operation 'SSH host-key lookup'
+    if ($hostResult.ExitCode -ne 0 -or -not $hostResult.StdOut) { throw 'The production host key is not pinned in known_hosts.' }
 }
 
 function Assert-LocalInputs {
@@ -204,6 +204,75 @@ function Assert-LocalInputs {
     return [pscustomobject]@{ DumpPath = $dumpPath; Media = $mediaInventory }
 }
 
+function Invoke-BoundedProcess {
+    param(
+        [Parameter(Mandatory = $true)][string]$FileName,
+        [Parameter(Mandatory = $true)][string[]]$Arguments,
+        [Parameter(Mandatory = $true)][ValidateRange(1, 3600)][int]$TimeoutSeconds,
+        [string]$Operation = 'Native command',
+        [byte[]]$StandardInputBytes
+    )
+
+    $nativeArguments = $Arguments | ForEach-Object {
+        $argument = [string]$_
+        if ($argument.Contains('"')) { throw 'Unexpected double quote in a native process argument.' }
+        if ($argument.Length -eq 0) { '""' }
+        elseif ($argument -match '\s') { '"' + $argument + '"' }
+        else { $argument }
+    }
+    $startInfo = [System.Diagnostics.ProcessStartInfo]::new()
+    $startInfo.FileName = $FileName
+    $startInfo.Arguments = $nativeArguments -join ' '
+    $startInfo.UseShellExecute = $false
+    $startInfo.CreateNoWindow = $true
+    $startInfo.RedirectStandardInput = $true
+    $startInfo.RedirectStandardOutput = $true
+    $startInfo.RedirectStandardError = $true
+
+    $process = [System.Diagnostics.Process]::new()
+    $process.StartInfo = $startInfo
+    $timer = [System.Diagnostics.Stopwatch]::StartNew()
+    $started = $false
+    try {
+        if (-not $process.Start()) { throw "Could not start $Operation." }
+        $started = $true
+        $stdoutTask = $process.StandardOutput.ReadToEndAsync()
+        $stderrTask = $process.StandardError.ReadToEndAsync()
+
+        if ($null -ne $StandardInputBytes -and $StandardInputBytes.Length -gt 0) {
+            $writeTask = $process.StandardInput.BaseStream.WriteAsync($StandardInputBytes, 0, $StandardInputBytes.Length)
+            $remaining = [Math]::Max(1, ($TimeoutSeconds * 1000) - [int]$timer.ElapsedMilliseconds)
+            if (-not $writeTask.Wait($remaining)) {
+                try { $process.Kill() } catch { }
+                try { $null = $process.WaitForExit(5000) } catch { }
+                throw "$Operation timed out after $TimeoutSeconds seconds while sending input; the process was terminated."
+            }
+            $writeTask.GetAwaiter().GetResult()
+        }
+        $process.StandardInput.Close()
+
+        $remaining = [Math]::Max(1, ($TimeoutSeconds * 1000) - [int]$timer.ElapsedMilliseconds)
+        if (-not $process.WaitForExit($remaining)) {
+            try { $process.Kill() } catch { }
+            try { $null = $process.WaitForExit(5000) } catch { }
+            throw "$Operation timed out after $TimeoutSeconds seconds; the process was terminated."
+        }
+
+        return [pscustomobject]@{
+            ExitCode = $process.ExitCode
+            StdOut = $stdoutTask.GetAwaiter().GetResult()
+            StdErr = $stderrTask.GetAwaiter().GetResult()
+        }
+    }
+    finally {
+        if ($started -and -not $process.HasExited) {
+            try { $process.Kill() } catch { }
+            try { $null = $process.WaitForExit(5000) } catch { }
+        }
+        $process.Dispose()
+    }
+}
+
 function Invoke-SshHelper {
     param(
         [Parameter(Mandatory = $true)][string[]]$Arguments,
@@ -248,48 +317,16 @@ function Invoke-SshHelper {
         return
     }
 
-    if ($RemoteScriptPath) {
-        $output = @(& $ssh @options $Target $remoteCommand)
-        $exitCode = $LASTEXITCODE
-    }
-    else {
-        # Write raw UTF-8 bytes to ssh stdin. PowerShell's native pipeline adds
-        # Windows CRLF between records, which Bash would parse as extra commands.
-        $nativeArguments = @($options) + @($Target, $remoteCommand)
-        $nativeCommandLine = ($nativeArguments | ForEach-Object {
-            $argument = [string]$_
-            if ($argument.Contains('"')) { throw 'Unexpected double quote in an SSH process argument.' }
-            if ($argument -match '\s') { '"' + $argument + '"' } else { $argument }
-        }) -join ' '
-        $startInfo = [System.Diagnostics.ProcessStartInfo]::new()
-        $startInfo.FileName = $ssh
-        $startInfo.Arguments = $nativeCommandLine
-        $startInfo.UseShellExecute = $false
-        $startInfo.CreateNoWindow = $true
-        $startInfo.RedirectStandardInput = $true
-        $startInfo.RedirectStandardOutput = $true
-        $startInfo.RedirectStandardError = $true
-        $process = [System.Diagnostics.Process]::new()
-        $process.StartInfo = $startInfo
-        try {
-            if (-not $process.Start()) { throw 'Could not start the SSH coordinator process.' }
-            $stdoutTask = $process.StandardOutput.ReadToEndAsync()
-            $stderrTask = $process.StandardError.ReadToEndAsync()
-            $scriptBytes = [System.Text.Encoding]::UTF8.GetBytes($scriptText)
-            $process.StandardInput.BaseStream.Write($scriptBytes, 0, $scriptBytes.Length)
-            $process.StandardInput.BaseStream.Flush()
-            $process.StandardInput.Close()
-            $process.WaitForExit()
-            $stdout = $stdoutTask.GetAwaiter().GetResult()
-            $stderr = $stderrTask.GetAwaiter().GetResult()
-            $exitCode = $process.ExitCode
-            if ($stderr) { [Console]::Error.WriteLine($stderr.TrimEnd()) }
-            $output = @($stdout -split "`r?`n" | Where-Object { $_.Length -gt 0 })
-        }
-        finally { $process.Dispose() }
-    }
-    if ($exitCode -ne 0) { throw "Remote coordinator failed (exit $exitCode). Review its last safe stage report; do not blindly retry." }
-    return $output
+    if ($RemoteScriptPath) { $options += '-n' }
+    # Coordinator preflight streams the script bytes through stdin; a staged
+    # coordinator receives EOF immediately and is run with stdin disabled.
+    $stdinBytes = $null
+    if (-not $RemoteScriptPath) { $stdinBytes = [System.Text.Encoding]::UTF8.GetBytes($scriptText) }
+    $result = Invoke-BoundedProcess -FileName $ssh -Arguments (@($options) + @($Target, $remoteCommand)) `
+        -TimeoutSeconds $SshCoordinatorTimeoutSeconds -Operation 'Remote coordinator' -StandardInputBytes $stdinBytes
+    if ($result.StdErr) { [Console]::Error.WriteLine($result.StdErr.TrimEnd()) }
+    if ($result.ExitCode -ne 0) { throw "Remote coordinator failed (exit $($result.ExitCode)). Review its last safe stage report; do not blindly retry." }
+    return @($result.StdOut -split "`r?`n" | Where-Object { $_.Length -gt 0 })
 }
 
 function Invoke-SshCommand {
@@ -298,15 +335,22 @@ function Invoke-SshCommand {
         [string]$FailureMessage = 'Remote SSH command failed.'
     )
     $options = @(
-        '-T', '-p', '65002', '-i', $SshKey,
+        '-T', '-n', '-p', '65002', '-i', $SshKey,
         '-o', 'IdentitiesOnly=yes', '-o', 'PubkeyAuthentication=yes',
         '-o', 'StrictHostKeyChecking=yes', '-o', "UserKnownHostsFile=$KnownHosts",
         '-o', 'BatchMode=yes', '-o', 'PasswordAuthentication=no',
         '-o', 'KbdInteractiveAuthentication=no', '-o', 'PreferredAuthentications=publickey',
         '-o', 'ConnectTimeout=12'
     )
-    & (Get-Command ssh.exe).Source @options $Target $Command
-    if ($LASTEXITCODE -ne 0) { throw $FailureMessage }
+    $ssh = (Get-Command ssh.exe -ErrorAction Stop).Source
+    try {
+        $result = Invoke-BoundedProcess -FileName $ssh -Arguments (@($options) + @($Target, $Command)) `
+            -TimeoutSeconds $SshCommandTimeoutSeconds -Operation 'Standalone SSH command'
+    }
+    catch { throw "$FailureMessage $($_.Exception.Message)" }
+    if ($result.StdOut) { [Console]::Out.Write($result.StdOut) }
+    if ($result.StdErr) { [Console]::Error.WriteLine($result.StdErr.TrimEnd()) }
+    if ($result.ExitCode -ne 0) { throw "$FailureMessage (SSH exit code $($result.ExitCode))." }
 }
 
 function Remove-AbandonedRemoteStage {
@@ -457,10 +501,14 @@ try {
         '-o', 'IdentitiesOnly=yes', '-o', 'PubkeyAuthentication=yes',
         '-o', 'StrictHostKeyChecking=yes', '-o', "UserKnownHostsFile=$KnownHosts",
         '-o', 'BatchMode=yes', '-o', 'PasswordAuthentication=no',
-        '-o', 'KbdInteractiveAuthentication=no', '-o', 'ConnectTimeout=12'
+        '-o', 'KbdInteractiveAuthentication=no', '-o', 'StdinNull=yes', '-o', 'ConnectTimeout=12'
     )
-    & $scp @scpOptions (Join-Path $payload 'build') (Join-Path $payload 'images') (Join-Path $payload 'media') (Join-Path $payload 'input.sql') $RemoteCoordinator "${Target}:$remoteStageRoot/"
-    if ($LASTEXITCODE -ne 0) { throw "Private staging upload failed; review $remoteStageRoot before cleanup." }
+    $scpResult = Invoke-BoundedProcess -FileName $scp -Arguments (@($scpOptions) + @(
+        (Join-Path $payload 'build'), (Join-Path $payload 'images'), (Join-Path $payload 'media'),
+        (Join-Path $payload 'input.sql'), $RemoteCoordinator, "${Target}:$remoteStageRoot/")) `
+        -TimeoutSeconds $ScpTimeoutSeconds -Operation 'Private staging upload'
+    if ($scpResult.ExitCode -ne 0) { throw "Private staging upload failed (exit $($scpResult.ExitCode)); review $remoteStageRoot before cleanup." }
+    if ($scpResult.StdErr) { [Console]::Error.WriteLine($scpResult.StdErr.TrimEnd()) }
 
     $stageArgs = @('validate-stage', $Commit, $BaseUrlExpected, $ExpectedDatabase,
         "$ExpectedOldTables", "$ExpectedTables", "$ExpectedForeignKeys", $ExpectedSha256,
