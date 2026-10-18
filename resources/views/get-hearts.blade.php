@@ -42,7 +42,7 @@
         <div class="get-hearts-list">
             @foreach($activities as $activity)
                 @php($complete = $activity->daily_limit > 0 && $activity->progress !== null && $activity->progress >= $activity->daily_limit)
-                <article class="get-hearts-activity{{ !$activity->is_enabled ? ' is-disabled' : '' }}" @if($activity->code === 'daily_attendance') data-daily-check-in-card @endif>
+                <article class="get-hearts-activity{{ !$activity->is_available ? ' is-disabled' : '' }}" @if($activity->code === 'daily_attendance') data-daily-check-in-card @endif>
                     <div class="get-hearts-activity-main">
                         <span class="get-hearts-activity-icon get-hearts-activity-icon--{{ $activity->icon }}" aria-hidden="true">
                             @switch($activity->icon)
@@ -59,12 +59,12 @@
                         <span><strong>{{ $activity->name }}</strong><small>{{ $activity->description }}</small></span>
                     </div>
                     <div class="get-hearts-reward">
-                        <strong><svg aria-hidden="true"><use href="#icon-heart"/></svg>@if($activity->code === 'daily_attendance' && $activity->min_heart_amount !== $activity->max_heart_amount)+ {{ number_format($activity->min_heart_amount) }}~{{ number_format($activity->max_heart_amount) }}@else+ {{ number_format($activity->heart_amount) }}@endif</strong>
-                        <small>@if(!$activity->is_enabled){{ __('ui.unavailable') }} @elseif($activity->daily_limit > 0){{ __('ui.per_day', ['limit' => number_format($activity->daily_limit)]) }} @else {{ __('ui.no_daily_limit') }} @endif</small>
+                        <strong><svg aria-hidden="true"><use href="#icon-heart"/></svg>@if($activity->min_heart_amount !== $activity->max_heart_amount)+ {{ number_format($activity->min_heart_amount) }}~{{ number_format($activity->max_heart_amount) }}@else+ {{ number_format($activity->min_heart_amount) }}@endif</strong>
+                        <small>@if(!$activity->is_available){{ __('ui.unavailable') }} @elseif($activity->daily_limit > 0){{ __('ui.per_day', ['limit' => number_format($activity->daily_limit)]) }} @else {{ __('ui.no_daily_limit') }} @endif</small>
                     </div>
                     @if($activity->daily_limit > 0)
                         <div class="get-hearts-progress">
-                            @if(!$activity->is_enabled)
+                            @if(!$activity->is_available)
                                 <span class="get-hearts-progress-unavailable">{{ __('ui.unavailable') }}</span>
                             @else
                                 <span class="get-hearts-progress-track"><i style="width: {{ $member ? $activity->progress_percent : 0 }}%" @if($activity->code === 'daily_attendance') data-daily-check-in-progress-bar @endif></i></span>
@@ -76,12 +76,12 @@
                             @endif
                         </div>
                     @elseif($activity->code === 'invite_friend')
-                        <p class="get-hearts-activity-note">@if($activity->is_enabled){{ __('ui.invite_reward_description', ['amount' => number_format($activity->heart_amount)]) }}@else {{ __('ui.activity_unavailable') }}@endif</p>
+                        <p class="get-hearts-activity-note">@if($activity->is_available){{ __('ui.invite_reward_description', ['amount' => number_format($activity->heart_amount)]) }}@else {{ __('ui.activity_unavailable') }}@endif</p>
                     @elseif($activity->code === 'idol_registration_approved')
-                        <p class="get-hearts-activity-note">@if($activity->is_enabled)When your idol or group registration is approved, you will receive {{ number_format($activity->heart_amount) }} Hearts.@else This activity is currently unavailable.@endif</p>
+                        <p class="get-hearts-activity-note">@if($activity->is_available)When your idol or group registration is approved, you will receive {{ number_format($activity->heart_amount) }} Hearts.@else This activity is currently unavailable.@endif</p>
                     @else
                         <div class="get-hearts-progress">
-                            <span class="get-hearts-unlimited">@if($activity->is_enabled)??<small>{{ __('ui.no_daily_limit') }}</small>@else<small>{{ __('ui.unavailable') }}</small>@endif</span>
+                            <span class="get-hearts-unlimited">@if($activity->is_available)??<small>{{ __('ui.no_daily_limit') }}</small>@else<small>{{ __('ui.unavailable') }}</small>@endif</span>
                         </div>
                     @endif
                     @if($activity->code === 'invite_friend')
@@ -90,7 +90,7 @@
                             @unless($member) data-sign-in-open aria-controls="sign-in-modal" @else aria-controls="invite-friends-dialog" @endunless
                             aria-haspopup="dialog">{{ $member ? __('ui.share_invitation') : __('ui.sign_in') }}</button>
                     @elseif($activity->code === 'watch_ads')
-                        @if(!$activity->is_enabled)
+                        @if(!$activity->is_available)
                             <span class="get-hearts-status get-hearts-status--muted">{{ __('ui.unavailable') }}</span>
                         @elseif(!$member)
                             <button class="get-hearts-action" type="button" data-sign-in-open aria-haspopup="dialog" aria-controls="sign-in-modal">{{ __('ui.sign_in') }}</button>

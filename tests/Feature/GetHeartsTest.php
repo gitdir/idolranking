@@ -48,6 +48,49 @@ class GetHeartsTest extends TestCase
         $this->assertSame(0, DB::table('partner_banner_clicks')->count());
     }
 
+    public function test_reward_cards_use_saved_ranges_limits_and_feature_availability(): void
+    {
+        $this->database();
+        DB::table('heart_reward_settings')->where('action_code', 'daily_attendance')->update([
+            'min_heart_amount' => 25, 'max_heart_amount' => 75,
+        ]);
+        DB::table('heart_reward_settings')->where('action_code', 'comment_create')->update([
+            'min_heart_amount' => 10, 'max_heart_amount' => 200, 'daily_limit' => 8,
+        ]);
+        DB::table('heart_reward_settings')->where('action_code', 'fan_post_create')->update([
+            'heart_amount' => 35, 'daily_limit' => 9,
+        ]);
+        DB::table('heart_reward_settings')->where('action_code', 'fan_post_recommend_received')->update([
+            'heart_amount' => 3, 'daily_limit' => 50,
+        ]);
+        // An enabled setting does not make the unimplemented ad feature operational.
+        DB::table('heart_reward_settings')->where('action_code', 'watch_ads')->update(['is_enabled' => 1]);
+
+        $response = $this->get('/get-hearts')->assertOk()
+            ->assertSee('+ 25~75')->assertSee('+ 10~200')
+            ->assertSee('+ 35')->assertSee('+ 3')
+            ->assertSee('Up to 8 times per day')->assertSee('Up to 9 times per day')
+            ->assertSee('Up to 50 times per day')->assertSee('Unavailable')
+            ->assertDontSee('data-watch-ad-open', false);
+
+        $this->assertSame(4, substr_count($response->getContent(), 'class="get-hearts-progress-track"'));
+        $this->assertSame(4, substr_count($response->getContent(), __('ui.sign_in_track')));
+        $response->assertViewHas('activities', function ($activities): bool {
+            $attendance = $activities->firstWhere('code', 'daily_attendance');
+            $comment = $activities->firstWhere('code', 'comment_create');
+            $ads = $activities->firstWhere('code', 'watch_ads');
+
+            return $attendance->daily_limit === 1
+                && $attendance->min_heart_amount === 25
+                && $attendance->max_heart_amount === 75
+                && $comment->daily_limit === 8
+                && $comment->min_heart_amount === 10
+                && $comment->max_heart_amount === 200
+                && $ads->is_enabled === true
+                && $ads->is_available === false;
+        });
+    }
+
     public function test_member_summary_and_progress_use_today_positive_history_records(): void
     {
         $this->database();
@@ -67,7 +110,8 @@ class GetHeartsTest extends TestCase
         ]);
         $this->withSession(['member_idx' => 7])->get('/get-hearts')->assertOk()
             ->assertSee('5,320')->assertSee('+ 171')->assertSee('1 / 1')->assertSee('2 / 20')
-            ->assertSee('href="'.route('attendance').'"', false)->assertDontSee('data-watch-ad-open', false)
+            ->assertDontSee('class="get-hearts-action" href="'.route('attendance').'"', false)
+            ->assertDontSee('data-watch-ad-open', false)
             ->assertSee('No Hearts are granted from this preview.')
             ->assertViewHas('activities', fn ($activities) =>
                 $activities->firstWhere('code', 'comment_create')->progress === 1
@@ -75,7 +119,7 @@ class GetHeartsTest extends TestCase
             );
     }
 
-    public function test_daily_check_in_activity_links_to_the_attendance_page_without_submitting(): void
+    public function test_daily_check_in_activity_displays_without_submitting(): void
     {
         $this->database();
         DB::table('members')->insert([
@@ -85,7 +129,7 @@ class GetHeartsTest extends TestCase
         ]);
 
         $this->withSession(['member_idx' => 7])->get('/get-hearts')->assertOk()
-            ->assertSee('href="'.route('attendance').'"', false)
+            ->assertDontSee('class="get-hearts-action" href="'.route('attendance').'"', false)
             ->assertDontSee('data-daily-check-in-form', false);
         $this->assertSame(0, DB::table('daily_check_ins')->count());
         $this->assertSame(0, DB::table('heart_histories')->count());
@@ -289,7 +333,8 @@ class GetHeartsTest extends TestCase
 
         $page = $this->withSession(['member_idx' => 7])->get('/get-hearts')->assertOk();
         $activities = $page->viewData('activities')->keyBy('code');
-        $this->assertFalse($activities['watch_ads']->is_enabled);
+        $this->assertTrue($activities['watch_ads']->is_enabled);
+        $this->assertFalse($activities['watch_ads']->is_available);
         $this->assertStringNotContainsString('data-watch-ad-open', $page->getContent());
     }
 

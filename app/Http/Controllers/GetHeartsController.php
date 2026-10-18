@@ -54,8 +54,9 @@ class GetHeartsController extends Controller
         $activities = collect($definitions)->map(function (array $display, string $code) use ($settings, $todayCounts, $member) {
             $definition = HeartRewardManager::ACTIONS[$code];
             $setting = $settings->get($code);
-            $limit = $code === 'daily_attendance' ? 1 : max(0, (int) ($setting?->daily_limit ?? 0));
+            $limit = max(0, (int) ($setting?->daily_limit ?? 0));
             $progress = $member === null ? null : (int) $todayCounts->get($definition['reason'], 0);
+            $isEnabled = (bool) ($setting?->is_enabled ?? false);
 
             return (object) ($display + [
                 'code' => $code,
@@ -63,7 +64,8 @@ class GetHeartsController extends Controller
                 'min_heart_amount' => max(0, (int) ($setting?->min_heart_amount ?? $setting?->heart_amount ?? 0)),
                 'max_heart_amount' => max(0, (int) ($setting?->max_heart_amount ?? $setting?->heart_amount ?? 0)),
                 'daily_limit' => $limit,
-                'is_enabled' => $code !== 'watch_ads' && (bool) ($setting?->is_enabled ?? false),
+                'is_enabled' => $isEnabled,
+                'is_available' => $code !== 'watch_ads' && $isEnabled,
                 'progress' => $progress,
                 'progress_percent' => $limit > 0 && $progress !== null ? min(100, $progress / $limit * 100) : 0,
             ]);
