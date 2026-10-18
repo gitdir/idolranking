@@ -48,6 +48,17 @@ class GetHeartsTest extends TestCase
         $this->assertSame(0, DB::table('partner_banner_clicks')->count());
     }
 
+    public function test_write_comment_card_displays_its_saved_heart_range(): void
+    {
+        $this->database();
+        DB::table('heart_reward_settings')->where('action_code', 'comment_create')->update([
+            'min_heart_amount' => 10,
+            'max_heart_amount' => 200,
+        ]);
+
+        $this->get('/get-hearts')->assertOk()->assertSee('+10~200');
+    }
+
     public function test_member_summary_and_progress_use_today_positive_history_records(): void
     {
         $this->database();
