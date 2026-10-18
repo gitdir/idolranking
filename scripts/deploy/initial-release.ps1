@@ -513,15 +513,15 @@ try {
         '-o', 'IdentitiesOnly=yes', '-o', 'PubkeyAuthentication=yes',
         '-o', 'StrictHostKeyChecking=yes', '-o', "UserKnownHostsFile=$KnownHosts",
         '-o', 'BatchMode=yes', '-o', 'PasswordAuthentication=no',
-        '-o', 'KbdInteractiveAuthentication=no', '-o', 'StdinNull=yes', '-o', 'ConnectTimeout=12'
+        '-o', 'KbdInteractiveAuthentication=no', '-o', 'ConnectTimeout=12'
     )
     $scpResult = Invoke-BoundedProcess -FileName $scp -Arguments (@($scpOptions) + @(
         (Join-Path $payload 'build'), (Join-Path $payload 'images'), (Join-Path $payload 'media'),
         (Join-Path $payload 'input.sql'), $RemoteCoordinator, "${Target}:$remoteStageRoot/")) `
         -TimeoutSeconds $ScpTimeoutSeconds -Operation 'Private staging upload'
+    if ($scpResult.StdErr) { [Console]::Error.WriteLine($scpResult.StdErr.TrimEnd()) }
     if ($scpResult.TimedOut) { throw "Private staging upload timed out after $ScpTimeoutSeconds seconds; review $remoteStageRoot before cleanup." }
     if ($scpResult.ExitCode -ne 0) { throw "Private staging upload failed (exit $($scpResult.ExitCode)); review $remoteStageRoot before cleanup." }
-    if ($scpResult.StdErr) { [Console]::Error.WriteLine($scpResult.StdErr.TrimEnd()) }
 
     $stageArgs = @('validate-stage', $Commit, $BaseUrlExpected, $ExpectedDatabase,
         "$ExpectedOldTables", "$ExpectedTables", "$ExpectedForeignKeys", $ExpectedSha256,
