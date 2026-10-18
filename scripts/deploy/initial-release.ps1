@@ -207,14 +207,28 @@ function Assert-LocalInputs {
 function Invoke-SshHelper {
     param(
         [Parameter(Mandatory = $true)][string[]]$Arguments,
-        [switch]$AllocateTty
+        [switch]$AllocateTty,
+        [string]$RemoteScriptPath
     )
 
-    $scriptText = Get-Content -LiteralPath $RemoteCoordinator -Raw
-    $encoded = [Convert]::ToBase64String([System.Text.Encoding]::UTF8.GetBytes($scriptText))
-    # Helper text is base64 encoded, so its remote Bash substitutions cannot be evaluated by PowerShell.
-    $remoteArgs = ($Arguments | ForEach-Object { "'$_'" }) -join ' '
-    $remoteCommand = "printf '%s' '$encoded' | base64 -d | bash -s -- $remoteArgs"
+    # Quote each argument as a POSIX single-quoted word; never interpolate it as shell syntax.
+    $remoteArgs = ($Arguments | ForEach-Object { "'" + $_.Replace("'", "'\''") + "'" }) -join ' '
+    if ($RemoteScriptPath) {
+        # Interactive deployment reads its second confirmation from /dev/tty. Run the
+        # checksum-verified helper from the private stage so SSH stdin remains the TTY.
+        if ($RemoteScriptPath -notmatch '^/home/u624668418/\.idolranking-initial-release-[a-f0-9]{32}/remote-initial-release\.sh$') {
+            throw 'Remote coordinator path is outside the unique protected staging directory.'
+        }
+        $scriptHash = (Get-FileHash -LiteralPath $RemoteCoordinator -Algorithm SHA256).Hash.ToLowerInvariant()
+        $quotedPath = "'" + $RemoteScriptPath.Replace("'", "'\''") + "'"
+        $remoteCommand = "printf '%s  %s\n' '$scriptHash' $quotedPath | sha256sum -c - >/dev/null && exec bash -- $quotedPath $remoteArgs"
+    }
+    else {
+        # Non-interactive calls receive the coordinator over SSH stdin, not the
+        # Windows command line. Normalize line endings for the remote Bash parser.
+        $scriptText = (Get-Content -LiteralPath $RemoteCoordinator -Raw -Encoding UTF8).Replace("`r`n", "`n").Replace("`r", "`n")
+        $remoteCommand = "bash -s -- $remoteArgs"
+    }
     $tty = if ($AllocateTty) { '-tt' } else { '-T' }
     $options = @(
         $tty, '-p', '65002', '-i', $SshKey,
@@ -224,8 +238,57 @@ function Invoke-SshHelper {
         '-o', 'KbdInteractiveAuthentication=no', '-o', 'PreferredAuthentications=publickey',
         '-o', 'ConnectTimeout=12'
     )
-    $output = @(& (Get-Command ssh.exe).Source @options $Target $remoteCommand)
-    if ($LASTEXITCODE -ne 0) { throw "Remote coordinator failed (exit $LASTEXITCODE). Review its last safe stage report; do not blindly retry." }
+    $ssh = (Get-Command ssh.exe -ErrorAction Stop).Source
+    if ($AllocateTty) {
+        if (-not $RemoteScriptPath) { throw 'Interactive remote execution requires a staged, checksum-verified coordinator.' }
+        # Do not capture stdout or pipe stdin here; preserve the local and remote TTY prompts.
+        & $ssh @options $Target $remoteCommand
+        $exitCode = $LASTEXITCODE
+        if ($exitCode -ne 0) { throw "Remote coordinator failed (exit $exitCode). Review its last safe stage report; do not blindly retry." }
+        return
+    }
+
+    if ($RemoteScriptPath) {
+        $output = @(& $ssh @options $Target $remoteCommand)
+        $exitCode = $LASTEXITCODE
+    }
+    else {
+        # Write raw UTF-8 bytes to ssh stdin. PowerShell's native pipeline adds
+        # Windows CRLF between records, which Bash would parse as extra commands.
+        $nativeArguments = @($options) + @($Target, $remoteCommand)
+        $nativeCommandLine = ($nativeArguments | ForEach-Object {
+            $argument = [string]$_
+            if ($argument.Contains('"')) { throw 'Unexpected double quote in an SSH process argument.' }
+            if ($argument -match '\s') { '"' + $argument + '"' } else { $argument }
+        }) -join ' '
+        $startInfo = [System.Diagnostics.ProcessStartInfo]::new()
+        $startInfo.FileName = $ssh
+        $startInfo.Arguments = $nativeCommandLine
+        $startInfo.UseShellExecute = $false
+        $startInfo.CreateNoWindow = $true
+        $startInfo.RedirectStandardInput = $true
+        $startInfo.RedirectStandardOutput = $true
+        $startInfo.RedirectStandardError = $true
+        $process = [System.Diagnostics.Process]::new()
+        $process.StartInfo = $startInfo
+        try {
+            if (-not $process.Start()) { throw 'Could not start the SSH coordinator process.' }
+            $stdoutTask = $process.StandardOutput.ReadToEndAsync()
+            $stderrTask = $process.StandardError.ReadToEndAsync()
+            $scriptBytes = [System.Text.Encoding]::UTF8.GetBytes($scriptText)
+            $process.StandardInput.BaseStream.Write($scriptBytes, 0, $scriptBytes.Length)
+            $process.StandardInput.BaseStream.Flush()
+            $process.StandardInput.Close()
+            $process.WaitForExit()
+            $stdout = $stdoutTask.GetAwaiter().GetResult()
+            $stderr = $stderrTask.GetAwaiter().GetResult()
+            $exitCode = $process.ExitCode
+            if ($stderr) { [Console]::Error.WriteLine($stderr.TrimEnd()) }
+            $output = @($stdout -split "`r?`n" | Where-Object { $_.Length -gt 0 })
+        }
+        finally { $process.Dispose() }
+    }
+    if ($exitCode -ne 0) { throw "Remote coordinator failed (exit $exitCode). Review its last safe stage report; do not blindly retry." }
     return $output
 }
 
@@ -354,7 +417,7 @@ try {
         '-o', 'BatchMode=yes', '-o', 'PasswordAuthentication=no',
         '-o', 'KbdInteractiveAuthentication=no', '-o', 'ConnectTimeout=12'
     )
-    & $scp @scpOptions (Join-Path $payload 'build') (Join-Path $payload 'images') (Join-Path $payload 'media') (Join-Path $payload 'input.sql') "${Target}:$remoteStageRoot/"
+    & $scp @scpOptions (Join-Path $payload 'build') (Join-Path $payload 'images') (Join-Path $payload 'media') (Join-Path $payload 'input.sql') $RemoteCoordinator "${Target}:$remoteStageRoot/"
     if ($LASTEXITCODE -ne 0) { throw "Private staging upload failed; review $remoteStageRoot before cleanup." }
 
     $stageArgs = @('validate-stage', $Commit, $BaseUrlExpected, $ExpectedDatabase,
@@ -362,7 +425,8 @@ try {
         "$($local.Media.public.Count)", "$($local.Media.public.Bytes)",
         "$($local.Media.private.Count)", "$($local.Media.private.Bytes)",
         $remoteStageRoot, $baseCommit, $runId)
-    $stageResult = Invoke-SshHelper -Arguments $stageArgs
+    $stagedCoordinator = "$remoteStageRoot/remote-initial-release.sh"
+    $stageResult = Invoke-SshHelper -Arguments $stageArgs -RemoteScriptPath $stagedCoordinator
     $stageResult | ForEach-Object { Write-Host $_ }
 
     $approvalPhrase = "INITIAL RELEASE $Commit REPLACE DATABASE $ExpectedDatabase FROM DUMP $ExpectedSha256 TABLES $ExpectedTables BACKUP $BackupDecision"
@@ -375,7 +439,7 @@ try {
         "$($local.Media.public.Count)", "$($local.Media.public.Bytes)",
         "$($local.Media.private.Count)", "$($local.Media.private.Bytes)",
         $remoteStageRoot, $baseCommit, $runId)
-    $null = Invoke-SshHelper -Arguments $deployArgs -AllocateTty
+    Invoke-SshHelper -Arguments $deployArgs -AllocateTty -RemoteScriptPath $stagedCoordinator
     Write-Host "Initial release completed for $Commit."
 }
 catch {
