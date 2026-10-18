@@ -4,7 +4,7 @@ SQL files are the source of truth for database deployment. Laravel migrations an
 
 ## Fresh installation
 
-`deploy/mariadb11_schema.sql` is the authoritative fresh-install schema and production baseline. It contains the current 32 application tables and `schema_patch_history` (33 total), with no application records. Run it first, then run `deploy/mariadb11_seed.sql` for essential Heart reward configuration:
+`deploy/mariadb11_schema.sql` is the authoritative fresh-install schema snapshot and production baseline. It currently contains 36 application tables plus `schema_patch_history` (37 tables total), with 58 named foreign-key constraints and no application records. Run it first, then run `deploy/mariadb11_seed.sql` for essential Heart reward configuration:
 
 ```sh
 mariadb --default-character-set=utf8mb4 -u DB_USER -p DB_NAME < sql/deploy/mariadb11_schema.sql
@@ -14,6 +14,8 @@ mariadb --default-character-set=utf8mb4 -u DB_USER -p DB_NAME < sql/deploy/maria
 Use an empty database. Create the database and a least-privilege database account through the hosting administrator's secure process. Enter passwords interactively; keep credentials outside the repository and environment files protected.
 
 The seed preserves the `watch_ads` reward configuration (50 Hearts, daily limit 10) but sets `is_enabled = 0`. Keep it unavailable until rewarded-ad delivery is implemented and verified.
+
+**Recovery/release reconciliation required:** the one-time initial-release dump has 37 tables and 59 foreign keys, but it is not the same table set as this 37-table snapshot. The dump contains `fan_post_monthly_views` (including `fk_fan_post_monthly_views_fan_post_idx`, which references `fan_posts(idx)`); the checked-in snapshot instead contains `schema_patch_history`. Thus the FK-count difference reflects a table-set difference, not only one missing constraint. The external dump has no `schema_patch_history`, which the incremental patch workflow expects. Do not import that dump or claim schema parity until the table definitions, data, and patch-ledger implications have been reviewed and reconciled. The dump is external to Git and may not exist on a new workstation.
 
 ## Existing databases and future patches
 

@@ -6,6 +6,12 @@ Project name: IdolRanking
 
 IdolRanking is a Laravel-based idol ranking and global fan community web application.
 
+### Fresh Codex session entry point
+
+At the start of every new session, read `docs/PROJECT_RECOVERY.md`, `docs/PROJECT_OVERVIEW.md`, `sql/README.md`, and `scripts/deploy/README.md` when deployment is in scope. Then inspect the actual Git branch/status, `.env.example` (never print `.env`), lockfiles, installed PHP/Composer/Node tools, SQL snapshots, and relevant scripts. Do not assume dependencies, databases, SSH access, or a successful production release merely because documentation describes them. Report missing tools and configuration, then guide or perform only the reversible setup steps authorized by the request. Never expose or commit secrets, overwrite existing local data, execute production SQL, or deploy without explicit authorization.
+
+For a short request such as “Analyze this project and set up the environment,” automatically run a read-only environment inventory first, compare it with the recovery checklist, and give the user the exact safe next steps. Install dependencies only when missing and permitted; do not run `npm ci` against a potentially damaged existing `node_modules`. Before importing a database, confirm the target is local and empty or obtain explicit approval for replacement. Always distinguish verified current state from historical notes.
+
 ### Local Development Environment
 
 - OS: Windows 11
@@ -32,13 +38,17 @@ http://idolranking.test
 
 ### Production Environment
 
-Production will use:
+Verified production layout (recheck before acting; these values are configuration, not credentials):
 
-- Linux
-- Apache
-- PHP 8.4 / PHP-FPM
-- MySQL 8.4 LTS
-- Laravel 13
+- Hostinger Linux with Apache/PHP-FPM and Laravel 13.
+- MariaDB 11.8.9 (local development uses MySQL 8.4; review SQL compatibility).
+- Laravel checkout: `/home/u624668418/domains/orchid-oryx-674671.hostingersite.com/idolranking`.
+- Apache document root: `/home/u624668418/domains/orchid-oryx-674671.hostingersite.com/public_html`.
+- `APP_PUBLIC_PATH` points to `public_html`; `public_html/index.php` bootstraps the separate checkout. Preserve that file and server-specific `.htaccess`.
+- PHP 8.4 executable: `/opt/alt/php84/usr/bin/php`; Composer: `/usr/local/bin/composer`. Node/npm are not installed on production; build Vite assets locally.
+- SSH uses Windows OpenSSH on port `65002`, with a per-user key and a pinned `known_hosts` entry. Never copy a private key into this repository or accept an unknown host key.
+
+The current production commit and whether the integrated initial database/media release completed are **not verified by repository state**. Do not claim success until read-only server checks confirm it.
 
 The local Apache environment should remain compatible with the production Apache environment as much as practical.
 
@@ -964,7 +974,7 @@ mysql -h 127.0.0.1 -u idolranking -p idolranking
 
 ## 31. Current Development Philosophy
 
-This project is currently in the early development stage.
+Feature development continues on top of the first integrated release commit. Check `docs/PROJECT_OVERVIEW.md` for the current scope and deferred features.
 
 Priority order:
 
