@@ -3,7 +3,7 @@
 @import './image-fallback.css';
 @import './interactive-controls.css';
 
-:root { color-scheme: light; }
+:root { color-scheme: only light; }
 
 @source '../../vendor/laravel/framework/src/Illuminate/Pagination/resources/views/*.blade.php';
 @source '../../storage/framework/views/*.php';
@@ -248,7 +248,7 @@
 }
 
 * { box-sizing: border-box; }
-body { margin: 0; min-width: 320px; }
+body { margin: 0; min-width: 320px; background-color: #fff; color: #0b214d; }
 button, input { font: inherit; }
 button { color: inherit; }
 button:disabled { cursor: default; opacity: 1; }
