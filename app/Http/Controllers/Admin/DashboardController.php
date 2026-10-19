@@ -77,7 +77,7 @@ class DashboardController extends Controller
 
     private function resolveDateRange(Request $request): array
     {
-        $now = CarbonImmutable::now();
+        $now = CarbonImmutable::now('UTC');
         $defaultStart = $now->subDays(6)->startOfDay();
         $defaultEnd = $now->endOfDay();
         $start = $this->parseDate($request->query('start_date'))?->startOfDay();
@@ -97,7 +97,7 @@ class DashboardController extends Controller
         }
 
         try {
-            $date = CarbonImmutable::createFromFormat('!Y-m-d', $value);
+            $date = CarbonImmutable::createFromFormat('!Y-m-d', $value, 'UTC');
         } catch (\Throwable) {
             return null;
         }

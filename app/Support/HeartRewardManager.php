@@ -114,11 +114,10 @@ final class HeartRewardManager
         // Check-in and explicitly configured comment ranges may award zero; legacy fixed rewards remain positive-only.
         if ($amount < 0 || ($amount === 0 && $actionCode !== 'daily_attendance' && ! $hasCommentRange)) return 0;
 
-        // Dummy rewards are permitted only when a completed administrator random-mode action proves attribution.
-        $member = DB::table('members')->where('idx', $memberIdx)->where('member_level', 1)->where('is_dummy', 0)
-            ->where('status', 'active')->whereNull('deleted_at')->lockForUpdate()->first(['idx', 'heart_balance']);
+        // Selected-member mode is authorized by ResolveActivityMember; legacy random mode uses its reservation proof.
+        $actorIdx = (int) ($references['actor_member_idx'] ?? 0);
+        $member = $this->lockRewardMember($memberIdx, $actorIdx);
         if ($member === null && isset($references['random_dummy_request_idx'])) {
-            $actorIdx = (int) ($references['actor_member_idx'] ?? 0);
             $manager = app(RandomDummyActivity::class);
             $eligible = $actionCode === 'fan_post_recommend_received'
                 ? $manager->permitsDummyRecommendationReward((int) $references['random_dummy_request_idx'], $memberIdx, $actorIdx)
@@ -210,16 +209,14 @@ final class HeartRewardManager
             : strtolower($content);
     }
 
-    public function awardPartnerBanner(int $memberIdx, int $bannerIdx): array
+    public function awardPartnerBanner(int $memberIdx, int $bannerIdx, int $actorIdx): array
     {
         $now = now('UTC');
         $operationKey = 'partner_banner:'.$bannerIdx.':'.$memberIdx.':'.$now->format('Ymd');
 
         try {
-            return DB::transaction(function () use ($memberIdx, $bannerIdx, $now, $operationKey): array {
-                $member = DB::table('members')->where('idx', $memberIdx)->where('member_level', 1)
-                    ->where('is_dummy', 0)->where('status', 'active')->whereNull('deleted_at')->lockForUpdate()
-                    ->first(['idx', 'heart_balance']);
+        return DB::transaction(function () use ($memberIdx, $bannerIdx, $actorIdx, $now, $operationKey): array {
+                $member = $this->lockRewardMember($memberIdx, $actorIdx);
                 if ($member === null) {
                     return ['status' => 'ineligible'];
                 }
@@ -256,7 +253,7 @@ final class HeartRewardManager
                     'comment_idx' => null,
                     'reversal_of_history_idx' => null,
                     'operation_key' => $operationKey,
-                    'actor_member_idx' => null,
+                    'actor_member_idx' => $actorIdx,
                     'memo' => 'Partner banner reward',
                     'created_at' => $now,
                 ]);
@@ -274,6 +271,30 @@ final class HeartRewardManager
                 'heart_balance' => (int) DB::table('members')->where('idx', $memberIdx)->value('heart_balance'),
             ];
         }
+    }
+
+    private function lockRewardMember(int $memberIdx, int $actorIdx): ?object
+    {
+        $member = DB::table('members')->where('idx', $memberIdx)->where('member_level', 1)->where('is_dummy', 0)
+            ->where('status', 'active')->whereNull('deleted_at')->lockForUpdate()->first(['idx', 'heart_balance']);
+        if ($member !== null) {
+            return $member;
+        }
+
+        $request = request();
+        $actor = $request->attributes->get('activityActor');
+        $activityMember = $request->attributes->get('activityMember');
+        $authorizedDummyAction = (bool) $request->attributes->get('activityDummyMode', false)
+            && $actor !== null && $activityMember !== null
+            && (int) $actor->idx === $actorIdx && (int) $actor->member_level === 10 && (int) $actor->is_dummy === 0
+            && (int) $activityMember->idx === $memberIdx;
+
+        if (! $authorizedDummyAction) {
+            return null;
+        }
+
+        return DB::table('members')->where('idx', $memberIdx)->where('member_level', 1)->where('is_dummy', 1)
+            ->where('status', 'active')->whereNull('deleted_at')->lockForUpdate()->first(['idx', 'heart_balance']);
     }
 
     public function creditManually(int $memberIdx, int $amount, string $reason, int $adminIdx, string $operationKey): bool

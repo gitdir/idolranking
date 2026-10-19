@@ -227,13 +227,16 @@ CREATE TABLE fan_posts (
     image_path VARCHAR(1024) NULL COMMENT '이미지 1장 저장 경로',
     youtube_video_id CHAR(11) CHARACTER SET ascii COLLATE ascii_bin NULL COMMENT 'Normalized YouTube video ID',
     content TEXT NULL COMMENT '공개 본문',
-    status VARCHAR(16) NOT NULL DEFAULT 'published' COMMENT 'published 또는 hidden',
+    status VARCHAR(16) NOT NULL DEFAULT 'published' COMMENT 'published, hidden, queued, or cancelled',
+    queued_at DATETIME(6) NULL COMMENT '관리자 분산 발행 대기열 진입 시각',
+    published_at DATETIME(6) NULL COMMENT '실제 공개 시각; 기존 글은 created_at으로 대체',
     view_count BIGINT UNSIGNED NOT NULL DEFAULT 0 COMMENT '조회수; 좋아요/랭킹과 독립',
     deleted_at DATETIME(6) NULL COMMENT '삭제 시각',
     created_at DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6) COMMENT '작성 또는 신청 승인 시각',
     updated_at DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6) COMMENT '본문/상태 수정 시각; 조회수 증가 시 유지',
     PRIMARY KEY (idx),
     KEY idx_posts_idol_idx_status_deleted_at_created_at_idx (idol_idx, status, deleted_at, created_at, idx),
+    KEY idx_posts_status_deleted_at_queued_at_idx (status, deleted_at, queued_at, idx),
     KEY idx_posts_member_idx_deleted_at_created_at_idx (member_idx, deleted_at, created_at, idx),
     KEY idx_posts_actor_member_idx_created_at_idx (actor_member_idx, created_at, idx)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci COMMENT='아이돌별 팬포스트; 이미지 또는 본문 중 하나 이상 필수';

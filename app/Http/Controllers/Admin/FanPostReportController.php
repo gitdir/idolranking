@@ -72,7 +72,12 @@ class FanPostReportController extends Controller
         DB::transaction(function () use ($idx, $validated, $admin) {
             $post = DB::table('fan_posts')->where('idx', $idx)->whereNull('deleted_at')->lockForUpdate()->first(['idx', 'status', 'title']);
             abort_if($post === null, 404);
-            DB::table('fan_posts')->where('idx', $idx)->update(['status' => $validated['status'], 'updated_at' => now()]);
+            abort_unless(in_array($post->status, ['published', 'hidden'], true), 404);
+            $updates = ['status' => $validated['status'], 'updated_at' => now()];
+            if ($validated['status'] === 'published') {
+                $updates['published_at'] = now('UTC');
+            }
+            DB::table('fan_posts')->where('idx', $idx)->update($updates);
             $action = $validated['status'] === 'hidden' ? 'fan_post_hidden' : 'fan_post_restored';
             AdminActivityLogger::record((int) $admin->idx, $action, 'fan_post', $idx, $validated['reason'], $post->title);
         });

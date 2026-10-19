@@ -79,12 +79,43 @@ class ActingDummyMemberAuditTest extends TestCase
             'dummy_member_idx' => 2,
         ])->assertForbidden();
 
-        $this->withSession(['member_idx' => 1])->post(route('admin.acting-dummy-member'), [
+        $this->withSession([
+            'member_idx' => 1,
+            ResolveActivityMember::SESSION_KEY => 2,
+            ResolveActivityMember::MODE_ENABLED_SESSION_KEY => true,
+            ResolveActivityMember::MODE_ACTOR_SESSION_KEY => 1,
+        ])->post(route('admin.acting-dummy-member'), [
             'dummy_member_idx' => 4,
         ])->assertStatus(422);
 
         $this->assertSame(0, DB::table('admin_activity_logs')->count());
-        $this->assertFalse(session()->has(ResolveActivityMember::SESSION_KEY));
+        $this->assertSame(2, (int) session(ResolveActivityMember::SESSION_KEY));
+    }
+
+    public function test_admin_dummy_mode_defaults_on_and_can_be_toggled_without_changing_actor(): void
+    {
+        $this->database();
+
+        $this->withSession(['member_idx' => 1])->post(route('admin.acting-dummy-mode'), ['enabled' => '0'])
+            ->assertRedirect();
+        $this->assertSame(1, (int) session('member_idx'));
+        $this->assertSame(2, (int) session(ResolveActivityMember::SESSION_KEY));
+        $this->assertFalse((bool) session(ResolveActivityMember::MODE_ENABLED_SESSION_KEY));
+
+        $this->post(route('admin.acting-dummy-mode'), ['enabled' => '1'])->assertRedirect();
+        $this->assertSame(1, (int) session('member_idx'));
+        $this->assertSame(2, (int) session(ResolveActivityMember::SESSION_KEY));
+        $this->assertTrue((bool) session(ResolveActivityMember::MODE_ENABLED_SESSION_KEY));
+        $this->assertSame(3, DB::table('admin_activity_logs')->count());
+    }
+
+    public function test_direct_dummy_account_cannot_toggle_dummy_activity_mode(): void
+    {
+        $this->database();
+
+        $this->withSession(['member_idx' => 2])->post(route('admin.acting-dummy-mode'), ['enabled' => '1'])
+            ->assertForbidden();
+        $this->assertSame(0, DB::table('admin_activity_logs')->count());
     }
 
     public function test_reselecting_the_current_dummy_does_not_create_a_duplicate_transition(): void

@@ -28,15 +28,21 @@ class FanPostController extends Controller
     {
         $idols = DB::table('idols')->where('status', 'active')
             ->orderBy('name')->orderBy('idx')->get(['idx', 'name', 'type']);
+        $currentMember = $request->attributes->get('currentMember');
 
         return view('fan-posts.create', ['idols' => $idols, 'editingPost' => null, 'postLanguages' => FanPostLanguages::all(),
-            'requestKey' => bin2hex(random_bytes(32)), 'randomDummyMode' => app(RandomDummyActivity::class)->enabled($request)]);
+            'requestKey' => bin2hex(random_bytes(32)), 'randomDummyMode' => app(RandomDummyActivity::class)->enabled($request),
+            'isAdmin' => $currentMember !== null && (int) $currentMember->member_level === 10 && (int) $currentMember->is_dummy === 0]);
     }
 
     public function store(Request $request)
     {
         $member = $request->attributes->get('activityMember');
         $actor = $request->attributes->get('activityActor');
+        $currentMember = $request->attributes->get('currentMember');
+        $autoDistribute = $request->boolean('auto_distribute');
+        $isAdmin = $currentMember !== null && (int) $currentMember->member_level === 10 && (int) $currentMember->is_dummy === 0;
+        abort_if($autoDistribute && ! $isAdmin, 403);
         $randomActivities = app(RandomDummyActivity::class);
         $randomMode = $randomActivities->enabled($request);
         $mediaType = $request->string('media_type')->toString();
@@ -53,6 +59,7 @@ class FanPostController extends Controller
             'content' => ['required', 'string', 'max:2000'],
             'language_code' => ['required', 'string', Rule::in(array_keys(FanPostLanguages::all()))],
             'media_type' => ['required', Rule::in(['text', 'image', 'youtube'])],
+            'auto_distribute' => ['sometimes', 'boolean'],
             'image' => [Rule::requiredIf($mediaType === 'image'), Rule::prohibitedIf($mediaType !== 'image'), 'nullable', 'file', 'image', 'mimes:jpg,jpeg,png,gif', 'max:5120'],
             'youtube_url' => [Rule::requiredIf($mediaType === 'youtube'), Rule::prohibitedIf($mediaType !== 'youtube'), 'nullable', 'string', 'max:2048'],
             'tags' => ['nullable', 'string', 'max:619'],
@@ -86,23 +93,26 @@ class FanPostController extends Controller
             $reservation = $randomMode ? $randomActivities->reserve($request, 'fan_post_create', $validated['request_key'], [
                     'idol_idx' => (int) $validated['idol_idx'], 'title' => $validated['title'], 'content' => $validated['content'],
                     'language_code' => $validated['language_code'], 'media_type' => $mediaType, 'youtube_id' => $youtubeId,
-                    'image_hash' => $imageHash, 'tags' => $tags->all(),
+                    'image_hash' => $imageHash, 'tags' => $tags->all(), 'auto_distribute' => $autoDistribute,
                 ]) : null;
-            $created = DB::transaction(function () use ($request, $validated, $member, $actor, $mediaType, $imagePath, $youtubeId, $tags, $randomActivities, $reservation) {
+            $created = DB::transaction(function () use ($request, $validated, $member, $actor, $mediaType, $imagePath, $youtubeId, $tags, $randomActivities, $reservation, $autoDistribute) {
                 $reservation = $reservation ? $randomActivities->lockReservation($reservation) : null;
                 if ($reservation?->replay) {
                     return ['idx' => (int) $reservation->result_idx, 'reservation' => $reservation, 'member_idx' => (int) $reservation->member_idx, 'replay' => true];
                 }
                 $activityMember = $reservation ? $randomActivities->member($reservation) : $member;
                 abort_if($activityMember === null, 422, '사용할 수 있는 활성 더미 회원이 없습니다.');
+                $createdAt = now('UTC');
                 $postIdx = DB::table('fan_posts')->insertGetId([
                     'idol_idx' => $validated['idol_idx'], 'member_idx' => $activityMember->idx,
                     'actor_member_idx' => $actor->idx, 'title' => $validated['title'],
                     'language_code' => $validated['language_code'],
                     'media_type' => $mediaType,
                     'image_path' => $imagePath, 'youtube_video_id' => $mediaType === 'youtube' ? $youtubeId : null,
-                    'content' => $validated['content'], 'status' => 'published',
-                    'view_count' => 0, 'created_at' => now(), 'updated_at' => now(),
+                    'content' => $validated['content'], 'status' => $autoDistribute ? 'queued' : 'published',
+                    'queued_at' => $autoDistribute ? $createdAt : null,
+                    'published_at' => $autoDistribute ? null : $createdAt,
+                    'view_count' => 0, 'created_at' => $createdAt, 'updated_at' => $createdAt,
                 ]);
                 if ($tags->isNotEmpty()) {
                     DB::table('fan_post_tags')->insert($tags->map(fn ($tag) => [
@@ -141,6 +151,9 @@ class FanPostController extends Controller
             Storage::disk('public')->delete(substr($imagePath, strlen('storage/')));
         }
         if ($created['replay']) {
+            if ($autoDistribute) {
+                return redirect()->route('admin.fan-post-distribution.index');
+            }
             return redirect()->route('fan-post.show', ['idx' => $postIdx]);
         }
 
@@ -173,6 +186,12 @@ class FanPostController extends Controller
                     'exception_message' => $exception->getMessage(),
                 ]);
             }
+        }
+
+        if ($autoDistribute) {
+            return redirect()->route('admin.fan-post-distribution.index')->with('global_notification', [
+                'title' => '예약 발행 대기 등록', 'message' => '게시물이 비공개 대기열에 등록되었습니다.', 'type' => 'success',
+            ]);
         }
 
         $redirect = redirect()->route('fan-post.show', ['idx' => $postIdx]);
@@ -315,7 +334,7 @@ class FanPostController extends Controller
             ->where('idol.status', 'active')->where('member.member_level', '>', 0)
             ->where('member.status', 'active')->whereNull('member.deleted_at')
             ->first(['post.idx', 'post.idol_idx', 'post.status', 'post.title', 'post.language_code', 'post.media_type', 'post.image_path', 'post.youtube_video_id',
-                'post.content', 'post.view_count', 'post.created_at', 'member.idx as author_idx',
+                'post.content', 'post.view_count', DB::raw('COALESCE(post.published_at, post.created_at) as published_at'), 'member.idx as author_idx',
                 'member.member_code', 'member.nickname', 'member.country_code', 'member.profile_image_path', 'idol.name as idol_name']);
         abort_if($record === null, 404);
         if ($record->status === 'hidden') {
@@ -333,7 +352,7 @@ class FanPostController extends Controller
                 ? \App\Support\ManagedImageStorage::publicUrl($record->image_path)
                 : null,
             'youtube_video_id' => $record->youtube_video_id, 'views' => (int) $record->view_count,
-            'time' => \Illuminate\Support\Carbon::parse($record->created_at)->diffForHumans(),
+            'time' => \Illuminate\Support\Carbon::parse($record->published_at)->diffForHumans(),
             'recommendations' => $recommendationCounts['lifetime'],
             'monthly_recommendations' => $recommendationCounts['monthly'],
             'tags' => DB::table('fan_post_tags')->where('fan_post_idx', $idx)->orderBy('idx')->pluck('tag')->all(),
@@ -359,18 +378,18 @@ class FanPostController extends Controller
                         ->orWhere(fn ($videos) => $videos->where('trending.media_type', 'youtube')->whereNotNull('trending.youtube_video_id')->where('trending.youtube_video_id', '<>', ''));
                 })
                 ->orderByDesc('trending.view_count')
-                ->orderByDesc('trending.created_at')
+                ->orderByRaw('COALESCE(trending.published_at, trending.created_at) DESC')
                 ->orderByDesc('trending.idx')
                 ->limit(3)
                 ->get(['trending.idx', 'trending.title', 'trending.media_type', 'trending.image_path',
-                    'trending.youtube_video_id', 'trending.created_at'])
+                    'trending.youtube_video_id', DB::raw('COALESCE(trending.published_at, trending.created_at) as published_at')])
                 ->map(fn ($item) => [
                     'idx' => (int) $item->idx,
                     'title' => $item->title,
                     'image_url' => $item->media_type === 'youtube' && $item->youtube_video_id
                         ? 'https://i.ytimg.com/vi/'.$item->youtube_video_id.'/hqdefault.jpg'
                         : \App\Support\ManagedImageStorage::publicUrl($item->image_path),
-                    'time' => \Illuminate\Support\Carbon::parse($item->created_at)->diffForHumans(),
+                    'time' => \Illuminate\Support\Carbon::parse($item->published_at)->diffForHumans(),
                 ])->all();
         $fanPostSort = $request->string('sort')->toString();
         if (!in_array($fanPostSort, ['latest', 'monthly_liked', 'liked', 'commented'], true)) {

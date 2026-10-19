@@ -37,41 +37,37 @@ class AppServiceProvider extends ServiceProvider
                 return;
             }
 
-            $seoulNow = CarbonImmutable::now('Asia/Seoul');
-            $today = $seoulNow->toDateString();
-            $yesterday = $seoulNow->subDay()->toDateString();
-            $dailyStats = collect();
+            $utcNow = CarbonImmutable::now('UTC');
+            $today = $utcNow->toDateString();
+            $yesterday = $utcNow->subDay()->toDateString();
+            $pageViews = collect();
+            $dailyUniqueCounts = collect();
 
             try {
-                if (DatabaseAvailability::isAvailable() && Schema::hasTable('member_access_logs')) {
-                    $startUtc = $seoulNow->subDay()->startOfDay()->utc()->toDateTimeString();
-                    $endUtc = $seoulNow->endOfDay()->utc()->toDateTimeString();
+                if (DatabaseAvailability::isAvailable()) {
+                    if (Schema::hasTable('visitor_daily_stats')) {
+                        $pageViews = DB::table('visitor_daily_stats')
+                            ->whereBetween('stat_date', [$yesterday, $today])
+                            ->pluck('page_views', 'stat_date');
+                    }
 
-                    $dailyStats = DB::table('member_access_logs as log')
-                        ->leftJoin('members as member', 'member.idx', '=', 'log.member_idx')
-                        ->whereBetween('log.created_at', [$startUtc, $endUtc])
-                        ->where('log.is_bot', 0)
-                        ->where(function ($query): void {
-                            $query->whereNull('log.member_idx')
-                                ->orWhere(function ($memberQuery): void {
-                                    $memberQuery->where('member.member_level', '<', 10)
-                                        ->where('member.is_dummy', 0);
-                                });
-                        })
-                        ->selectRaw('DATE(DATE_ADD(log.created_at, INTERVAL 9 HOUR)) AS stat_date, COUNT(*) AS page_views, COUNT(DISTINCT log.visitor_id) AS unique_visitors')
-                        ->groupByRaw('DATE(DATE_ADD(log.created_at, INTERVAL 9 HOUR))')
-                        ->get()
-                        ->keyBy('stat_date');
+                    if (Schema::hasTable('visitor_daily_uniques')) {
+                        $dailyUniqueCounts = DB::table('visitor_daily_uniques')
+                            ->whereBetween('stat_date', [$yesterday, $today])
+                            ->selectRaw('stat_date, COUNT(*) AS unique_visitors')
+                            ->groupBy('stat_date')
+                            ->pluck('unique_visitors', 'stat_date');
+                    }
                 }
             } catch (Throwable $exception) {
                 report($exception);
             }
 
             $view->with('footerVisitorStats', [
-                'yesterdayUv' => (int) ($dailyStats[$yesterday]->unique_visitors ?? 0),
-                'yesterdayPv' => (int) ($dailyStats[$yesterday]->page_views ?? 0),
-                'todayUv' => (int) ($dailyStats[$today]->unique_visitors ?? 0),
-                'todayPv' => (int) ($dailyStats[$today]->page_views ?? 0),
+                'yesterdayUv' => (int) ($dailyUniqueCounts[$yesterday] ?? 0),
+                'yesterdayPv' => (int) ($pageViews[$yesterday] ?? 0),
+                'todayUv' => (int) ($dailyUniqueCounts[$today] ?? 0),
+                'todayPv' => (int) ($pageViews[$today] ?? 0),
             ]);
         });
 

@@ -46,6 +46,10 @@
                 <span>help@idolranking.com</span>
             </a>
         </div>
+        <nav class="footer-legal-links" aria-label="{{ __('legal.footer_navigation') }}">
+            <a href="{{ route('privacy') }}">{{ __('legal.footer_privacy') }}</a>
+            <a href="{{ route('terms') }}">{{ __('legal.footer_terms') }}</a>
+        </nav>
         <p class="site-footer-copyright">&copy; 2026 IDOL RANKING. {{ __('ui.all_rights_reserved') }}</p>
     </div>
 </footer>

@@ -18,7 +18,7 @@ class MyPageTest extends TestCase
         $this->assertSame('sqlite', config('database.default'));
         // Test-only SQL, never applied to the application database.
         DB::statement('CREATE TABLE members (idx INTEGER PRIMARY KEY, member_code TEXT UNIQUE, email TEXT, nickname TEXT, country_code TEXT, profile_image_path TEXT, referred_by_member_idx INTEGER, heart_balance INTEGER DEFAULT 0, password_hash TEXT, member_level INTEGER DEFAULT 1, is_dummy INTEGER DEFAULT 0, status TEXT DEFAULT \'active\', deleted_at TEXT, password_changed_at TEXT, created_at TEXT, updated_at TEXT)');
-        DB::statement('CREATE TABLE fan_posts (idx INTEGER PRIMARY KEY, idol_idx INTEGER DEFAULT 1, member_idx INTEGER, media_type TEXT DEFAULT \'text\', language_code TEXT, image_path TEXT, youtube_video_id TEXT, content TEXT, view_count INTEGER DEFAULT 0, status TEXT DEFAULT \'published\', deleted_at TEXT, created_at TEXT)');
+        DB::statement('CREATE TABLE fan_posts (idx INTEGER PRIMARY KEY, idol_idx INTEGER DEFAULT 1, member_idx INTEGER, media_type TEXT DEFAULT \'text\', language_code TEXT, image_path TEXT, youtube_video_id TEXT, content TEXT, view_count INTEGER DEFAULT 0, status TEXT DEFAULT \'published\', queued_at TEXT, published_at TEXT, deleted_at TEXT, created_at TEXT)');
         DB::statement('CREATE TABLE fan_post_likes (fan_post_idx INTEGER, member_idx INTEGER, created_at TEXT)');
         DB::statement('CREATE TABLE fan_post_comments (idx INTEGER PRIMARY KEY, fan_post_idx INTEGER, status TEXT DEFAULT \'published\', deleted_at TEXT)');
         DB::statement('CREATE TABLE heart_histories (idx INTEGER PRIMARY KEY, member_idx INTEGER, actor_member_idx INTEGER, amount INTEGER, reason TEXT, operation_key TEXT, vote_idx INTEGER, created_at TEXT)');

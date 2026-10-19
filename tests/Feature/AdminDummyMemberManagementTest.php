@@ -18,7 +18,7 @@ class AdminDummyMemberManagementTest extends TestCase
         DB::statement('CREATE TABLE admin_activity_logs (idx INTEGER PRIMARY KEY AUTOINCREMENT, actor_member_idx INTEGER, action TEXT, target_type TEXT, target_idx INTEGER, reason TEXT, summary TEXT, created_at TEXT)');
         DB::statement('CREATE TABLE member_login_histories (idx INTEGER PRIMARY KEY AUTOINCREMENT, member_idx INTEGER, login_type TEXT, result TEXT, ip_address TEXT, user_agent TEXT, failure_reason TEXT, created_at TEXT)');
         DB::statement('CREATE TABLE heart_histories (idx INTEGER PRIMARY KEY AUTOINCREMENT, member_idx INTEGER, amount INTEGER, balance_after INTEGER, reason TEXT, vote_idx INTEGER, comment_idx INTEGER, reversal_of_history_idx INTEGER, operation_key TEXT, actor_member_idx INTEGER, memo TEXT, created_at TEXT)');
-        DB::statement('CREATE TABLE fan_posts (idx INTEGER PRIMARY KEY AUTOINCREMENT, member_idx INTEGER, title TEXT, status TEXT, deleted_at TEXT, created_at TEXT)');
+        DB::statement('CREATE TABLE fan_posts (idx INTEGER PRIMARY KEY AUTOINCREMENT, member_idx INTEGER, title TEXT, status TEXT, queued_at TEXT, published_at TEXT, deleted_at TEXT, created_at TEXT)');
         DB::statement('CREATE TABLE restricted_nicknames (idx INTEGER PRIMARY KEY AUTOINCREMENT, word TEXT, match_type TEXT, is_enabled INTEGER)');
 
         DB::table('members')->insert([

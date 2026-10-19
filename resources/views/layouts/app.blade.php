@@ -25,7 +25,7 @@
     @if($seoDescription)<meta property="og:description" content="{{ $seoDescription }}">@endif
     <meta property="og:image" content="{{ $seoImageUrl }}">
     <meta property="og:url" content="{{ $canonicalUrl }}">
-    @if($publicSettings['favicon_path'] ?? null)<link rel="icon" href="{{ asset($publicSettings['favicon_path']) }}">@endif
+    <link rel="icon" href="{{ asset($publicSettings['favicon_path'] ?? 'favicon.ico') }}">
     {!! $publicSettings['head_code'] ?? '' !!}
     @if($publicSettings['custom_css'] ?? null)<style>{!! $publicSettings['custom_css'] !!}</style>@endif
     @vite(['resources/css/app.css', 'resources/js/app.js'])

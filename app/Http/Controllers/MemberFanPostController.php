@@ -67,10 +67,10 @@ class MemberFanPostController extends Controller
             );
 
         match ($sort) {
-            'monthly_liked' => $query->orderByDesc('monthly_like_count')->orderByDesc('p.created_at')->orderByDesc('p.idx'),
-            'liked' => $query->orderByDesc('like_count')->orderByDesc('p.created_at')->orderByDesc('p.idx'),
-            'commented' => $query->orderByDesc('comment_count')->orderByDesc('p.created_at')->orderByDesc('p.idx'),
-            default => $query->orderByDesc('p.created_at')->orderByDesc('p.idx'),
+            'monthly_liked' => $query->orderByDesc('monthly_like_count')->orderByRaw('COALESCE(p.published_at, p.created_at) DESC')->orderByDesc('p.idx'),
+            'liked' => $query->orderByDesc('like_count')->orderByRaw('COALESCE(p.published_at, p.created_at) DESC')->orderByDesc('p.idx'),
+            'commented' => $query->orderByDesc('comment_count')->orderByRaw('COALESCE(p.published_at, p.created_at) DESC')->orderByDesc('p.idx'),
+            default => $query->orderByRaw('COALESCE(p.published_at, p.created_at) DESC')->orderByDesc('p.idx'),
         };
 
         $fanPosts = $query->paginate(20)->withQueryString();

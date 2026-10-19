@@ -86,6 +86,16 @@ Never put a database dump, production data, credentials, or `.env` file in this 
 
 Patch `20261019_001_stop_storing_raw_visitor_ips.sql` makes `member_access_logs.ip_address` nullable. New public-page access rows no longer store raw IP addresses; existing values are retained until the existing 90-day access-log cleanup expires them. The visitor aggregates continue to use random first-party visitor IDs and do not depend on IP addresses.
 
+Patch `20261019_002_add_fan_post_distribution.sql` adds `queued` and `cancelled` Fan Post states, queue entry time, actual publication time, and an index for oldest-first queue processing. Apply it once to an existing database and record it in `schema_patch_history`; fresh installs already contain these definitions in both canonical schema snapshots. The application stores distribution settings in the existing `site_settings` table and uses defaults of 10 minutes, 2 posts, and 09:00–23:00 Asia/Seoul when no settings have been saved. The queue is published by the `fan-posts:publish-queued` Artisan command; it must be run by Laravel Scheduler every minute. No per-post publication times are precomputed, so settings changes immediately govern future queue processing without reordering queued posts.
+
+Add the Laravel scheduler to the production user's cron once:
+
+```cron
+* * * * * cd /home/u624668418/domains/orchid-oryx-674671.hostingersite.com/idolranking && /opt/alt/php84/usr/bin/php artisan schedule:run >> /dev/null 2>&1
+```
+
+The scheduler runs `fan-posts:publish-queued` each minute. Confirm the hosting account already has the standard Laravel scheduler cron before adding another copy.
+
 ## Compatibility notes
 
 - The deployment snapshot uses InnoDB and `utf8mb4_unicode_ci`, supported by both MySQL 8.4 and MariaDB 11.8. MySQL 8.4's `utf8mb4_0900_ai_ci` is not available in MariaDB 11.8; the selected collation has different Unicode sorting weights.

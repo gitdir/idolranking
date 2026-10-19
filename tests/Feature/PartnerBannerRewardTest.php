@@ -108,7 +108,8 @@ class PartnerBannerRewardTest extends TestCase
         $this->postJson(route('get-hearts.partner-banners.claim', $bannerIdx))->assertUnauthorized();
         DB::table('members')->where('idx', 1)->update(['member_level' => 0]);
         $this->withSession(['member_idx' => 1])->postJson(route('get-hearts.partner-banners.claim', $bannerIdx))->assertUnauthorized();
-        $this->withSession(['member_idx' => 2])->postJson(route('get-hearts.partner-banners.claim', $bannerIdx))->assertForbidden();
+        $this->withSession(['member_idx' => 2])->postJson(route('get-hearts.partner-banners.claim', $bannerIdx))
+            ->assertOk()->assertJsonPath('success', true)->assertJsonPath('data.amount', 25);
         $this->withSession(['member_idx' => 3])->postJson(route('get-hearts.partner-banners.claim', $bannerIdx))->assertForbidden();
         $this->withSession(['member_idx' => 4])->postJson(route('get-hearts.partner-banners.claim', $bannerIdx))->assertForbidden();
 
@@ -118,7 +119,11 @@ class PartnerBannerRewardTest extends TestCase
         }
 
         $this->assertSame(200, (int) DB::table('members')->where('idx', 1)->value('heart_balance'));
-        $this->assertSame(0, DB::table('heart_histories')->count());
+        $this->assertSame(25, (int) DB::table('members')->where('idx', 3)->value('heart_balance'));
+        $this->assertDatabaseHas('heart_histories', [
+            'member_idx' => 3, 'actor_member_idx' => 2, 'amount' => 25,
+            'operation_key' => 'partner_banner:'.$bannerIdx.':3:'.now()->format('Ymd'),
+        ]);
     }
 
     public function test_reward_badges_are_public_but_completed_state_and_claims_are_member_specific(): void
@@ -145,8 +150,8 @@ class PartnerBannerRewardTest extends TestCase
             ->assertDontSee('+99')->assertDontSee('id="partner-banner-reward-dialog"', false);
         $this->withSession(['member_idx' => 2])->get('/get-hearts')->assertOk()
             ->assertSee('+18')->assertSee('+42')->assertDontSee('✓ 완료')->assertDontSee('❤️')
-            ->assertDontSee('+99')->assertDontSee('id="partner-banner-reward-dialog"', false)
-            ->assertDontSee('data-partner-banner-reward', false);
+            ->assertDontSee('+99')->assertSee('id="partner-banner-reward-dialog"', false)
+            ->assertSee('data-partner-banner-reward', false);
         $this->withSession(['member_idx' => 3])->get('/get-hearts')->assertOk()
             ->assertSee('+18')->assertSee('+42')->assertDontSee('✓ 완료')->assertDontSee('❤️')
             ->assertDontSee('+99')->assertDontSee('id="partner-banner-reward-dialog"', false)
@@ -156,7 +161,7 @@ class PartnerBannerRewardTest extends TestCase
             ->assertDontSee('+99')->assertDontSee('data-partner-banner-reward', false);
     }
 
-    public function test_admin_acting_as_dummy_cannot_claim_partner_banner_hearts(): void
+    public function test_admin_acting_as_dummy_can_claim_partner_banner_hearts(): void
     {
         $this->database();
         $bannerIdx = $this->banner();
@@ -165,9 +170,13 @@ class PartnerBannerRewardTest extends TestCase
             'dummy_member_idx' => 3,
         ])->assertRedirect(route('home'))
             ->assertSessionHas('admin_success', '더미 회원 활동을 선택했습니다.');
-        $this->postJson(route('get-hearts.partner-banners.claim', $bannerIdx))->assertForbidden();
+        $this->postJson(route('get-hearts.partner-banners.claim', $bannerIdx))
+            ->assertOk()->assertJsonPath('success', true)->assertJsonPath('data.amount', 25);
 
-        $this->assertSame(0, (int) DB::table('members')->where('idx', 3)->value('heart_balance'));
-        $this->assertSame(0, DB::table('heart_histories')->count());
+        $this->assertSame(25, (int) DB::table('members')->where('idx', 3)->value('heart_balance'));
+        $this->assertDatabaseHas('heart_histories', [
+            'member_idx' => 3, 'actor_member_idx' => 2, 'amount' => 25,
+            'operation_key' => 'partner_banner:'.$bannerIdx.':3:'.now()->format('Ymd'),
+        ]);
     }
 }

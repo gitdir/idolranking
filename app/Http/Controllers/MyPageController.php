@@ -17,7 +17,7 @@ class MyPageController extends Controller
 {
     public function checkNickname(Request $request)
     {
-        $member = $request->attributes->get('currentMember');
+        $member = $request->attributes->get('activityMember');
         $request->merge(['nickname' => trim((string) $request->input('nickname'))]);
         $formatValidator = Validator::make($request->all(), [
             'nickname' => ['required', 'string', 'min:2', 'max:20'],
@@ -73,7 +73,8 @@ class MyPageController extends Controller
 
     public function updateProfile(Request $request)
     {
-        $member = $request->attributes->get('currentMember');
+        $member = $request->attributes->get('activityMember');
+        $actor = $request->attributes->get('activityActor');
         $request->merge([
             'nickname' => trim((string) $request->input('nickname')),
             'country_code' => strtoupper(trim((string) $request->input('country_code'))),
@@ -94,7 +95,7 @@ class MyPageController extends Controller
             : $member->profile_image_path;
 
         try {
-            $rewardedHearts = DB::transaction(function () use ($member, $validated, $newImagePath): int {
+            $rewardedHearts = DB::transaction(function () use ($member, $actor, $validated, $newImagePath): int {
                 DB::table('members')->where('idx', $member->idx)->update([
                     'nickname' => $validated['nickname'],
                     'country_code' => $validated['country_code'],
@@ -102,7 +103,8 @@ class MyPageController extends Controller
                     'updated_at' => now(),
                 ]);
 
-                return app(HeartRewardManager::class)->award((int) $member->idx, 'profile_complete', 'profile_complete:'.$member->idx);
+                return app(HeartRewardManager::class)->award((int) $member->idx, 'profile_complete', 'profile_complete:'.$member->idx,
+                    ['actor_member_idx' => (int) $actor->idx, 'memo' => 'Profile completion reward']);
             });
         } catch (\Throwable $exception) {
             if ($newImagePath !== $member->profile_image_path) {
@@ -123,7 +125,7 @@ class MyPageController extends Controller
 
     public function show(Request $request)
     {
-        $member = $request->attributes->get('currentMember');
+        $member = $request->attributes->get('activityMember');
         $activeTab = in_array($request->query('tab'), ['hearts', 'posts', 'invites'], true)
             ? $request->query('tab') : 'hearts';
         $publishedPosts = DB::table('fan_posts as p')
@@ -138,7 +140,7 @@ class MyPageController extends Controller
                     ->where('l.created_at', '>=', $monthStart)->where('l.created_at', '<', $monthStart->copy()->addMonth()), 'monthly_likes')
                 ->selectSub(DB::table('fan_post_comments as c')->selectRaw('COUNT(*)')->whereColumn('c.fan_post_idx', 'p.idx')
                     ->where('c.status', 'published')->whereNull('c.deleted_at'), 'comments')
-                ->orderByDesc('p.created_at')->orderByDesc('p.idx')->limit(10)->get()
+                ->orderByRaw('COALESCE(p.published_at, p.created_at) DESC')->orderByDesc('p.idx')->limit(10)->get()
                 ->map(fn ($post) => [
                     'portrait-rose', $member->nickname, $post->content ?? '', $post->view_count, $post->likes, $post->comments, 'square',
                     'member_code' => $member->member_code,
@@ -211,7 +213,7 @@ class MyPageController extends Controller
 
     public function heartHistory(Request $request)
     {
-        $member = $request->attributes->get('currentMember');
+        $member = $request->attributes->get('activityMember');
         $filter = in_array($request->query('filter'), ['all', 'earned', 'spent'], true)
             ? $request->query('filter') : 'all';
 

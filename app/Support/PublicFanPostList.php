@@ -21,15 +21,15 @@ final class PublicFanPostList
     {
         return $this->baseQuery()
             ->where('p.member_idx', $memberIdx)->where('p.idx', '<>', $excludeIdx)
-            ->orderByDesc('p.created_at')->orderByDesc('p.idx')->limit($limit)
-            ->get(['p.idx', 'p.title', 'p.media_type', 'p.image_path', 'p.youtube_video_id', 'p.created_at'])
+            ->orderByRaw('COALESCE(p.published_at, p.created_at) DESC')->orderByDesc('p.idx')->limit($limit)
+            ->get(['p.idx', 'p.title', 'p.media_type', 'p.image_path', 'p.youtube_video_id', DB::raw('COALESCE(p.published_at, p.created_at) as published_at')])
             ->map(fn (object $post): array => [
                 'idx' => (int) $post->idx,
                 'title' => $post->title,
                 'image_url' => $post->media_type === 'youtube' && $post->youtube_video_id
                     ? 'https://i.ytimg.com/vi/'.$post->youtube_video_id.'/hqdefault.jpg'
                     : ManagedImageStorage::publicUrl($post->image_path),
-                'time' => \Illuminate\Support\Carbon::parse($post->created_at)->diffForHumans(),
+                'time' => \Illuminate\Support\Carbon::parse($post->published_at)->diffForHumans(),
             ])
             ->all();
     }
@@ -79,7 +79,7 @@ final class PublicFanPostList
         $query = $this->baseQuery()
             ->select([
                 'p.idx', 'p.media_type', 'p.image_path', 'p.youtube_video_id',
-                'p.content', 'p.view_count', 'p.created_at',
+                'p.content', 'p.view_count', 'p.created_at', DB::raw('COALESCE(p.published_at, p.created_at) as published_at'),
                 'p.language_code', 'm.idx as member_idx', 'm.member_code', 'm.nickname', 'm.country_code', 'm.profile_image_path',
             ])
             ->selectSub(
@@ -102,10 +102,10 @@ final class PublicFanPostList
             );
 
         match ($sort) {
-            'monthly_liked' => $query->orderByDesc('monthly_like_count')->orderByDesc('p.created_at')->orderByDesc('p.idx'),
-            'liked' => $query->orderByDesc('like_count')->orderByDesc('p.created_at')->orderByDesc('p.idx'),
-            'commented' => $query->orderByDesc('comment_count')->orderByDesc('p.created_at')->orderByDesc('p.idx'),
-            default => $query->orderByDesc('p.created_at')->orderByDesc('p.idx'),
+            'monthly_liked' => $query->orderByDesc('monthly_like_count')->orderByRaw('COALESCE(p.published_at, p.created_at) DESC')->orderByDesc('p.idx'),
+            'liked' => $query->orderByDesc('like_count')->orderByRaw('COALESCE(p.published_at, p.created_at) DESC')->orderByDesc('p.idx'),
+            'commented' => $query->orderByDesc('comment_count')->orderByRaw('COALESCE(p.published_at, p.created_at) DESC')->orderByDesc('p.idx'),
+            default => $query->orderByRaw('COALESCE(p.published_at, p.created_at) DESC')->orderByDesc('p.idx'),
         };
 
         return $query;

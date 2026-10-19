@@ -20,6 +20,7 @@ class AttendanceTest extends TestCase
         DB::statement('CREATE TABLE daily_check_in_translations (idx INTEGER PRIMARY KEY AUTOINCREMENT, daily_check_in_idx INTEGER NOT NULL, source_language_code TEXT NOT NULL, target_language_code TEXT NOT NULL, translated_content TEXT NOT NULL, source_hash TEXT NOT NULL, created_at TEXT, updated_at TEXT, UNIQUE (daily_check_in_idx, source_language_code, target_language_code))');
         DB::statement('CREATE TABLE heart_reward_settings (idx INTEGER PRIMARY KEY AUTOINCREMENT, action_code TEXT UNIQUE, heart_amount INTEGER, min_heart_amount INTEGER, max_heart_amount INTEGER, daily_limit INTEGER, is_enabled INTEGER)');
         DB::statement('CREATE TABLE heart_histories (idx INTEGER PRIMARY KEY AUTOINCREMENT, member_idx INTEGER, amount INTEGER, balance_after INTEGER, reason TEXT, vote_idx INTEGER, comment_idx INTEGER, reversal_of_history_idx INTEGER, operation_key TEXT UNIQUE, actor_member_idx INTEGER, memo TEXT, created_at TEXT)');
+        DB::statement('CREATE TABLE admin_activity_logs (idx INTEGER PRIMARY KEY AUTOINCREMENT, actor_member_idx INTEGER, action TEXT, target_type TEXT, target_idx INTEGER, reason TEXT, summary TEXT, created_at TEXT)');
         DB::statement('CREATE TABLE partner_banners (idx INTEGER PRIMARY KEY AUTOINCREMENT, title TEXT, image_path TEXT, target_url TEXT, heart_reward INTEGER DEFAULT 10, reward_enabled INTEGER DEFAULT 0, is_active INTEGER DEFAULT 1, display_order INTEGER DEFAULT 0, starts_at TEXT, ends_at TEXT, created_at TEXT, updated_at TEXT)');
         DB::statement('CREATE TABLE partner_banner_clicks (idx INTEGER PRIMARY KEY AUTOINCREMENT, banner_idx INTEGER NOT NULL, member_idx INTEGER NULL, clicked_at TEXT NOT NULL)');
         DB::table('heart_reward_settings')->insert([
@@ -179,25 +180,29 @@ class AttendanceTest extends TestCase
         $this->assertSame(1, DB::table('heart_histories')->count());
     }
 
-    public function test_admin_and_dummy_check_ins_show_no_unawarded_heart_amount(): void
+    public function test_admin_dummy_mode_receives_check_in_reward_but_direct_dummy_does_not(): void
     {
         DB::table('members')->insert([
             ['idx' => 3, 'member_code' => 'AdminAttendance3', 'email' => 'admin@example.test', 'nickname' => 'admin', 'country_code' => 'KR', 'heart_balance' => 0, 'member_level' => 10, 'is_dummy' => 0, 'status' => 'active'],
             ['idx' => 4, 'member_code' => 'DummyAttendance4', 'email' => 'dummy@example.test', 'nickname' => 'dummy', 'country_code' => 'KR', 'heart_balance' => 0, 'member_level' => 1, 'is_dummy' => 1, 'status' => 'active'],
+            ['idx' => 5, 'member_code' => 'DummyAttendance5', 'email' => 'dummy2@example.test', 'nickname' => 'dummy2', 'country_code' => 'KR', 'heart_balance' => 0, 'member_level' => 1, 'is_dummy' => 1, 'status' => 'active'],
         ]);
 
-        foreach ([3, 4] as $memberIdx) {
-            $response = $this->withSession(['member_idx' => $memberIdx])->postJson(route('get-hearts.daily-check-in'), [
-                'content' => 'A permitted check-in without an automatic reward', 'language_code' => 'en',
-            ]);
-            $response->assertOk()->assertJsonPath('data.reward_awarded', false)
-                ->assertJsonPath('data.amount', null)->assertJsonPath('message', __('messages.daily_checked_in'))
-                ->assertDontSee('Heart');
-        }
+        $this->withSession(['member_idx' => 3])->postJson(route('get-hearts.daily-check-in'), [
+            'content' => 'Admin check-in as selected dummy', 'language_code' => 'en',
+        ])->assertOk()->assertJsonPath('data.reward_awarded', true)->assertJsonPath('data.amount', 10);
 
-        $this->assertSame(0, DB::table('heart_histories')->count());
-        $this->withSession(['member_idx' => 4])->get(route('attendance'))->assertDontSee('+0 Heart');
-        $this->assertSame(0, (int) DB::table('members')->whereIn('idx', [3, 4])->sum('heart_balance'));
+        $this->withSession(['member_idx' => 5])->postJson(route('get-hearts.daily-check-in'), [
+            'content' => 'Direct dummy check-in', 'language_code' => 'en',
+        ])->assertOk()->assertJsonPath('data.reward_awarded', false)->assertJsonPath('data.amount', null)
+            ->assertJsonPath('message', __('messages.daily_checked_in'))->assertDontSee('Heart');
+
+        $this->assertSame(1, DB::table('heart_histories')->count());
+        $this->assertDatabaseHas('heart_histories', [
+            'member_idx' => 4, 'actor_member_idx' => 3, 'reason' => 'daily_attendance', 'amount' => 10,
+        ]);
+        $this->assertSame(10, (int) DB::table('members')->where('idx', 4)->value('heart_balance'));
+        $this->assertSame(0, (int) DB::table('members')->whereIn('idx', [3, 5])->sum('heart_balance'));
     }
 
     public function test_reward_history_failure_rolls_back_check_in_instead_of_recording_a_zero_reward(): void

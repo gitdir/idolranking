@@ -28,7 +28,7 @@ class FanPostDetailTest extends TestCase
         DB::statement("CREATE TABLE idol_localizations (idx INTEGER PRIMARY KEY AUTOINCREMENT, idol_idx INTEGER NOT NULL, language_code TEXT NOT NULL, localized_name TEXT, description TEXT, agency TEXT, position TEXT, genre TEXT, leader TEXT, created_at TEXT, updated_at TEXT, UNIQUE(idol_idx, language_code))");
         DB::statement('CREATE TABLE idol_group_members (individual_idx INTEGER, group_idx INTEGER, PRIMARY KEY (individual_idx, group_idx))');
         DB::statement('CREATE TABLE idol_votes (idx INTEGER PRIMARY KEY AUTOINCREMENT, member_idx INTEGER, idol_idx INTEGER, heart_amount INTEGER, request_key TEXT, created_at TEXT)');
-        DB::statement("CREATE TABLE fan_posts (idx INTEGER PRIMARY KEY AUTOINCREMENT, idol_idx INTEGER, member_idx INTEGER, actor_member_idx INTEGER, title TEXT, media_type TEXT DEFAULT 'text', language_code TEXT, image_path TEXT, youtube_video_id TEXT, content TEXT, view_count INTEGER DEFAULT 0, status TEXT DEFAULT 'published', deleted_at TEXT, created_at TEXT, updated_at TEXT)");
+        DB::statement("CREATE TABLE fan_posts (idx INTEGER PRIMARY KEY AUTOINCREMENT, idol_idx INTEGER, member_idx INTEGER, actor_member_idx INTEGER, title TEXT, media_type TEXT DEFAULT 'text', language_code TEXT, image_path TEXT, youtube_video_id TEXT, content TEXT, view_count INTEGER DEFAULT 0, status TEXT DEFAULT 'published', queued_at TEXT, published_at TEXT, deleted_at TEXT, created_at TEXT, updated_at TEXT)");
         DB::statement('CREATE TABLE fan_post_tags (idx INTEGER PRIMARY KEY AUTOINCREMENT, fan_post_idx INTEGER, tag TEXT, created_at TEXT)');
         DB::statement('CREATE TABLE fan_post_likes (fan_post_idx INTEGER, member_idx INTEGER, actor_member_idx INTEGER, created_at TEXT, PRIMARY KEY (fan_post_idx, member_idx))');
         DB::statement("CREATE TABLE fan_post_comments (idx INTEGER PRIMARY KEY AUTOINCREMENT, fan_post_idx INTEGER, member_idx INTEGER, actor_member_idx INTEGER, request_key TEXT, content TEXT, language_code TEXT, status TEXT DEFAULT 'published', deleted_at TEXT, created_at TEXT, updated_at TEXT, UNIQUE (actor_member_idx, request_key))");
@@ -740,7 +740,7 @@ class FanPostDetailTest extends TestCase
         $this->assertSame('image', $post->media_type);
     }
 
-    public function test_admin_and_dummy_can_create_and_comment_without_automatic_rewards(): void
+    public function test_admin_dummy_mode_receives_eligible_fan_post_and_comment_rewards(): void
     {
         $this->database();
         DB::table('members')->insert([
@@ -759,7 +759,9 @@ class FanPostDetailTest extends TestCase
         $post = DB::table('fan_posts')->where('title', 'Delegated post')->first();
         $this->assertSame(3, (int) $post->member_idx);
         $this->assertSame(2, (int) $post->actor_member_idx);
-        $this->assertDatabaseMissing('heart_histories', ['member_idx' => 3, 'reason' => 'fan_post_reward']);
+        $this->assertDatabaseHas('heart_histories', [
+            'member_idx' => 3, 'actor_member_idx' => 2, 'reason' => 'fan_post_reward', 'amount' => 30,
+        ]);
 
         $this->postJson('/fan-post/'.$post->idx.'/comments', [
             'content' => 'Comment as dummy', 'request_key' => 'delegated-comment-self-01',
@@ -778,16 +780,19 @@ class FanPostDetailTest extends TestCase
         ]);
         $this->postJson('/fan-post/51/comments', [
             'content' => 'Comment as dummy on admin post', 'request_key' => 'delegated-comment-other-01',
-        ])->assertCreated()->assertJsonPath('data.rewarded_hearts', 0);
-        $this->assertDatabaseMissing('heart_histories', ['member_idx' => 3, 'reason' => 'comment_reward']);
-        $this->assertSame(0, (int) DB::table('members')->where('idx', 3)->value('heart_balance'));
+        ])->assertCreated()->assertJsonPath('data.rewarded_hearts', 10);
+        $this->assertDatabaseHas('heart_histories', [
+            'member_idx' => 3, 'actor_member_idx' => 2, 'reason' => 'comment_reward', 'amount' => 10,
+        ]);
+        $this->assertSame(40, (int) DB::table('members')->where('idx', 3)->value('heart_balance'));
         $this->assertSame(0, (int) DB::table('members')->where('idx', 2)->value('heart_balance'));
         $this->assertSame(2, (int) session('member_idx'));
 
-        $this->withSession(['member_idx' => 2, 'acting_dummy_member_idx' => null])->postJson('/fan-post/51/comments', [
+        $this->post(route('admin.acting-dummy-mode'), ['enabled' => '0'])->assertRedirect();
+        $this->postJson('/fan-post/51/comments', [
             'content' => 'Administrator self comment', 'request_key' => 'admin-comment-self-0001',
         ])->assertCreated()->assertJsonPath('data.rewarded_hearts', 0);
-        $this->assertSame(0, DB::table('heart_histories')->where('reason', 'comment_reward')->count());
+        $this->assertSame(1, DB::table('heart_histories')->where('reason', 'comment_reward')->count());
 
         $this->withSession(['member_idx' => 3])->post('/fan-post', [
             'idol_idx' => 1, 'title' => 'Direct dummy post', 'content' => 'Posted while signed in directly.',
@@ -800,14 +805,54 @@ class FanPostDetailTest extends TestCase
             'member_idx' => 3, 'operation_key' => 'fan_post_reward:'.$directPost->idx,
         ]);
 
-        $this->withSession(['member_idx' => 2, 'acting_dummy_member_idx' => null])->post('/fan-post', [
+        $this->withSession(['member_idx' => 2])->post('/fan-post', [
             'idol_idx' => 1, 'title' => 'Direct admin post', 'content' => 'Posted by the administrator account.',
             'media_type' => 'youtube', 'youtube_url' => 'https://youtu.be/dQw4w9WgXcQ', 'tags' => '',
         ])->assertRedirect();
         $adminPost = DB::table('fan_posts')->where('title', 'Direct admin post')->first();
+        $this->assertSame(3, (int) $adminPost->member_idx);
+        $this->assertSame(2, (int) $adminPost->actor_member_idx);
+        $this->assertDatabaseHas('heart_histories', [
+            'member_idx' => 3, 'actor_member_idx' => 2, 'operation_key' => 'fan_post_reward:'.$adminPost->idx,
+        ]);
+
+        $this->post(route('admin.acting-dummy-mode'), ['enabled' => '0'])->assertRedirect();
+        $this->post('/fan-post', [
+            'idol_idx' => 1, 'title' => 'Direct admin account post', 'content' => 'Posted by the administrator account.',
+            'media_type' => 'youtube', 'youtube_url' => 'https://youtu.be/dQw4w9WgXcQ', 'tags' => '',
+        ])->assertRedirect();
+        $adminPost = DB::table('fan_posts')->where('title', 'Direct admin account post')->first();
         $this->assertSame(2, (int) $adminPost->member_idx);
+        $this->assertSame(2, (int) $adminPost->actor_member_idx);
         $this->assertDatabaseMissing('heart_histories', [
             'member_idx' => 2, 'operation_key' => 'fan_post_reward:'.$adminPost->idx,
+        ]);
+    }
+
+    public function test_queued_fan_post_uses_the_selected_dummy_as_member_and_admin_as_actor(): void
+    {
+        $this->database();
+        DB::table('members')->insert([
+            ['idx' => 2, 'member_code' => 'adminCode0001', 'email' => 'admin@example.test', 'nickname' => 'admin', 'member_level' => 10, 'is_dummy' => 0, 'status' => 'active'],
+            ['idx' => 3, 'member_code' => 'dummyCode0001', 'email' => 'dummy@example.test', 'nickname' => 'dummy', 'member_level' => 1, 'is_dummy' => 1, 'status' => 'active'],
+        ]);
+
+        $this->withSession(['member_idx' => 2])->post(route('admin.acting-dummy-member'), ['dummy_member_idx' => 3])
+            ->assertRedirect(route('home'));
+        $this->post('/fan-post', [
+            'idol_idx' => 1, 'title' => 'Queued as selected dummy', 'content' => 'The admin queued this post.',
+            'media_type' => 'youtube', 'youtube_url' => 'https://youtu.be/dQw4w9WgXcQ', 'tags' => '',
+            'auto_distribute' => '1',
+        ])->assertRedirect(route('admin.fan-post-distribution.index'));
+
+        $post = DB::table('fan_posts')->where('title', 'Queued as selected dummy')->first();
+        $this->assertSame(3, (int) $post->member_idx);
+        $this->assertSame(2, (int) $post->actor_member_idx);
+        $this->assertSame('queued', $post->status);
+        $this->assertNotNull($post->queued_at);
+        $this->assertNull($post->published_at);
+        $this->assertDatabaseHas('heart_histories', [
+            'member_idx' => 3, 'actor_member_idx' => 2, 'reason' => 'fan_post_reward', 'amount' => 30,
         ]);
     }
 
@@ -862,7 +907,7 @@ class FanPostDetailTest extends TestCase
             $cards = $xpath->query('//article[contains(@class,"fan-post-card")]');
             $this->assertSame(14, $cards->length);
             foreach ($cards as $card) {
-                $expected = $xpath->query('./a[img]', $card)->item(0)->getAttribute('href');
+                $expected = $xpath->query('./a[contains(@class,"fan-post-image-link")]', $card)->item(0)->getAttribute('href');
                 $this->assertMatchesRegularExpression('~/fan-post/\d+$~', $expected);
                 $this->assertSame($expected, $xpath->query('.//p[@class="post-preview"]/a', $card)->item(0)->getAttribute('href'));
                 $authorLinks = $xpath->query('./div[@class="post-body"]/div[@class="post-author"]/a', $card);
@@ -1872,6 +1917,16 @@ class FanPostDetailTest extends TestCase
 
         DB::table('fan_posts')->where('idx', 50)->update(['deleted_at' => null]);
         DB::table('members')->where('idx', 1)->update(['status' => 'suspended']);
+        $this->get('/fan-post/50')->assertNotFound();
+    }
+
+    public function test_queued_and_cancelled_fan_post_detail_urls_return_404(): void
+    {
+        $this->database();
+        $this->createCommentReportFixture(1, ['title' => 'Private queued post', 'status' => 'queued']);
+        $this->get('/fan-post/50')->assertNotFound();
+
+        DB::table('fan_posts')->where('idx', 50)->update(['status' => 'cancelled']);
         $this->get('/fan-post/50')->assertNotFound();
     }
 

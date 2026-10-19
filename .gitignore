@@ -105,6 +105,7 @@ Thumbs.db
 !/sql/patches/20261017_008_create_admin_dummy_activity_requests.sql
 !/sql/patches/20261018_001_drop_unused_fan_post_monthly_views.sql
 !/sql/patches/20261019_001_stop_storing_raw_visitor_ips.sql
+!/sql/patches/20261019_002_add_fan_post_distribution.sql
 /sql/deploy/*
 !/sql/deploy/mariadb11_schema.sql
 !/sql/deploy/mariadb11_seed.sql

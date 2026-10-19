@@ -17,7 +17,7 @@ class RequireAdmin
             return redirect()->route('home')->with('open_sign_in', true);
         }
 
-        if ((int) $member->member_level !== 10) {
+        if ((int) $member->member_level !== 10 || (int) ($member->is_dummy ?? 0) !== 0) {
             return response()->view('admin.forbidden', status: 403);
         }
 

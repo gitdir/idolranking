@@ -424,6 +424,9 @@ html.drawer-open { overflow: hidden; }
 .footer-visitor-stats { margin: 0; color: #7188b9; font-size: 11px; text-align: center; white-space: nowrap; }
 .footer-email { display: inline-flex; align-items: center; justify-self: end; gap: 11px; min-width: 0; color: #7188b9; font-size: 14px; white-space: nowrap; }
 .footer-email svg { width: 24px; height: 24px; flex-shrink: 0; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+.footer-legal-links { display: flex; justify-content: center; gap: 16px; margin: 0 0 12px; color: #7188b9; font-size: 12px; }
+.footer-legal-links a { text-decoration: none; }
+.footer-legal-links a:hover { color: var(--pink); text-decoration: underline; }
 .site-footer-copyright { margin: 0; padding-top: 20px; border-top: 1px solid #dfe5f2; color: #7188b9; font-size: 13px; text-align: center; }
 @media (max-width: 959px) {
     .site-footer-main { grid-template-columns: auto 1fr; gap: 22px 28px; padding-inline: 12px; }
@@ -444,7 +447,47 @@ html.drawer-open { overflow: hidden; }
     .footer-visitor-stats { max-width: 100%; font-size: clamp(7px, 2.8vw, 11px); letter-spacing: -.1px; }
     .footer-email { gap: 9px; font-size: 13px; }
     .footer-email svg { width: 22px; height: 22px; }
+    .footer-legal-links { margin-bottom: 10px; font-size: 12px; }
     .site-footer-copyright { padding-top: 17px; font-size: 12px; }
+}
+
+/* Public legal documents use the shared site container and typography. */
+.legal-document { width: min(900px, 100%); margin: 30px auto 56px; padding: clamp(20px, 4vw, 38px); border: 1px solid #e0e8f3; border-radius: 12px; background: #fff; color: #34496f; line-height: 1.75; overflow-wrap: anywhere; }
+.legal-document-header { margin-bottom: 28px; padding-bottom: 22px; border-bottom: 1px solid #e8edf5; }
+.legal-document-label { margin: 0 0 5px; color: #788db5; font-size: 12px; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; }
+.legal-document h1 { margin: 0 0 12px; color: #102b63; font-size: clamp(26px, 4vw, 34px); line-height: 1.25; }
+.legal-document-intro { margin: 0 0 14px; color: #52698f; }
+.legal-document-effective-date { margin: 0; color: #7188b9; font-size: 13px; }
+.legal-document section + section { margin-top: 26px; }
+.legal-document h2 { margin: 0 0 9px; color: #17376f; font-size: 19px; line-height: 1.4; }
+.legal-section-body { --legal-body-indent: 20px; margin-left: var(--legal-body-indent); }
+.legal-document .legal-section-body > ul,
+.terms-document-section .legal-section-body > ul { margin-left: calc(-1 * var(--legal-body-indent)); padding-left: var(--legal-body-indent); }
+.legal-document p { margin: 0 0 10px; }
+.legal-document ul { margin: 8px 0 12px; padding-left: 22px; }
+.legal-document li + li { margin-top: 5px; }
+@media (max-width: 639px) { .legal-document { margin: 18px auto 36px; padding: 20px 16px; } .legal-document h2 { font-size: 17px; } }
+.terms-page { width: 100%; max-width: 1000px; margin: 28px auto 56px; }
+.terms-page-header { margin: 0 auto 28px; text-align: center; }
+.terms-page-label { margin: 0 0 8px; color: #788db5; font-size: 12px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; }
+.terms-page-header h1 { margin: 0 0 12px; color: #102b63; font-size: clamp(30px, 5vw, 42px); line-height: 1.2; }
+.terms-page-subtitle { max-width: 760px; margin: 0 auto 14px; color: #52698f; font-size: 16px; line-height: 1.7; }
+.terms-page-date { margin: 0; color: #7188b9; font-size: 13px; }
+.terms-document-card { padding: clamp(24px, 5vw, 50px); border: 1px solid #e0e8f3; border-radius: 16px; background: #fff; color: #34496f; line-height: 1.8; overflow-wrap: anywhere; }
+.terms-document-section { max-width: 860px; margin-inline: auto; }
+.terms-document-section + .terms-document-section { margin-top: 28px; padding-top: 25px; border-top: 1px solid #e8edf5; }
+.terms-document-section h2 { margin: 0 0 12px; color: #17376f; font-size: 20px; line-height: 1.45; }
+.terms-document-section p { margin: 0 0 12px; }
+.terms-document-section ul { margin: 8px 0 14px; padding-left: 24px; }
+.terms-document-section li { padding-left: 3px; }
+.terms-document-section li + li { margin-top: 7px; }
+@media (max-width: 639px) {
+    .terms-page { margin: 18px auto 38px; }
+    .terms-page-header { margin-bottom: 20px; }
+    .terms-page-subtitle { font-size: 15px; }
+    .terms-document-card { padding: 22px 18px; border-radius: 12px; }
+    .terms-document-section + .terms-document-section { margin-top: 22px; padding-top: 20px; }
+    .terms-document-section h2 { font-size: 18px; }
 }
 .rankings { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 15px; }
 .ranking-panel { min-width: 0; margin-top:15px; padding: 13px 15px 12px; border-radius: 8px; scroll-margin-top: 16px; --panel-accent: #0081ff; background: #edf8ff; }
@@ -1626,6 +1669,9 @@ body:has(.password-page) { min-width: 0; }
 .fan-post-create-field > label, .fan-post-create-field > legend, .fan-post-create-label { padding-top: 11px; color: #10245a; font-size: 14px; font-weight: 800; }
 .fan-post-create-field label span, .fan-post-create-field legend span, .fan-post-create-label span { color: #ff258c; }
 .fan-post-create-field > div { min-width: 0; }
+.fan-post-auto-distribute input[type="checkbox"] { width: 18px; height: 18px; margin: 0 7px 0 0; padding: 0; accent-color: #7044ee; vertical-align: middle; }
+.fan-post-auto-distribute label { display: inline-flex; align-items: center; color: #263f7c; font-weight: 700; cursor: pointer; }
+.fan-post-auto-distribute small { display: block; margin-top: 5px; color: #7185ad; }
 .fan-post-create-field input, .fan-post-create-field select, .fan-post-create-field textarea { width: 100%; min-width: 0; border: 1px solid #d8e0f2; border-radius: 7px; background: #fff; color: #263f7c; font: inherit; font-size: 14px; }
 .fan-post-create-field input, .fan-post-create-field select { height: 44px; padding: 9px 12px; }
 .fan-post-create-field .country-picker-trigger { min-height: 44px; padding: 9px 12px; border-color: #d8e0f2; border-radius: 7px; color: #263f7c; font-size: 14px; }

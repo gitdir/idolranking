@@ -18,3 +18,5 @@ Schedule::call(function (): void {
             ->delete();
     }
 })->dailyAt('03:20')->name('member-access-log-retention')->withoutOverlapping();
+
+Schedule::command('fan-posts:publish-queued')->everyMinute()->name('fan-post-distribution')->withoutOverlapping();

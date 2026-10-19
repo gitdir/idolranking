@@ -100,19 +100,27 @@ class HeartVotingTest extends TestCase
         $this->assertSame(0, DB::table('heart_histories')->count());
     }
 
-    public function test_admin_and_dummy_members_can_vote(): void
+    public function test_admin_dummy_mode_uses_selected_member_and_can_be_disabled(): void
     {
         $this->database();
 
         $this->withSession(['member_idx' => 2])->postJson('/votes', [
-            'idol_idx' => 10, 'heart_amount' => 5, 'request_key' => 'vote-request-admin-00001',
+            'idol_idx' => 10, 'heart_amount' => 5, 'request_key' => 'vote-request-admin-dummy-0001',
         ])->assertCreated();
+
+        $this->post(route('admin.acting-dummy-mode'), ['enabled' => '0'])->assertRedirect();
+        $this->postJson('/votes', [
+            'idol_idx' => 10, 'heart_amount' => 5, 'request_key' => 'vote-request-admin-self-0001',
+        ])->assertCreated();
+
         $this->withSession(['member_idx' => 3])->postJson('/votes', [
             'idol_idx' => 11, 'heart_amount' => 5, 'request_key' => 'vote-request-dummy-00001',
         ])->assertCreated();
 
         $this->assertSame(35, (int) DB::table('members')->where('idx', 2)->value('heart_balance'));
-        $this->assertSame(25, (int) DB::table('members')->where('idx', 3)->value('heart_balance'));
+        $this->assertSame(20, (int) DB::table('members')->where('idx', 3)->value('heart_balance'));
+        $this->assertDatabaseHas('idol_votes', ['member_idx' => 3, 'actor_member_idx' => 2, 'request_key' => 'vote-request-admin-dummy-0001']);
+        $this->assertDatabaseHas('idol_votes', ['member_idx' => 2, 'actor_member_idx' => 2, 'request_key' => 'vote-request-admin-self-0001']);
         $this->assertDatabaseHas('idol_votes', ['member_idx' => 3, 'actor_member_idx' => 3]);
     }
 

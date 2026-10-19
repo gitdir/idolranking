@@ -88,6 +88,12 @@
                 <label for="fan-post-tag-entry">{{ __('ui.tags') }}</label>
                 <div><div class="fan-post-tags-input" data-tags-input><div data-tag-chips></div><input id="fan-post-tag-entry" placeholder="{{ __('ui.tag_placeholder') }}"></div><input type="hidden" name="tags" value="{{ old('tags', $editingPost['tags'] ?? '') }}" data-tags-value><small>{{ __('ui.tag_help') }}</small></div>
             </div>
+            @if(!$editing && ($isAdmin ?? false))
+                <div class="fan-post-create-field fan-post-auto-distribute">
+                    <span aria-hidden="true"></span>
+                    <div><label><input type="checkbox" name="auto_distribute" value="1" @checked(old('auto_distribute', true))> 자동 분산 발행</label><small>선택하면 게시물이 즉시 공개되지 않고 자동 분산 발행 대기열에 등록됩니다.</small></div>
+                </div>
+            @endif
             <div class="fan-post-create-actions"><button type="submit">{{ $editing ? __('ui.save_changes') : __('ui.post_fan_post') }}</button><a href="{{ $editing ? route('fan-post.show', ['idx' => $editingPost['idx']]) : route('home') }}">{{ __('ui.cancel') }}</a></div>
         </form>
 

@@ -2,14 +2,16 @@
         $headerMember = request()->attributes->get('currentMember');
         $headerSearchQuery = request()->routeIs('search') && is_string(request()->query('q')) ? request()->query('q') : '';
         $headerActivityMember = request()->attributes->get('activityMember') ?? $headerMember;
-        $isHeaderAdmin = $headerMember !== null && (int) $headerMember->member_level === 10;
+        $isHeaderAdmin = $headerMember !== null && (int) $headerMember->member_level === 10
+            && (int) $headerMember->is_dummy === 0;
         $dummyMembers = $isHeaderAdmin
             ? \Illuminate\Support\Facades\DB::table('members')->where('member_level', 1)->where('is_dummy', 1)
                 ->where('status', 'active')->whereNull('deleted_at')->orderBy('nickname')->orderBy('idx')
                 ->get(['idx', 'nickname'])
             : collect();
-        $selectedDummyIdx = $isHeaderAdmin && (int) $headerActivityMember->idx !== (int) $headerMember->idx
-            ? (int) $headerActivityMember->idx : null;
+        $selectedDummyMember = request()->attributes->get('selectedActivityMember');
+        $selectedDummyIdx = $isHeaderAdmin && $selectedDummyMember !== null ? (int) $selectedDummyMember->idx : null;
+        $activityDummyModeEnabled = $isHeaderAdmin && (bool) request()->attributes->get('activityDummyMode', false);
         $headerAvatar = \App\Support\ManagedImageStorage::publicUrl($headerMember?->profile_image_path);
         $inviteRewardAmount = $headerActivityMember
             ? number_format(app(\App\Support\HeartRewardManager::class)->configuredAmount('invite_friend'))
@@ -118,7 +120,7 @@
                                 <x-member-link :member-code="$headerMember->member_code" class="drawer-member-nickname-link">{{ $headerMember->nickname }}</x-member-link>
                             </strong>
                             @if ($isHeaderAdmin)
-                                @include('partials.random-dummy-toggle', ['location' => 'drawer'])
+                                @include('partials.acting-dummy-mode-toggle', ['location' => 'drawer', 'activityDummyModeEnabled' => $activityDummyModeEnabled])
                             @endif
                             <span title="{{ $headerMember->email }}">{{ $headerMember->email }}</span>
                             <div class="drawer-member-actions">
@@ -172,7 +174,7 @@
                                             <x-member-link :member-code="$headerMember->member_code">{{ $headerMember->nickname }}</x-member-link>
                                         </strong>
                                         @if ($isHeaderAdmin)
-                                            @include('partials.random-dummy-toggle', ['location' => 'desktop'])
+                                            @include('partials.acting-dummy-mode-toggle', ['location' => 'desktop', 'activityDummyModeEnabled' => $activityDummyModeEnabled])
                                         @endif
                                     </div>
                                     <span title="{{ $headerMember->email }}">{{ $headerMember->email }}</span>

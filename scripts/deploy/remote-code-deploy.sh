@@ -156,9 +156,14 @@ if [[ "$current_commit" != "$RELEASE_COMMIT" ]]; then
     release_mutated=1
 fi
 
-log 'Installing production Composer dependencies with PHP 8.4.'
-release_mutated=1
-"$PHP" "$COMPOSER" install --working-dir="$APP_DIR" --no-dev --optimize-autoloader --no-interaction --prefer-dist
+composer_changes=$(git diff --name-only "$current_commit" "$RELEASE_COMMIT" -- composer.json composer.lock)
+if [[ -n "$composer_changes" ]]; then
+    log 'Composer definitions changed; installing production dependencies with PHP 8.4.'
+    release_mutated=1
+    "$PHP" "$COMPOSER" install --working-dir="$APP_DIR" --no-dev --optimize-autoloader --no-interaction --prefer-dist
+else
+    log 'Composer definitions are unchanged; skipping dependency installation.'
+fi
 
 log 'Refreshing Laravel caches with PHP 8.4.'
 "$PHP" artisan optimize:clear

@@ -33,6 +33,7 @@ use App\Http\Controllers\Admin\RestrictedNicknameController as AdminRestrictedNi
 use App\Http\Controllers\Admin\IpAccessController as AdminIpAccessController;
 use App\Http\Controllers\Admin\SettingsController as AdminSettingsController;
 use App\Http\Controllers\Admin\FanPostController as AdminFanPostController;
+use App\Http\Controllers\Admin\FanPostDistributionController as AdminFanPostDistributionController;
 use App\Http\Controllers\Admin\MemberAccessLogController as AdminMemberAccessLogController;
 use App\Http\Controllers\Admin\PartnerBannerController as AdminPartnerBannerController;
 use App\Http\Controllers\Admin\ActingDummyMemberController;
@@ -62,6 +63,22 @@ Route::get('/', function (Request $request, PublicFanPostList $fanPosts) {
         'fanPostSort' => $fanPostSort,
     ]);
 })->name('home');
+
+Route::get('/privacy', fn () => view('legal.privacy', [
+    'seo' => [
+        'title' => __('legal.privacy_seo_title'),
+        'description' => __('legal.privacy_seo_description'),
+        'url' => route('privacy'),
+    ],
+]))->name('privacy');
+
+Route::get('/terms', fn () => view('legal.terms', [
+    'seo' => [
+        'title' => __('legal.terms_seo_title'),
+        'description' => __('legal.terms_seo_description'),
+        'url' => route('terms'),
+    ],
+]))->name('terms');
 
 Route::get('/idol/{idx}', [IdolController::class, 'show'])->whereNumber('idx')->name('idol.show');
 Route::post('/idol/{idx}/profile-image/report', [IdolProfileImageReportController::class, 'store'])
@@ -170,6 +187,7 @@ foreach ([
 Route::prefix('admin')->name('admin.')->middleware(RequireAdmin::class)->group(function () {
     Route::get('/', AdminDashboardController::class)->name('index');
     Route::post('/acting-dummy-member', [ActingDummyMemberController::class, 'update'])->name('acting-dummy-member');
+    Route::post('/acting-dummy-mode', [ActingDummyMemberController::class, 'toggleActivityMode'])->name('acting-dummy-mode');
     Route::post('/random-dummy-mode', [ActingDummyMemberController::class, 'toggleRandom'])->name('random-dummy-mode');
     Route::get('/idol-requests', AdminIdolRegistrationRequestController::class)->name('idol-requests.index');
     Route::get('/idol-requests/{idx}', [AdminIdolRegistrationRequestController::class, 'show'])->whereNumber('idx')->name('idol-requests.show');
@@ -202,6 +220,11 @@ Route::prefix('admin')->name('admin.')->middleware(RequireAdmin::class)->group(f
     Route::patch('/members/{idx}/status', [AdminMemberController::class, 'updateStatus'])->whereNumber('idx')->name('members.status');
     Route::get('/activity-logs', AdminActivityLogController::class)->name('activity-logs.index');
     Route::get('/fan-posts', AdminFanPostController::class)->name('fan-posts.index');
+    Route::get('/fan-post-distribution', [AdminFanPostDistributionController::class, 'index'])->name('fan-post-distribution.index');
+    Route::put('/fan-post-distribution/settings', [AdminFanPostDistributionController::class, 'updateSettings'])->name('fan-post-distribution.settings');
+    Route::get('/fan-post-distribution/{idx}/preview', [AdminFanPostDistributionController::class, 'preview'])->whereNumber('idx')->name('fan-post-distribution.preview');
+    Route::patch('/fan-post-distribution/{idx}/publish', [AdminFanPostDistributionController::class, 'publishNow'])->whereNumber('idx')->name('fan-post-distribution.publish');
+    Route::patch('/fan-post-distribution/{idx}/cancel', [AdminFanPostDistributionController::class, 'cancel'])->whereNumber('idx')->name('fan-post-distribution.cancel');
     Route::get('/partner-banners', [AdminPartnerBannerController::class, 'index'])->name('partner-banners.index');
     Route::get('/partner-banners/create', [AdminPartnerBannerController::class, 'create'])->name('partner-banners.create');
     Route::post('/partner-banners', [AdminPartnerBannerController::class, 'store'])->name('partner-banners.store');

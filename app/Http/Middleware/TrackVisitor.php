@@ -23,31 +23,34 @@ class TrackVisitor
         $databaseAvailable = DatabaseAvailability::isAvailable();
 
         if ($databaseAvailable && $this->shouldTrack($request, $response)) {
-            $date = CarbonImmutable::now('Asia/Seoul')->toDateString();
+            $now = CarbonImmutable::now('UTC');
+            $date = $now->toDateString();
             $isBot = $this->botDetector->isBot($request->userAgent());
             $isEligibleVisitor = $this->isEligibleVisitor($request, $isBot);
             [$visitorId, $isNewVisitor] = $isEligibleVisitor ? $this->visitorId($request) : [null, false];
 
             try {
                 // Bots remain crawlable but never contribute to PV or UV analytics.
-                if ($isEligibleVisitor && Schema::hasTable('visitor_daily_stats') && Schema::hasTable('visitor_daily_uniques')) {
-                    DB::transaction(function () use ($date, $visitorId): void {
-                        // Every meaningful public HTML request contributes one PV.
+                if ($isEligibleVisitor && Schema::hasTable('visitor_daily_stats')) {
+                    DB::transaction(function () use ($date, $visitorId, $now): void {
+                        // Every qualifying public HTML request contributes one PV in the UTC day bucket.
                         DB::table('visitor_daily_stats')->upsert(
                             [['stat_date' => $date, 'page_views' => 1, 'unique_visitors' => 0]],
                             ['stat_date'],
                             ['page_views' => DB::raw('page_views + 1')]
                         );
 
-                        // One visitor/day row provides daily UV and supports distinct UV across any period.
-                        $isFirstVisitToday = DB::table('visitor_daily_uniques')->insertOrIgnore([
-                            'stat_date' => $date,
-                            'visitor_id' => $visitorId,
-                            'created_at' => CarbonImmutable::now('Asia/Seoul'),
-                        ]) === 1;
+                        // UV is independent of PV and is deduplicated by visitor identifier per UTC day.
+                        if (Schema::hasTable('visitor_daily_uniques')) {
+                            $isFirstVisitToday = DB::table('visitor_daily_uniques')->insertOrIgnore([
+                                'stat_date' => $date,
+                                'visitor_id' => $visitorId,
+                                'created_at' => $now,
+                            ]) === 1;
 
-                        if ($isFirstVisitToday) {
-                            DB::table('visitor_daily_stats')->where('stat_date', $date)->increment('unique_visitors');
+                            if ($isFirstVisitToday) {
+                                DB::table('visitor_daily_stats')->where('stat_date', $date)->increment('unique_visitors');
+                            }
                         }
                     });
                 }

@@ -16,7 +16,7 @@ class PublicFanPostTest extends TestCase
         DB::statement("CREATE TABLE idols (idx INTEGER PRIMARY KEY, type TEXT, gender TEXT, name TEXT, english_name TEXT, content TEXT, image_path TEXT, status TEXT DEFAULT 'active')");
         DB::statement('CREATE TABLE idol_group_members (individual_idx INTEGER, group_idx INTEGER, PRIMARY KEY (individual_idx, group_idx))');
         DB::statement('CREATE TABLE idol_votes (idx INTEGER PRIMARY KEY, member_idx INTEGER, idol_idx INTEGER, heart_amount INTEGER, created_at TEXT)');
-        DB::statement("CREATE TABLE fan_posts (idx INTEGER PRIMARY KEY, idol_idx INTEGER, member_idx INTEGER, title TEXT, media_type TEXT, language_code TEXT, image_path TEXT, youtube_video_id TEXT, content TEXT, view_count INTEGER, status TEXT, deleted_at TEXT, created_at TEXT)");
+        DB::statement("CREATE TABLE fan_posts (idx INTEGER PRIMARY KEY, idol_idx INTEGER, member_idx INTEGER, title TEXT, media_type TEXT, language_code TEXT, image_path TEXT, youtube_video_id TEXT, content TEXT, view_count INTEGER, status TEXT, queued_at TEXT, published_at TEXT, deleted_at TEXT, created_at TEXT)");
         DB::statement("CREATE TABLE fan_post_likes (fan_post_idx INTEGER, member_idx INTEGER, created_at TEXT)");
         DB::statement("CREATE TABLE fan_post_comments (idx INTEGER PRIMARY KEY, fan_post_idx INTEGER, status TEXT, deleted_at TEXT)");
         DB::statement('CREATE TABLE fan_post_tags (idx INTEGER PRIMARY KEY, fan_post_idx INTEGER, tag TEXT)');
@@ -67,6 +67,20 @@ class PublicFanPostTest extends TestCase
         $fanPosts = app(\App\Support\PublicFanPostList::class);
         $this->assertSame(0, $fanPosts->searchCount('hidden-only-search-token'));
         $this->assertSame([], $fanPosts->search('hidden-only-search-token', 'latest', 10));
+    }
+
+    public function test_queued_and_cancelled_fan_posts_are_not_public_and_release_time_controls_latest_order(): void
+    {
+        $this->database();
+        DB::table('fan_posts')->where('idx', 1)->update(['published_at' => '2026-01-01 00:00:00']);
+        DB::table('fan_posts')->where('idx', 2)->update(['published_at' => '2026-02-01 00:00:00']);
+        DB::table('fan_posts')->where('idx', 3)->update(['status' => 'queued', 'content' => 'queued-private-token']);
+        DB::table('fan_posts')->where('idx', 4)->update(['status' => 'cancelled', 'content' => 'cancelled-private-token']);
+
+        $posts = app(\App\Support\PublicFanPostList::class);
+        $this->assertSame(2, $posts->take('latest', 1)[0]['fan_post_idx']);
+        $this->assertSame(0, $posts->searchCount('queued-private-token'));
+        $this->assertSame(0, $posts->searchCount('cancelled-private-token'));
     }
 
     public function test_fan_post_sorts_use_utc_monthly_likes_lifetime_likes_and_comments(): void

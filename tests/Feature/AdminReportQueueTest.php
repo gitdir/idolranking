@@ -14,7 +14,7 @@ class AdminReportQueueTest extends TestCase
         }
 
         DB::statement("CREATE TABLE members (idx INTEGER PRIMARY KEY, member_code TEXT, email TEXT, nickname TEXT, country_code TEXT, profile_image_path TEXT, heart_balance INTEGER DEFAULT 0, member_level INTEGER DEFAULT 1, is_dummy INTEGER DEFAULT 0, status TEXT DEFAULT 'active', deleted_at TEXT, created_at TEXT)");
-        DB::statement("CREATE TABLE fan_posts (idx INTEGER PRIMARY KEY, member_idx INTEGER, idol_idx INTEGER, title TEXT, status TEXT, deleted_at TEXT, created_at TEXT)");
+        DB::statement("CREATE TABLE fan_posts (idx INTEGER PRIMARY KEY, member_idx INTEGER, idol_idx INTEGER, title TEXT, status TEXT, queued_at TEXT, published_at TEXT, deleted_at TEXT, created_at TEXT)");
         DB::statement("CREATE TABLE fan_post_reports (idx INTEGER PRIMARY KEY, fan_post_idx INTEGER, member_idx INTEGER, actor_member_idx INTEGER, reason TEXT, details TEXT, status TEXT, created_at TEXT, updated_at TEXT)");
         DB::statement("CREATE TABLE fan_post_comments (idx INTEGER PRIMARY KEY, status TEXT, deleted_at TEXT, created_at TEXT)");
         DB::statement("CREATE TABLE fan_post_comment_reports (idx INTEGER PRIMARY KEY, status TEXT)");

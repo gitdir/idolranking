@@ -80,19 +80,18 @@ class GetHeartsController extends Controller
             ->filter(fn ($banner) => Storage::disk('public')->exists(substr($banner->image_path, strlen('storage/'))))
             ->values();
 
-        // Banner rewards remain tied to the authenticated account, never the delegated activity member.
-        $rewardEligibleMember = $actor !== null && DB::table('members')->where('idx', $actor->idx)
-            ->where('member_level', 1)->where('is_dummy', 0)->where('status', 'active')->whereNull('deleted_at')->exists();
+        $rewardEligibleMember = $member !== null && (int) $member->member_level === 1
+            && ((int) $member->is_dummy === 0 || ((bool) $request->attributes->get('activityDummyMode') && (int) $member->is_dummy === 1));
 
         $claimableBannerKeys = !$rewardEligibleMember ? collect() : $partnerBanners
             ->filter(fn ($banner) => (bool) $banner->reward_enabled && (int) $banner->heart_reward > 0)
-            ->map(fn ($banner) => 'partner_banner:'.$banner->idx.':'.$actor->idx.':'.$now->format('Ymd'));
+            ->map(fn ($banner) => 'partner_banner:'.$banner->idx.':'.$member->idx.':'.$now->format('Ymd'));
         $completedBannerKeys = $claimableBannerKeys->isEmpty() ? [] : DB::table('heart_histories')
-            ->where('member_idx', $actor->idx)->where('reason', HeartRewardManager::PARTNER_BANNER_REASON)
+            ->where('member_idx', $member->idx)->where('reason', HeartRewardManager::PARTNER_BANNER_REASON)
             ->where('amount', '>', 0)->whereIn('operation_key', $claimableBannerKeys)->pluck('operation_key')->all();
 
-        $partnerBanners = $partnerBanners->map(function ($banner) use ($actor, $rewardEligibleMember, $completedBannerKeys, $now) {
-            $operationKey = !$rewardEligibleMember ? null : 'partner_banner:'.$banner->idx.':'.$actor->idx.':'.$now->format('Ymd');
+        $partnerBanners = $partnerBanners->map(function ($banner) use ($member, $rewardEligibleMember, $completedBannerKeys, $now) {
+            $operationKey = !$rewardEligibleMember ? null : 'partner_banner:'.$banner->idx.':'.$member->idx.':'.$now->format('Ymd');
             $banner->image_url = \App\Support\ManagedImageStorage::publicUrl($banner->image_path);
             $banner->completed_today = $operationKey !== null && in_array($operationKey, $completedBannerKeys, true);
             $banner->show_reward_badge = (bool) $banner->reward_enabled && (int) $banner->heart_reward > 0;
@@ -135,8 +134,9 @@ class GetHeartsController extends Controller
         $today = $todayStart->toDateString();
         $todayRange = [$todayStart, $todayStart->copy()->endOfDay()];
         $operationKey = 'daily_attendance:'.$member->idx.':'.$today;
+        $activityDummyMode = (bool) $request->attributes->get('activityDummyMode', false);
 
-        $result = DB::transaction(function () use ($member, $actor, $heartRewards, $operationKey, $today, $validated) {
+        $result = DB::transaction(function () use ($member, $actor, $heartRewards, $operationKey, $today, $validated, $activityDummyMode) {
             // Serialize same-member submissions before checking either unique daily record.
             $lockedMember = DB::table('members')->where('idx', $member->idx)
                 ->where('member_level', '>', 0)->where('status', 'active')->whereNull('deleted_at')
@@ -164,11 +164,13 @@ class GetHeartsController extends Controller
             if ($minimum < 0 || $maximum < $minimum) {
                 return ['status' => 'unavailable'];
             }
-            $normalMember = (int) $lockedMember->member_level === 1 && (int) $lockedMember->is_dummy === 0;
-            $amount = $normalMember ? random_int($minimum, $maximum) : 0;
+            $rewardEligibleMember = (int) $lockedMember->member_level === 1
+                && ((int) $lockedMember->is_dummy === 0
+                    || ($activityDummyMode && (int) $lockedMember->is_dummy === 1));
+            $amount = $rewardEligibleMember ? random_int($minimum, $maximum) : 0;
             $rewardAwarded = false;
 
-            if ($normalMember) {
+            if ($rewardEligibleMember) {
                 $heartRewards->award(
                     (int) $member->idx,
                     'daily_attendance',
@@ -274,8 +276,9 @@ class GetHeartsController extends Controller
 
     public function claimPartnerBanner(Request $request, int $idx, HeartRewardManager $heartRewards)
     {
-        $member = $request->attributes->get('currentMember');
-        $result = $heartRewards->awardPartnerBanner((int) $member->idx, $idx);
+        $member = $request->attributes->get('activityMember');
+        $actor = $request->attributes->get('activityActor');
+        $result = $heartRewards->awardPartnerBanner((int) $member->idx, $idx, (int) $actor->idx);
 
         if ($result['status'] === 'not_found') {
             return response()->json(['success' => false, 'message' => __('messages.partner_banner_unavailable')], 404);

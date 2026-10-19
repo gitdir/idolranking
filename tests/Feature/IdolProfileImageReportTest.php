@@ -111,7 +111,7 @@ class IdolProfileImageReportTest extends TestCase
         ])->assertRedirect();
 
         $this->assertSame('reviewing', DB::table('idol_profile_image_reports')->where('idx', $reportIdx)->value('status'));
-        $log = DB::table('admin_activity_logs')->first();
+        $log = DB::table('admin_activity_logs')->where('action', 'idol_image_report_status_changed')->first();
         $this->assertSame(1, (int) $log->actor_member_idx);
         $this->assertSame('idol_image_report_status_changed', $log->action);
     }

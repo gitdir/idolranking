@@ -91,14 +91,14 @@ final class PublicRanking
             ->selectSub(DB::table('fan_post_likes as l')->selectRaw('COUNT(*)')
                 ->whereColumn('l.fan_post_idx', 'p.idx')
                 ->where('l.created_at', '>=', $monthStart)->where('l.created_at', '<', $nextMonthStart), 'recommendations')
-            ->orderByDesc('recommendations')->orderByDesc('p.created_at')->orderByDesc('p.idx')
+            ->orderByDesc('recommendations')->orderByRaw('COALESCE(p.published_at, p.created_at) DESC')->orderByDesc('p.idx')
             ->limit(max(0, $limit))->get();
 
         // Prefer this month's liked posts; only use lifetime popularity if the idol received no likes this month.
         $posts = $monthly->isNotEmpty() ? $monthly : $this->eligibleImagePosts($idolIdx)
             ->selectSub(DB::table('fan_post_likes as l')->selectRaw('COUNT(*)')
                 ->whereColumn('l.fan_post_idx', 'p.idx'), 'recommendations')
-            ->orderByDesc('recommendations')->orderByDesc('p.created_at')->orderByDesc('p.idx')
+            ->orderByDesc('recommendations')->orderByRaw('COALESCE(p.published_at, p.created_at) DESC')->orderByDesc('p.idx')
             ->limit(max(0, $limit))->get();
 
         return $posts->map(fn (object $post): string => $this->imageUrl($post))
@@ -139,7 +139,7 @@ final class PublicRanking
         $monthlyCandidates = $this->eligibleImagePostsForIdols($idolIds)
             ->joinSub($monthlyLikes, 'likes', 'likes.fan_post_idx', '=', 'p.idx')
             ->select('p.idol_idx', 'p.media_type', 'p.image_path', 'p.youtube_video_id')
-            ->selectRaw('ROW_NUMBER() OVER (PARTITION BY p.idol_idx ORDER BY likes.like_count DESC, p.created_at DESC, p.idx DESC) as image_rank');
+            ->selectRaw('ROW_NUMBER() OVER (PARTITION BY p.idol_idx ORDER BY likes.like_count DESC, COALESCE(p.published_at, p.created_at) DESC, p.idx DESC) as image_rank');
         $monthly = DB::query()->fromSub($monthlyCandidates, 'ranked')
             ->where('ranked.image_rank', 1)->get(['ranked.idol_idx', 'ranked.media_type', 'ranked.image_path', 'ranked.youtube_video_id']);
 
@@ -150,7 +150,7 @@ final class PublicRanking
             ->leftJoinSub($lifetimeLikes, 'likes', 'likes.fan_post_idx', '=', 'p.idx')
             ->select('p.idol_idx', 'p.media_type', 'p.image_path', 'p.youtube_video_id')
             ->selectRaw('COALESCE(likes.like_count, 0) as like_count')
-            ->selectRaw('ROW_NUMBER() OVER (PARTITION BY p.idol_idx ORDER BY COALESCE(likes.like_count, 0) DESC, p.created_at DESC, p.idx DESC) as image_rank');
+            ->selectRaw('ROW_NUMBER() OVER (PARTITION BY p.idol_idx ORDER BY COALESCE(likes.like_count, 0) DESC, COALESCE(p.published_at, p.created_at) DESC, p.idx DESC) as image_rank');
         $lifetime = DB::query()->fromSub($lifetimeCandidates, 'ranked')
             ->where('ranked.image_rank', 1)->get(['ranked.idol_idx', 'ranked.media_type', 'ranked.image_path', 'ranked.youtube_video_id']);
 

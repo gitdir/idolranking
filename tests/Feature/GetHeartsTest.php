@@ -335,15 +335,42 @@ class GetHeartsTest extends TestCase
         $checkIn = DB::table('daily_check_ins')->first();
         $this->assertSame(7, (int) $checkIn->member_idx);
         $this->assertSame(8, (int) $checkIn->actor_member_idx);
-        $this->assertSame(0, (int) $checkIn->awarded_hearts);
-        $this->assertSame(0, DB::table('heart_histories')->count());
+        $this->assertSame(100, (int) $checkIn->awarded_hearts);
+        $this->assertDatabaseHas('heart_histories', [
+            'member_idx' => 7, 'actor_member_idx' => 8, 'reason' => 'daily_attendance', 'amount' => 100,
+        ]);
 
-        $this->withSession(['member_idx' => 8, 'acting_dummy_member_idx' => null])
-            ->postJson('/get-hearts/daily-check-in', ['content' => 'Admin check-in without a reward.', 'language_code' => 'en'])
+        $this->post(route('admin.acting-dummy-mode'), ['enabled' => '0'])->assertRedirect();
+        $this->postJson('/get-hearts/daily-check-in', ['content' => 'Admin check-in without a reward.', 'language_code' => 'en'])
             ->assertOk()->assertJsonPath('data.reward_awarded', false)->assertJsonPath('data.amount', null);
         $adminCheckIn = DB::table('daily_check_ins')->where('member_idx', 8)->first();
         $this->assertSame(0, (int) $adminCheckIn->awarded_hearts);
-        $this->assertSame(0, DB::table('heart_histories')->count());
+        $this->assertSame(1, DB::table('heart_histories')->count());
+    }
+
+    public function test_admin_dummy_mode_claims_partner_banner_reward_for_selected_member_once(): void
+    {
+        $this->database();
+        DB::table('members')->insert([
+            ['idx' => 7, 'member_code' => 'DummyMember007', 'email' => 'dummy@example.test', 'nickname' => 'dummy', 'heart_balance' => 0, 'member_level' => 1, 'is_dummy' => 1, 'status' => 'active'],
+            ['idx' => 8, 'member_code' => 'AdminMember008', 'email' => 'admin@example.test', 'nickname' => 'admin', 'heart_balance' => 0, 'member_level' => 10, 'is_dummy' => 0, 'status' => 'active'],
+        ]);
+        DB::table('partner_banners')->insert([
+            'idx' => 1, 'title' => 'Partner', 'image_path' => 'storage/partner.png', 'target_url' => 'https://partner.example.test',
+            'heart_reward' => 25, 'reward_enabled' => 1, 'is_active' => 1,
+        ]);
+
+        $route = route('get-hearts.partner-banners.claim', 1);
+        $this->withSession(['member_idx' => 8, 'acting_dummy_member_idx' => 7])
+            ->postJson($route)->assertOk()->assertJsonPath('data.heart_balance', 25);
+        $this->assertDatabaseHas('heart_histories', [
+            'member_idx' => 7, 'actor_member_idx' => 8, 'amount' => 25,
+            'reason' => HeartRewardManager::PARTNER_BANNER_REASON,
+        ]);
+
+        $this->postJson($route)->assertStatus(409)->assertJsonPath('already_claimed', true);
+        $this->assertSame(25, (int) DB::table('members')->where('idx', 7)->value('heart_balance'));
+        $this->assertSame(1, DB::table('heart_histories')->where('member_idx', 7)->count());
     }
 
     public function test_get_hearts_aggregates_use_the_utc_calendar_day(): void

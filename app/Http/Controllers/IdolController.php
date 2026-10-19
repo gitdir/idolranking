@@ -117,7 +117,7 @@ class IdolController extends Controller
         $posts = $fanPostList->forIdol((int) $idol->idx, $sort);
         $imageUrl = ManagedImageStorage::publicUrl($idol->image_path);
         $popularImages = $publicRanking->representativeImages((int) $idol->idx, $imageUrl, $rankIndex === 0 ? 3 : 1);
-        $currentMember = $request->attributes->get('currentMember');
+        $currentMember = $request->attributes->get('activityMember');
         $profileImageReportable = is_string($idol->image_path)
             && str_starts_with($idol->image_path, 'storage/')
             && !str_contains($idol->image_path, '..')
