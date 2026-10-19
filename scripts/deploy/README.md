@@ -7,6 +7,7 @@ These scripts deploy a specific Git commit from Windows to the verified Hostinge
 - SSH: `u624668418@145.79.26.175`, port `65002`
 - Identity default: `$env:USERPROFILE\.ssh\idolranking_hostinger_ed25519`; override with `-SshKeyPath` when needed.
 - Host key default: `$env:USERPROFILE\.ssh\known_hosts`; override with `-KnownHostsPath`. The verified host key must already be pinned as `[145.79.26.175]:65002`; SSH always uses `StrictHostKeyChecking=yes`.
+- `deploy.ps1`, `initial-release.ps1`, and `database-operation.ps1` use the current Windows profile rather than a machine-specific account path. Each accepts `-SshKeyPath` and `-KnownHostsPath` overrides.
 - Laravel checkout: `/home/u624668418/domains/orchid-oryx-674671.hostingersite.com/idolranking`
 - Public web root and `APP_PUBLIC_PATH`: `/home/u624668418/domains/orchid-oryx-674671.hostingersite.com/public_html`
 - Production branch: `main`
@@ -15,7 +16,7 @@ These scripts deploy a specific Git commit from Windows to the verified Hostinge
 
 No private key, database password, or production `.env` belongs in this directory.
 
-The PowerShell driver verifies that the private-key ACL is protected and grants full control only to the current Windows account. Standalone SSH commands close/disable stdin and have a 30-second timeout; coordinator operations and staging uploads also have bounded timeouts. Coordinator streaming still sends its script on stdin, and the two destructive confirmations still use the existing interactive local prompt and remote TTY.
+The PowerShell drivers verify that the private-key ACL is protected and grants full control only to the current Windows account. Standalone SSH commands close/disable stdin and have a 30-second timeout; coordinator operations and staging uploads also have bounded timeouts. Coordinator streaming still sends its script on stdin, and the two destructive confirmations still use the existing interactive local prompt and remote TTY.
 
 ## One-time coordinated first release
 
@@ -33,7 +34,7 @@ Local validation only (reads GitHub `origin/main`; no npm, SSH, upload, or produ
 .\scripts\deploy\initial-release.ps1 `
   -Commit 8e1e1d7cc7a496945cd3988de36f4f17b9c8fffa `
   -BaseUrl https://orchid-oryx-674671.hostingersite.com `
-  -DatabaseDump 'C:\Users\LEO\AppData\Local\Temp\idolranking-mariadb-reconciled-deadca0acc0a49269a96d09eb9d4e56d\idolranking-mariadb118-compatible.sql' `
+  -DatabaseDump (Join-Path $env:TEMP 'idolranking-release\idolranking-mariadb118-compatible.sql') `
   -Sha256 BA0C271DF57E377268A7FE4D9CA73FA4E2BFAD3AC4262BAC9EC819955080CACB `
   -TargetDatabase u624668418_idol `
   -ExpectedTableCount 37 `
@@ -48,7 +49,7 @@ The coordinated production command uses the same arguments, removes `-DryRun`, a
 .\scripts\deploy\initial-release.ps1 `
   -Commit 8e1e1d7cc7a496945cd3988de36f4f17b9c8fffa `
   -BaseUrl https://orchid-oryx-674671.hostingersite.com `
-  -DatabaseDump 'C:\Users\LEO\AppData\Local\Temp\idolranking-mariadb-reconciled-deadca0acc0a49269a96d09eb9d4e56d\idolranking-mariadb118-compatible.sql' `
+  -DatabaseDump (Join-Path $env:TEMP 'idolranking-release\idolranking-mariadb118-compatible.sql') `
   -Sha256 BA0C271DF57E377268A7FE4D9CA73FA4E2BFAD3AC4262BAC9EC819955080CACB `
   -TargetDatabase u624668418_idol `
   -ExpectedTableCount 37 `
@@ -73,6 +74,25 @@ The read-only inspection found the destination link missing. The coordinator wil
 The database host configured on the production server resolves as a public-network endpoint. The workflow neither opens a port nor changes firewall rules and keeps the database password inside PHP memory, but deployment approval should be contingent on Hostinger's existing database ingress restrictions being confirmed.
 
 The current Hostinger account was previously approved to skip a database backup. The script encodes that choice as `APPROVED-NO-BACKUP` and asks for it explicitly again. Database replacement is not transactional. If failure occurs after replacement begins, the coordinator does not retry or claim rollback; it leaves the site in maintenance mode and reports the stage and current Git commit for manual recovery. After a deployment attempt starts, private staged files are retained for inspection; remove them only after reviewing the reported state. Never invoke `database-operation.ps1 -Mode Replace` or historical patches as part of this first release.
+
+### Resume after database import
+
+If the initial release stops after importing the dump and leaves Laravel in maintenance mode, do not rerun the normal initial-release workflow: it would replace the database again. First inspect the reported production state and retain the exact protected staging directory. Recovery mode requires the production checkout to already equal the requested commit, a clean production working tree, maintenance mode still enabled, and a staged dump whose checksum and canonical schema validate. It compares every production table's row count with the staged dump before continuing. It does not fetch or change Git, run Composer, drop tables, or import SQL. After those checks pass it resumes additive media and Vite publication, the storage symlink check, Laravel cache refresh, protected-file checks, HTTP smoke tests, and turns maintenance mode off only after all checks pass. Any failure keeps maintenance mode enabled and retains the stage for inspection.
+
+Use the run ID printed in the failed deployment's exact protected staging path (the 32 lowercase hexadecimal characters after `.idolranking-initial-release-`). Do not use recovery if the stage path, database verification, or maintenance state differs from the failed run.
+
+```powershell
+.\scripts\deploy\initial-release.ps1 `
+  -Commit f66aa7e50ba590f66719d4b4be7c346374b75f3c `
+  -BaseUrl https://orchid-oryx-674671.hostingersite.com `
+  -Sha256 BA0C271DF57E377268A7FE4D9CA73FA4E2BFAD3AC4262BAC9EC819955080CACB `
+  -TargetDatabase u624668418_idol `
+  -ExpectedTableCount 37 `
+  -ExpectedProductionTableCount 25 `
+  -BackupDecision APPROVED-NO-BACKUP `
+  -RecoverStageRunId 43ba9efbd7a747a9b77204879fd66eeb `
+  -Approved
+```
 
 ## Standard code deployment
 
@@ -103,10 +123,12 @@ Use the full SHA of the approved release. The production command builds from a G
 1. Requires a clean `main` checkout and takes a non-blocking deployment lock.
 2. Fetches only `origin/main`, verifies the requested commit is reachable from it, and proves the update is a fast-forward from the current production commit.
 3. Enters Laravel maintenance mode, applies `git merge --ff-only`, installs Composer dependencies using PHP 8.4, and refreshes Laravel caches using PHP 8.4.
-4. Copies release-owned assets without `--delete`. It publishes the Vite manifest atomically after its referenced files, verifies the `.env` checksum is unchanged, and runs HTTP smoke tests.
-5. Confirms the homepage and both ranking pages return success, a Vite asset is reachable, and `/fan-garden` still returns 404.
+4. Copies release-owned assets without `--delete`, applying directories mode 755 and public files mode 644 despite the private staging umask. It publishes the Vite manifest atomically after its referenced files, verifies the `.env` checksum is unchanged, and runs HTTP smoke tests.
+5. Confirms the homepage and both ranking pages return success, every CSS path referenced by the deployed Vite manifest returns HTTP 200 with `Content-Type: text/css`, and `/fan-garden` still returns 404.
 
 If a failure happens before application files change, the script attempts to clear maintenance mode. If the release has changed and a later step fails, it deliberately leaves the site in maintenance mode for manual inspection; it does not guess at a rollback. Private staging assets are retained outside the public root for review and are not automatically removed.
+
+The standalone initial-release and resumed-recovery workflows are historical one-time procedures, not the routine deployment path. Use them only to recover their exact matching interrupted state; they can replace the selected database in initial-release mode. Routine updates use the code-only procedure below and never run SQL.
 
 ### Public files and uploads
 
@@ -157,6 +179,6 @@ Database replacement is not transactional. The database can be left empty or par
 
 ## Current release note
 
-The repository is at `8e1e1d7cc7a496945cd3988de36f4f17b9c8fffa` on `main`. A previous read-only production snapshot recorded `4d16c54f2272afd21a7dbac6c1c846397a7e1164` before the coordinated initial release. That observation is historical: current production HEAD, database contents, and whether the integrated release completed are unverified. Check them read-only before reporting deployment status.
+Historical incident note: an initial-release recovery run once resumed after a successful database import at commit `f66aa7e50ba590f66719d4b4be7c346374b75f3c`. This is not a current production-state claim or an instruction to run recovery. Recheck production state and only follow the recovery section if the exact stage and interrupted state still exist.
 
 The reconciled local database and release dump now match the canonical `sql/deploy/mariadb11_schema.sql`: 37 tables, 58 foreign keys, `schema_patch_history` present, and `fan_post_monthly_views` absent. The MariaDB 11.8-compatible copy was generated separately from the preserved MySQL 8.4 original; only the verified `utf8mb4_0900_ai_ci` collation was changed to `utf8mb4_unicode_ci`. Current compatible-copy SHA-256: `BA0C271DF57E377268A7FE4D9CA73FA4E2BFAD3AC4262BAC9EC819955080CACB`. The dump files are sensitive, machine-local temporary artifacts outside Git; confirm availability and checksum before any future use.

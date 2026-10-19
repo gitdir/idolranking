@@ -28,7 +28,7 @@ PUBLIC_COUNT=$9; PUBLIC_BYTES=${10}; PRIVATE_COUNT=${11}; PRIVATE_BYTES=${12}; S
 for value in "$PUBLIC_COUNT" "$PUBLIC_BYTES" "$PRIVATE_COUNT" "$PRIVATE_BYTES"; do [[ "$value" =~ ^[0-9]+$ ]] || fail 'Invalid staged media inventory.'; done
 [[ "$RUN_ID" =~ ^[a-f0-9]{32}$ ]] || fail 'Invalid run identifier.'
 [[ "$BASE_COMMIT" == '-' || "$BASE_COMMIT" =~ ^[a-f0-9]{40}$ ]] || fail 'Invalid base commit.'
-[[ "$MODE" == preflight || "$MODE" == validate-stage || "$MODE" == deploy ]] || fail 'Unknown coordinator mode.'
+[[ "$MODE" == preflight || "$MODE" == validate-stage || "$MODE" == deploy || "$MODE" == recover ]] || fail 'Unknown coordinator mode.'
 
 for command in git flock curl sha256sum stat find grep awk rsync base64 sed readlink wc tr paste install mv mkdir ln date; do
     command -v "$command" >/dev/null 2>&1 || fail "Required command unavailable: $command"
@@ -101,6 +101,16 @@ try {
         printf("DB_VERSION=%s\nDB_TABLES=%d\nDB_FKS=%d\nDB_TABLE_NAMES=%s\nDB_VIEWS=%d\nDB_TRIGGERS=%d\nDB_ROUTINES=%d\nDB_EVENTS=%d\n",$version,$tables,$fks,implode(',', $names),$views,$triggers,$routines,$events);
         exit(0);
     }
+    if ($mode === 'row-counts') {
+        $tables = $pdo->query('SELECT table_name FROM information_schema.tables WHERE table_schema=DATABASE() AND table_type=0x42415345205441424c45')->fetchAll(PDO::FETCH_COLUMN);
+        sort($tables, SORT_STRING);
+        foreach ($tables as $table) {
+            $quoted = '`'.str_replace('`', '``', $table).'`';
+            $count = (int)$pdo->query("SELECT COUNT(*) FROM $quoted")->fetchColumn();
+            printf("%s=%d\n", $table, $count);
+        }
+        exit(0);
+    }
     if ($mode === 'grants') {
         $required=['CREATE','DROP','INSERT','INDEX','ALTER','REFERENCES','LOCK TABLES']; $found=[];
         $scope='(?:`?'.preg_quote($database,'/').'`?|\\*)\\.\\*';
@@ -145,6 +155,7 @@ PHP
 db_php() { "$PHP" -r "$DB_HELPER" "$APP_DIR" "$DATABASE" "$1" "${2:-0}" "${3:-}" "${4:-}"; }
 
 db_meta() { db_php metadata; }
+db_row_counts() { db_php row-counts; }
 
 validate_dump() {
     [[ -f "$STAGE/input.sql" && ! -L "$STAGE/input.sql" ]] || fail 'Staged SQL dump is missing or is not a regular file.'
@@ -159,8 +170,49 @@ validate_dump() {
     fi
 }
 
+dump_row_counts() {
+    "$PHP" -r "$(cat <<'PHP'
+$path = $argv[1] ?? '';
+$sql = is_file($path) ? file_get_contents($path) : false;
+if (!is_string($sql)) { fwrite(STDERR, "dump read failed\n"); exit(2); }
+$counts = [];
+if (preg_match_all('/^CREATE TABLE(?: IF NOT EXISTS)? `([^`]+)`/mi', $sql, $creates)) {
+    foreach ($creates[1] as $name) $counts[$name] = 0;
+}
+if (!preg_match_all('/^INSERT INTO `([^`]+)`[\\s\\S]*?\\bVALUES\\b\\s*/mi', $sql, $inserts, PREG_OFFSET_CAPTURE)) {
+    fwrite(STDERR, "dump insert inventory missing\n"); exit(3);
+}
+$length = strlen($sql);
+foreach ($inserts[0] as $index => [$header, $offset]) {
+    $name = $inserts[1][$index][0];
+    if (!array_key_exists($name, $counts)) { fwrite(STDERR, "insert table missing from schema\n"); exit(4); }
+    $i = $offset + strlen($header); $depth = 0; $quoted = false; $rows = 0;
+    for (; $i < $length; $i++) {
+        $char = $sql[$i];
+        if ($quoted) {
+            if ($char === "\\") { $i++; continue; }
+            if ($char === "'") {
+                if ($i + 1 < $length && $sql[$i + 1] === "'") { $i++; continue; }
+                $quoted = false;
+            }
+            continue;
+        }
+        if ($char === "'") { $quoted = true; continue; }
+        if ($char === '(') { if ($depth === 0) $rows++; $depth++; continue; }
+        if ($char === ')') { $depth--; continue; }
+        if ($char === ';' && $depth === 0) break;
+    }
+    if ($quoted || $depth !== 0 || $rows < 1) { fwrite(STDERR, "dump insert parse failed\n"); exit(5); }
+    $counts[$name] += $rows;
+}
+ksort($counts, SORT_STRING);
+foreach ($counts as $name => $count) printf("%s=%d\n", $name, $count);
+PHP
+)" "$STAGE/input.sql"
+}
+
 check_identity() {
-    local expected_tables=${1:-$OLD_TABLES} meta version tables fks names views triggers routines events
+    local expected_tables=${1:-$OLD_TABLES} meta version tables fks names normalized_names views triggers routines events
     meta=$(db_meta 2>/dev/null) || fail 'Could not verify production database identity using application configuration.'
     version=$(printf '%s\n' "$meta" | sed -n 's/^DB_VERSION=//p')
     tables=$(printf '%s\n' "$meta" | sed -n 's/^DB_TABLES=//p')
@@ -170,9 +222,10 @@ check_identity() {
     triggers=$(printf '%s\n' "$meta" | sed -n 's/^DB_TRIGGERS=//p')
     routines=$(printf '%s\n' "$meta" | sed -n 's/^DB_ROUTINES=//p')
     events=$(printf '%s\n' "$meta" | sed -n 's/^DB_EVENTS=//p')
+    normalized_names=$(printf '%s\n' "$names" | tr ',' '\n' | LC_ALL=C sort | paste -sd, -)
     [[ "$version" == 11.8.9* && "$tables" == "$expected_tables" && "$fks" =~ ^[0-9]+$ && "$views" == 0 && "$triggers" == 0 && "$routines" == 0 && "$events" == 0 ]] || fail 'Database version or schema-object inventory differs from the expected state.'
     if [[ "$expected_tables" == "$TABLES" ]]; then
-        [[ "$fks" == "$FKS" && "$names" == "$EXPECTED_TABLE_NAMES" && ",$names," == *',schema_patch_history,'* && ",$names," != *',fan_post_monthly_views,'* ]] || fail 'Imported table names or foreign-key count differ from the canonical release schema.'
+        [[ "$fks" == "$FKS" && "$normalized_names" == "$EXPECTED_TABLE_NAMES" && ",$normalized_names," == *',schema_patch_history,'* && ",$normalized_names," != *',fan_post_monthly_views,'* ]] || fail 'Imported table names or foreign-key count differ from the canonical release schema.'
     fi
     printf '%s\n' "$meta"
 }
@@ -231,8 +284,10 @@ public_inventory=$(media_inventory "$STAGE/media/public") || fail 'Could not ins
 private_inventory=$(media_inventory "$STAGE/media/private") || fail 'Could not inspect staged private media.'
 read -r staged_public_count staged_public_bytes <<< "$public_inventory"
 read -r staged_private_count staged_private_bytes <<< "$private_inventory"
-[[ "$staged_public_count" == "$PUBLIC_COUNT" && "$staged_public_bytes" == "$PUBLIC_BYTES" &&
-   "$staged_private_count" == "$PRIVATE_COUNT" && "$staged_private_bytes" == "$PRIVATE_BYTES" ]] || fail 'Staged upload inventory differs from the local inventory.'
+if [[ "$MODE" != recover ]]; then
+    [[ "$staged_public_count" == "$PUBLIC_COUNT" && "$staged_public_bytes" == "$PUBLIC_BYTES" &&
+       "$staged_private_count" == "$PRIVATE_COUNT" && "$staged_private_bytes" == "$PRIVATE_BYTES" ]] || fail 'Staged upload inventory differs from the local inventory.'
+fi
 
 check_additive_collisions() {
     local source=$1 destination=$2 omit_manifest=${3:-0} file relative target
@@ -269,32 +324,45 @@ validate_destinations() {
 }
 validate_destinations
 
-check_identity >/dev/null
-check_import_support
+if [[ "$MODE" != recover ]]; then
+    check_identity >/dev/null
+    check_import_support
+fi
 if [[ "$MODE" == validate-stage ]]; then
     log 'Staged dump, Vite manifest, production database identity, and current inventory validated.'
     exit 0
 fi
 
-[[ "$BASE_COMMIT" == "$CURRENT" ]] || fail 'Production base commit changed after initial preflight.'
-git merge-base --is-ancestor "$CURRENT" "$COMMIT" || fail 'Production update is no longer a fast-forward.'
-check_grants
+if [[ "$MODE" == recover ]]; then
+    [[ "$CURRENT" == "$COMMIT" ]] || fail 'Recovery requires production Git HEAD to equal the requested release commit.'
+    [[ -f "$APP_DIR/storage/framework/down" ]] || fail 'Recovery requires the existing Laravel maintenance mode to remain enabled.'
+else
+    [[ "$BASE_COMMIT" == "$CURRENT" ]] || fail 'Production base commit changed after initial preflight.'
+    git merge-base --is-ancestor "$CURRENT" "$COMMIT" || fail 'Production update is no longer a fast-forward.'
+    check_grants
+fi
 LOCK_DIR="$HOME/.idolranking-deploy"
 mkdir -m 700 -p "$LOCK_DIR"
 exec 9>"$LOCK_DIR/deploy.lock"
 flock -n 9 || fail 'Another deployment holds the shared deployment lock.'
 
-approval="INITIAL RELEASE $COMMIT REPLACE DATABASE $DATABASE FROM DUMP $SHA TABLES $TABLES BACKUP APPROVED-NO-BACKUP"
-printf 'Remote confirmation required: %s\n' "$approval"
-read -r -p 'Type the complete phrase to start the coordinated release: ' typed </dev/tty
-[[ "$typed" == "$approval" ]] || fail 'Remote confirmation did not match.'
+if [[ "$MODE" != recover ]]; then
+    approval="INITIAL RELEASE $COMMIT REPLACE DATABASE $DATABASE FROM DUMP $SHA TABLES $TABLES BACKUP APPROVED-NO-BACKUP"
+    printf 'Remote confirmation required: %s\n' "$approval"
+    read -r -p 'Type the complete phrase to start the coordinated release: ' typed </dev/tty
+    [[ "$typed" == "$approval" ]] || fail 'Remote confirmation did not match.'
 
-# Recheck mutable server state after the confirmation prompt and immediately before downtime.
-[[ "$(git -C "$APP_DIR" rev-parse HEAD)" == "$BASE_COMMIT" && -z "$(git -C "$APP_DIR" status --porcelain=v1 --untracked-files=all)" ]] || fail 'Production Git state changed during confirmation.'
-check_identity >/dev/null
-check_grants
-check_import_support
-validate_destinations
+    # Recheck mutable server state after the confirmation prompt and immediately before downtime.
+    [[ "$(git -C "$APP_DIR" rev-parse HEAD)" == "$BASE_COMMIT" && -z "$(git -C "$APP_DIR" status --porcelain=v1 --untracked-files=all)" ]] || fail 'Production Git state changed during confirmation.'
+    check_identity >/dev/null
+    check_grants
+    check_import_support
+    validate_destinations
+else
+    [[ -z "$(git -C "$APP_DIR" status --porcelain=v1 --untracked-files=all)" ]] || fail 'Recovery requires a clean production Git working tree.'
+    [[ -f "$APP_DIR/storage/framework/down" ]] || fail 'Maintenance mode changed before recovery.'
+    validate_destinations
+fi
 
 stage_name=pre-maintenance-validation
 maintenance=0
@@ -330,6 +398,25 @@ trap 'on_error $?' ERR
 trap 'on_error 130' INT
 trap 'on_error 143' TERM
 
+if [[ "$MODE" == recover ]]; then
+    stage_name=recovery-validation
+    maintenance=1
+    changed=1
+    release_incomplete=1
+    [[ "$(git -C "$APP_DIR" rev-parse HEAD)" == "$COMMIT" ]] || fail 'Production Git HEAD changed before recovery.'
+    [[ -f "$APP_DIR/storage/framework/down" ]] || fail 'Maintenance mode is not enabled; refusing recovery.'
+    post_meta=$(check_identity "$TABLES")
+    post_tables=$(printf '%s\n' "$post_meta" | sed -n 's/^DB_TABLES=//p')
+    post_fks=$(printf '%s\n' "$post_meta" | sed -n 's/^DB_FKS=//p')
+    expected_rows=$(dump_row_counts | LC_ALL=C sort)
+    actual_rows=$(db_row_counts | LC_ALL=C sort) || fail 'Could not verify imported row counts.'
+    if [[ "$expected_rows" != "$actual_rows" ]]; then
+        log 'Imported row counts differ from the verified staged SQL dump; maintenance mode remains enabled.'
+        printf 'Expected table row counts:\n%s\nActual table row counts:\n%s\n' "$expected_rows" "$actual_rows"
+        fail 'Imported data verification failed.'
+    fi
+    [[ "$post_tables" == "$TABLES" && "$post_fks" == "$FKS" ]] || fail 'Imported database inventory differs from the verified dump.'
+else
 stage_name=locked-final-preflight
 [[ "$(git -C "$APP_DIR" rev-parse HEAD)" == "$BASE_COMMIT" ]] || fail 'Production HEAD changed after preflight.'
 [[ -z "$(git -C "$APP_DIR" status --porcelain=v1 --untracked-files=all)" ]] || fail 'Production tree changed after preflight.'
@@ -364,12 +451,13 @@ post_meta=$(check_identity "$TABLES")
 post_tables=$(printf '%s\n' "$post_meta" | sed -n 's/^DB_TABLES=//p')
 post_fks=$(printf '%s\n' "$post_meta" | sed -n 's/^DB_FKS=//p')
 [[ "$post_tables" == "$TABLES" && "$post_fks" == "$FKS" ]] || fail 'Imported database inventory differs from the verified dump.'
+fi
 
 stage_name=media-synchronization
 mkdir -p "$APP_DIR/storage/app/public" "$APP_DIR/storage/app/private" "$PUBLIC_DIR/images" "$PUBLIC_DIR/build"
-rsync -rlt --checksum --ignore-existing --omit-dir-times --no-owner --no-group --no-perms "$STAGE/media/public/" "$APP_DIR/storage/app/public/"
+rsync -rlt --checksum --ignore-existing --omit-dir-times --no-owner --no-group --chmod=Du=rwx,Dgo=rx,Fu=rw,Fgo=r "$STAGE/media/public/" "$APP_DIR/storage/app/public/"
 rsync -rlt --checksum --ignore-existing --omit-dir-times --no-owner --no-group --no-perms "$STAGE/media/private/" "$APP_DIR/storage/app/private/"
-rsync -rlt --checksum --ignore-existing --omit-dir-times --no-owner --no-group --no-perms "$STAGE/images/" "$PUBLIC_DIR/images/"
+rsync -rlt --checksum --ignore-existing --omit-dir-times --no-owner --no-group --chmod=Du=rwx,Dgo=rx,Fu=rw,Fgo=r "$STAGE/images/" "$PUBLIC_DIR/images/"
 
 stage_name=storage-link
 if [[ ! -e "$PUBLIC_DIR/storage" && ! -L "$PUBLIC_DIR/storage" ]]; then
@@ -381,7 +469,8 @@ else
 fi
 
 stage_name=publish-vite-assets
-rsync -rlt --checksum --omit-dir-times --no-owner --no-group --no-perms --exclude='manifest.json' "$STAGE/build/" "$PUBLIC_DIR/build/"
+rsync -rlt --checksum --omit-dir-times --no-owner --no-group --chmod=Du=rwx,Dgo=rx,Fu=rw,Fgo=r --exclude='manifest.json' "$STAGE/build/" "$PUBLIC_DIR/build/"
+chmod 755 "$PUBLIC_DIR/build" "$PUBLIC_DIR/images"
 install -m 644 "$STAGE/build/manifest.json" "$PUBLIC_DIR/build/.manifest.$RUN_ID.tmp"
 mv -f -- "$PUBLIC_DIR/build/.manifest.$RUN_ID.tmp" "$PUBLIC_DIR/build/manifest.json"
 
@@ -405,8 +494,31 @@ garden=$(curl --silent --show-error --max-time 30 --output /dev/null --write-out
 [[ "$garden" == 404 ]] || fail "/fan-garden returned HTTP $garden instead of 404."
 for entry in resources/css/app.css resources/css/admin.css resources/js/app.js resources/js/admin.js; do
     asset=$("$PHP" -r '$m=json_decode(file_get_contents($argv[1]),true,512,JSON_THROW_ON_ERROR); echo $m[$argv[2]]["file"];' "$PUBLIC_DIR/build/manifest.json" "$entry")
-    check_http "asset $entry" "$base/build/$asset"
+    if [[ "$entry" != *.css ]]; then
+        check_http "asset $entry" "$base/build/$asset"
+    fi
 done
+css_assets=$("$PHP" -r '
+$manifest = json_decode(file_get_contents($argv[1]), true, 512, JSON_THROW_ON_ERROR);
+$css = [];
+foreach ($manifest as $item) {
+    if (isset($item["file"]) && str_ends_with($item["file"], ".css")) $css[] = $item["file"];
+    foreach ($item["css"] ?? [] as $file) $css[] = $file;
+}
+$css = array_values(array_unique($css));
+if (!$css) exit(1);
+foreach ($css as $file) {
+    if (!is_string($file) || !preg_match("#^assets/[A-Za-z0-9._/-]+\\.css$#", $file) || str_contains($file, "..")) exit(2);
+    echo $file, "\n";
+}
+' "$PUBLIC_DIR/build/manifest.json") || fail 'Could not read safe CSS paths from the published Vite manifest.'
+while IFS= read -r css_asset; do
+    response=$(curl --silent --show-error --location --max-time 30 --output /dev/null --write-out '%{http_code} %{content_type}' "$base/build/$css_asset") || fail 'Vite CSS request failed.'
+    code=${response%% *}; content_type=${response#* }
+    [[ "$code" == 200 ]] || fail "Vite CSS returned HTTP $code."
+    case "$content_type" in text/css*) ;; *) fail 'Vite CSS response has an unexpected Content-Type.' ;; esac
+    log "Verified Vite CSS $css_asset returns HTTP 200 with text/css."
+done <<< "$css_assets"
 stage_name=exit-maintenance
 "$PHP" "$APP_DIR/artisan" up >/dev/null
 maintenance=0

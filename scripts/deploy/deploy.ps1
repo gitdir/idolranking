@@ -9,7 +9,10 @@ param(
 
     [switch]$DryRun,
 
-    [switch]$Build
+    [switch]$Build,
+
+    [string]$SshKeyPath = (Join-Path $env:USERPROFILE '.ssh\idolranking_hostinger_ed25519'),
+    [string]$KnownHostsPath = (Join-Path $env:USERPROFILE '.ssh\known_hosts')
 )
 
 if ($DryRun -and $Build) {
@@ -24,8 +27,8 @@ if (Get-Variable -Name PSNativeCommandUseErrorActionPreference -ErrorAction Sile
 
 $ProjectRoot = (Resolve-Path (Join-Path $PSScriptRoot '..\..')).Path
 $DeployRequested = -not $DryRun -and -not $Build
-$SshKey = 'C:\Users\LEO\.ssh\idolranking_hostinger_ed25519'
-$KnownHosts = 'C:\Users\LEO\.ssh\known_hosts'
+$SshKey = [System.IO.Path]::GetFullPath($SshKeyPath)
+$KnownHosts = [System.IO.Path]::GetFullPath($KnownHostsPath)
 $SshExe = (Get-Command ssh.exe -ErrorAction Stop).Source
 $ScpExe = (Get-Command scp.exe -ErrorAction Stop).Source
 $GitExe = (Get-Command git.exe -ErrorAction Stop).Source
@@ -62,15 +65,15 @@ function Assert-SshIdentity {
     if (-not $acl.AreAccessRulesProtected -or $entries.Count -ne 1 -or
         $entries[0].IdentityReference.Translate([System.Security.Principal.NTAccount]).Value -ne $account -or
         $entries[0].AccessControlType -ne [System.Security.AccessControl.AccessControlType]::Allow -or
-        $entries[0].FileSystemRights.ToString() -notmatch 'FullControl' -or $account -notmatch '\\LEO$') {
-        throw 'The dedicated SSH private key ACL is not restricted to the current LEO account.'
+        $entries[0].FileSystemRights.ToString() -notmatch 'FullControl') {
+        throw 'The dedicated SSH private key ACL is not restricted to the current Windows account.'
     }
 
     # Derive the public half only into memory and compare it; never print private-key contents.
     $keygen = (Get-Command ssh-keygen.exe -ErrorAction Stop).Source
     $processInfo = New-Object System.Diagnostics.ProcessStartInfo
     $processInfo.FileName = $keygen
-    $processInfo.Arguments = '-y -P "" -f C:\Users\LEO\.ssh\idolranking_hostinger_ed25519'
+    $processInfo.Arguments = '-y -P "" -f "' + $SshKey + '"'
     $processInfo.UseShellExecute = $false
     $processInfo.CreateNoWindow = $true
     $processInfo.RedirectStandardOutput = $true

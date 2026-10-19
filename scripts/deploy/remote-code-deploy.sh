@@ -137,7 +137,8 @@ trap 'exit 130' INT
 trap 'exit 143' TERM
 
 # Fetch only the named main branch. No force refspec or reset is used.
-git fetch --no-tags origin refs/heads/main:refs/remotes/origin/main
+GIT_SSH_COMMAND='ssh -i /home/u624668418/.ssh/idolranking_deploy -o IdentitiesOnly=yes -o StrictHostKeyChecking=yes -o UserKnownHostsFile=/home/u624668418/.ssh/known_hosts' \
+    git fetch --no-tags origin refs/heads/main:refs/remotes/origin/main
 git cat-file -e "$RELEASE_COMMIT^{commit}" 2>/dev/null \
     || fail 'Requested release commit was not fetched from origin/main.'
 git merge-base --is-ancestor "$RELEASE_COMMIT" refs/remotes/origin/main \
@@ -173,10 +174,11 @@ log 'Refreshing Laravel caches with PHP 8.4.'
 
 # Publish only release-owned public assets. No --delete is used, and uploads are untouched.
 mkdir -p "$PUBLIC_DIR/build" "$PUBLIC_DIR/images"
-rsync -rlt --checksum --omit-dir-times --no-owner --no-group --no-perms \
+rsync -rlt --checksum --omit-dir-times --no-owner --no-group --chmod=Du=rwx,Dgo=rx,Fu=rw,Fgo=r \
     --exclude='manifest.json' "$ASSET_STAGE/" "$PUBLIC_DIR/build/"
-rsync -rlt --checksum --omit-dir-times --no-owner --no-group --no-perms \
+rsync -rlt --checksum --omit-dir-times --no-owner --no-group --chmod=Du=rwx,Dgo=rx,Fu=rw,Fgo=r \
     "$stage_root/images/" "$PUBLIC_DIR/images/"
+chmod 755 "$PUBLIC_DIR/build" "$PUBLIC_DIR/images"
 install -m 644 "$stage_root/favicon.ico" "$PUBLIC_DIR/.idolranking-favicon.$$.tmp"
 mv -f -- "$PUBLIC_DIR/.idolranking-favicon.$$.tmp" "$PUBLIC_DIR/favicon.ico"
 install -m 644 "$ASSET_STAGE/manifest.json" "$PUBLIC_DIR/build/.manifest.$$.tmp"
@@ -218,10 +220,31 @@ garden_code=$(curl --silent --show-error --max-time 30 --output /dev/null --writ
 [[ "$garden_code" == '404' ]] || smoke_fail "Fan Garden should return 404, but returned HTTP $garden_code."
 log 'Smoke test passed: /fan-garden remains HTTP 404.'
 
-if ! asset_path=$("$PHP" -r '$manifest=json_decode(file_get_contents($argv[1]), true, 512, JSON_THROW_ON_ERROR); foreach ($manifest as $entry) { if (isset($entry["file"])) { echo $entry["file"]; exit(0); } } exit(1);' "$PUBLIC_DIR/build/manifest.json"); then
-    smoke_fail 'Could not read a Vite asset path from the published manifest.'
+if ! css_assets=$("$PHP" -r '
+$manifest = json_decode(file_get_contents($argv[1]), true, 512, JSON_THROW_ON_ERROR);
+$css = [];
+foreach ($manifest as $entry) {
+    if (isset($entry["file"]) && str_ends_with($entry["file"], ".css")) $css[] = $entry["file"];
+    foreach ($entry["css"] ?? [] as $file) $css[] = $file;
+}
+$css = array_values(array_unique($css));
+if (!$css) exit(1);
+foreach ($css as $file) {
+    if (!is_string($file) || !preg_match("#^assets/[A-Za-z0-9._/-]+\\.css$#", $file) || str_contains($file, "..")) exit(2);
+    echo $file, "\n";
+}
+' "$PUBLIC_DIR/build/manifest.json"); then
+    smoke_fail 'Could not read safe CSS paths from the published Vite manifest.'
 fi
-[[ "$asset_path" == assets/* && "$asset_path" != *'..'* ]] || smoke_fail 'Could not identify a safe Vite asset path from the manifest.'
-check_2xx 'Vite asset' "$base_url/build/$asset_path"
+while IFS= read -r css_asset; do
+    response=$(curl --silent --show-error --location --max-time 30 --output /dev/null \
+        --write-out '%{http_code} %{content_type}' "$base_url/build/$css_asset") \
+        || smoke_fail 'Vite CSS request failed.'
+    code=${response%% *}
+    content_type=${response#* }
+    [[ "$code" == '200' ]] || smoke_fail "Vite CSS returned HTTP $code."
+    case "$content_type" in text/css*) ;; *) smoke_fail 'Vite CSS response has an unexpected Content-Type.' ;; esac
+    log "Smoke test passed: Vite CSS $css_asset (HTTP 200, text/css)."
+done <<< "$css_assets"
 
 log "Deployment completed successfully at $RELEASE_COMMIT."

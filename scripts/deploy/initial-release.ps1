@@ -7,7 +7,6 @@ param(
     [Parameter(Mandatory = $true)]
     [uri]$BaseUrl,
 
-    [Parameter(Mandatory = $true)]
     [string]$DatabaseDump,
 
     [Parameter(Mandatory = $true)]
@@ -32,6 +31,9 @@ param(
 
     [string]$SshKeyPath = (Join-Path $env:USERPROFILE '.ssh\idolranking_hostinger_ed25519'),
     [string]$KnownHostsPath = (Join-Path $env:USERPROFILE '.ssh\known_hosts'),
+
+    [ValidatePattern('^[a-f0-9]{32}$')]
+    [string]$RecoverStageRunId,
 
     [switch]$Approved,
     [switch]$DryRun
@@ -421,6 +423,24 @@ $remoteStageRoot = $null
 $remoteStageCreated = $false
 $deploymentAttempted = $false
 try {
+    if ($RecoverStageRunId) {
+        if (-not $Approved) { throw 'Recovery requires the explicit -Approved switch.' }
+        if ($DryRun) { throw 'Recovery cannot be combined with -DryRun.' }
+        Assert-SshIdentity
+        $runId = $RecoverStageRunId.ToLowerInvariant()
+        $remoteStageRoot = "$RemoteHome/.idolranking-initial-release-$runId"
+        $recoveryArgs = @('recover', $Commit, $BaseUrlExpected, $ExpectedDatabase,
+            "$ExpectedOldTables", "$ExpectedTables", "$ExpectedForeignKeys", $ExpectedSha256,
+            '0', '0', '0', '0', $remoteStageRoot, $Commit, $runId)
+        $SshCoordinatorTimeoutSeconds = 900
+        Write-Host "Resuming only post-database release steps from protected stage $remoteStageRoot. No Git update, Composer install, or SQL import will run."
+        $recoveryResult = Invoke-SshHelper -Arguments $recoveryArgs
+        $recoveryResult | ForEach-Object { Write-Host $_ }
+        Write-Host "Initial release recovery completed for $Commit."
+        return
+    }
+
+    if ([string]::IsNullOrWhiteSpace($DatabaseDump)) { throw 'DatabaseDump is required for a new initial release.' }
     $local = Assert-LocalInputs
     Write-Host "Local release commit and dump validated; $ExpectedTables tables, $ExpectedForeignKeys foreign keys."
     Write-Host "Local media inventory: public=$($local.Media.public.Count) files/$($local.Media.public.Bytes) bytes; private=$($local.Media.private.Count) files/$($local.Media.private.Bytes) bytes."

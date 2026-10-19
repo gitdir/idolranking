@@ -28,6 +28,9 @@ param(
     [ValidateRange(1, 65535)]
     [int]$DatabasePort = 3306,
 
+    [string]$SshKeyPath = (Join-Path $env:USERPROFILE '.ssh\idolranking_hostinger_ed25519'),
+    [string]$KnownHostsPath = (Join-Path $env:USERPROFILE '.ssh\known_hosts'),
+
     [switch]$Approved,
     [string]$DatabaseConfirmation,
     [string]$ConfirmSha256,
@@ -42,9 +45,9 @@ if (Get-Variable -Name PSNativeCommandUseErrorActionPreference -ErrorAction Sile
 }
 
 $ProjectRoot = (Resolve-Path (Join-Path $PSScriptRoot '..\..')).Path.TrimEnd('\')
-$SshKey = 'C:\Users\LEO\.ssh\idolranking_hostinger_ed25519'
+$SshKey = [System.IO.Path]::GetFullPath($SshKeyPath)
 $PublicKey = "$SshKey.pub"
-$KnownHosts = 'C:\Users\LEO\.ssh\known_hosts'
+$KnownHosts = [System.IO.Path]::GetFullPath($KnownHostsPath)
 $SshExe = (Get-Command ssh.exe -ErrorAction Stop).Source
 $ScpExe = (Get-Command scp.exe -ErrorAction Stop).Source
 $Target = 'u624668418@145.79.26.175'
@@ -93,12 +96,12 @@ $keyAces = @($keyAcl.Access)
 if (-not $keyAcl.AreAccessRulesProtected -or $keyAces.Count -ne 1 -or
     $keyAces[0].IdentityReference.Translate([System.Security.Principal.NTAccount]).Value -ne $account -or
     $keyAces[0].AccessControlType -ne [System.Security.AccessControl.AccessControlType]::Allow -or
-    $keyAces[0].FileSystemRights.ToString() -notmatch 'FullControl' -or $account -notmatch '\\LEO$') {
-    throw 'The dedicated SSH private key ACL is not restricted to the current LEO account.'
+    $keyAces[0].FileSystemRights.ToString() -notmatch 'FullControl') {
+    throw 'The dedicated SSH private key ACL is not restricted to the current Windows account.'
 }
 $keygenInfo = New-Object System.Diagnostics.ProcessStartInfo
 $keygenInfo.FileName = (Get-Command ssh-keygen.exe -ErrorAction Stop).Source
-$keygenInfo.Arguments = '-y -P "" -f C:\Users\LEO\.ssh\idolranking_hostinger_ed25519'
+$keygenInfo.Arguments = '-y -P "" -f "' + $SshKey + '"'
 $keygenInfo.UseShellExecute = $false
 $keygenInfo.CreateNoWindow = $true
 $keygenInfo.RedirectStandardOutput = $true

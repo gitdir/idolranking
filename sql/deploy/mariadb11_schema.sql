@@ -287,7 +287,7 @@ CREATE TABLE `member_access_logs` (
   `member_idx` bigint unsigned DEFAULT NULL COMMENT 'Authenticated member; NULL for anonymous visitors',
   `visitor_id` char(64) CHARACTER SET ascii COLLATE ascii_bin DEFAULT NULL COMMENT 'Random first-party visitor identifier; NULL for detected bots',
   `is_bot` tinyint unsigned NOT NULL DEFAULT '0',
-  `ip_address` varchar(45) CHARACTER SET ascii COLLATE ascii_bin NOT NULL,
+  `ip_address` varchar(45) CHARACTER SET ascii COLLATE ascii_bin DEFAULT NULL COMMENT 'NULL for privacy-conscious visitor tracking; legacy values are retained until log expiry',
   `request_path` varchar(1024) NOT NULL COMMENT 'Request path only; query strings are excluded',
   `user_agent` varchar(1024) DEFAULT NULL,
   `created_at` datetime(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),

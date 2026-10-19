@@ -84,7 +84,7 @@ Never put a database dump, production data, credentials, or `.env` file in this 
 
 ## Visitor statistics privacy
 
-Patch `20261019_001_stop_storing_raw_visitor_ips.sql` makes `member_access_logs.ip_address` nullable. New public-page access rows no longer store raw IP addresses; existing values are retained until the existing 90-day access-log cleanup expires them. The visitor aggregates continue to use random first-party visitor IDs and do not depend on IP addresses.
+Patch `20261019_001_stop_storing_raw_visitor_ips.sql` makes `member_access_logs.ip_address` nullable. Both the legacy canonical schema and `deploy/mariadb11_schema.sql` define it as nullable, matching the patch. New public-page access rows write `NULL` rather than raw IP addresses; existing values are retained until the existing 90-day access-log cleanup expires them. The visitor aggregates continue to use random first-party visitor IDs and do not depend on IP addresses.
 
 Patch `20261019_002_add_fan_post_distribution.sql` adds `queued` and `cancelled` Fan Post states, queue entry time, actual publication time, and an index for oldest-first queue processing. Apply it once to an existing database and record it in `schema_patch_history`; fresh installs already contain these definitions in both canonical schema snapshots. The application stores distribution settings in the existing `site_settings` table and uses defaults of 10 minutes, 2 posts, and 09:00–23:00 Asia/Seoul when no settings have been saved. The queue is published by the `fan-posts:publish-queued` Artisan command; it must be run by Laravel Scheduler every minute. No per-post publication times are precomputed, so settings changes immediately govern future queue processing without reordering queued posts.
 
