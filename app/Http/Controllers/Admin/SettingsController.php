@@ -24,7 +24,7 @@ class SettingsController extends Controller
         abort_unless(in_array($section, self::SECTIONS, true), 404);
         $rules = match ($section) {
             'general' => ['site_title'=>['nullable','string','max:100'],'site_description'=>['nullable','string','max:500']],
-            'seo' => ['site_title'=>['nullable','string','max:100'],'site_description'=>['nullable','string','max:500'],'site_keywords'=>['nullable','string','max:500'],'social_title'=>['nullable','string','max:100'],'social_description'=>['nullable','string','max:500'],'social_image'=>['nullable','image','mimes:jpg,jpeg,png,webp','max:5120'],'favicon'=>['nullable','image','mimes:png,ico','max:1024'],'remove_social_image'=>['nullable','boolean'],'remove_favicon'=>['nullable','boolean']],
+            'seo' => ['site_title'=>['nullable','string','max:100'],'site_description'=>['nullable','string','max:500'],'site_keywords'=>['nullable','string','max:500'],'social_title'=>['nullable','string','max:100'],'social_description'=>['nullable','string','max:500'],'social_image'=>['nullable','image','mimes:jpg,jpeg,png,webp','max:5120'],'favicon'=>['nullable','file','mimes:png,ico','max:1024'],'remove_social_image'=>['nullable','boolean'],'remove_favicon'=>['nullable','boolean']],
             default => ['head_code'=>['nullable','string','max:100000'],'custom_css'=>['nullable','string','max:100000'],'body_end_code'=>['nullable','string','max:100000']],
         };
         $data = $request->validate($rules);
