@@ -484,7 +484,7 @@ CREATE TABLE member_access_logs (
     member_idx BIGINT UNSIGNED NULL COMMENT 'Authenticated member; NULL for anonymous visitors',
     visitor_id CHAR(64) CHARACTER SET ascii COLLATE ascii_bin NULL COMMENT 'Random first-party visitor identifier; NULL for detected bots',
     is_bot TINYINT UNSIGNED NOT NULL DEFAULT 0 COMMENT '1 when excluded from analytics by User-Agent detection',
-    ip_address VARCHAR(45) CHARACTER SET ascii COLLATE ascii_bin NOT NULL,
+    ip_address VARCHAR(45) CHARACTER SET ascii COLLATE ascii_bin NULL COMMENT 'NULL for privacy-conscious visitor tracking; legacy values are retained until log expiry',
     request_path VARCHAR(1024) NOT NULL COMMENT 'Request path only; query strings are excluded',
     user_agent VARCHAR(1024) NULL,
     created_at DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),

@@ -1,9 +1,15 @@
 @props(['post', 'isCurrent' => false])
 @php
     $cardMediaType = $post['media_type'] ?? 'image';
+    $defaultCardImage = \App\Support\ManagedImageStorage::defaultUrl();
     $cardImage = $cardMediaType === 'youtube' && !empty($post['youtube_video_id'])
         ? 'https://i.ytimg.com/vi/'.$post['youtube_video_id'].'/hqdefault.jpg'
         : \App\Support\ManagedImageStorage::publicUrl($post['image_url'] ?? null);
+    $hasVideoThumbnail = $cardMediaType === 'youtube' && !empty($post['youtube_video_id']);
+    $hasImageThumbnail = $cardMediaType === 'image'
+        && !empty($post['image_url'])
+        && $post['image_url'] !== $defaultCardImage;
+    $isTextOnly = ! $hasVideoThumbnail && ! $hasImageThumbnail;
     $detailUrl = isset($post['fan_post_idx'])
         ? route('fan-post.show', ['idx' => $post['fan_post_idx']])
         : null;
@@ -37,11 +43,17 @@
 
 <article @class(['fan-post-card', 'fan-post-card--current' => $isCurrent])>
     @if ($detailUrl)
-        <a class="fan-post-image-link" href="{{ $detailUrl }}" @if ($isCurrent) aria-current="page" @endif>
+        <a @class(['fan-post-image-link', 'fan-post-image-link--text' => $isTextOnly]) href="{{ $detailUrl }}" @if ($isCurrent) aria-current="page" @endif>
     @else
-        <div class="fan-post-image-link">
+        <div @class(['fan-post-image-link', 'fan-post-image-link--text' => $isTextOnly])>
     @endif
-    <img class="fan-post-image fan-post-image--{{ $post[6] }}" src="{{ $cardImage }}" width="320" height="320" alt="{{ $cardMediaType === 'youtube' ? __('ui.youtube_thumbnail') : (isset($post['image_url']) ? __('ui.fan_post_thumbnail') : __('ui.fan_post_placeholder_image')) }}" loading="lazy">
+    @if ($isTextOnly)
+        <span class="fan-post-text-placeholder" aria-hidden="true">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path fill="#d5d1de" stroke="none" d="M5 4.75h14a2.25 2.25 0 0 1 2.25 2.25v8A2.25 2.25 0 0 1 19 17.25h-7.2l-4.9 3.5v-3.5H5A2.25 2.25 0 0 1 2.75 15V7A2.25 2.25 0 0 1 5 4.75Z"/></svg>
+        </span>
+    @else
+        <img class="fan-post-image fan-post-image--{{ $post[6] }}" src="{{ $cardImage }}" width="320" height="320" alt="{{ $cardMediaType === 'youtube' ? __('ui.youtube_thumbnail') : (isset($post['image_url']) ? __('ui.fan_post_thumbnail') : __('ui.fan_post_placeholder_image')) }}" loading="lazy">
+    @endif
     @if (\App\Support\FanPostLanguages::isValid($post['language_code'] ?? null))
         <span class="fan-post-card-language-badge" title="{{ $badgeLanguage }}" aria-label="{{ $badgeLanguage }}">{{ $badgeLanguage }}</span>
     @endif

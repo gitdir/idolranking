@@ -3,6 +3,8 @@
 @import './image-fallback.css';
 @import './interactive-controls.css';
 
+:root { color-scheme: light; }
+
 @source '../../vendor/laravel/framework/src/Illuminate/Pagination/resources/views/*.blade.php';
 @source '../../storage/framework/views/*.php';
 @source '../**/*.blade.php';
@@ -412,16 +414,20 @@ html.drawer-open { overflow: hidden; }
 .site-footer-main { display: grid; grid-template-columns: minmax(220px, 1fr) auto minmax(220px, 1fr); align-items: center; gap: 36px; min-width: 0; padding: 0 28px 30px; }
 .footer-brand { display: inline-flex; align-items: center; justify-self: start; gap: 2px; white-space: nowrap; font-size: 24px; line-height: 1; font-weight: 800; letter-spacing: -1.5px; filter: grayscale(1); opacity: .6; }
 .footer-brand-crown { width: 43px; height: 36px; flex-shrink: 0; }
+.footer-navigation-group { display: grid; justify-items: center; gap: 6px; min-width: 0; }
 .footer-navigation { display: flex; align-items: center; justify-content: center; white-space: nowrap; font-size: 14px; font-weight: 600; }
+.footer-navigation-row { display: contents; }
 .footer-navigation a { position: relative; padding: 4px 20px; }
 .footer-navigation a + a::before { content: ''; position: absolute; left: 0; top: 50%; width: 1px; height: 18px; background: #cbd4e8; transform: translateY(-50%); }
+.footer-navigation-row + .footer-navigation-row a::before { content: ''; position: absolute; left: 0; top: 50%; width: 1px; height: 18px; background: #cbd4e8; transform: translateY(-50%); }
 .footer-navigation a:hover { color: var(--pink); }
+.footer-visitor-stats { margin: 0; color: #7188b9; font-size: 11px; text-align: center; white-space: nowrap; }
 .footer-email { display: inline-flex; align-items: center; justify-self: end; gap: 11px; min-width: 0; color: #7188b9; font-size: 14px; white-space: nowrap; }
 .footer-email svg { width: 24px; height: 24px; flex-shrink: 0; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
 .site-footer-copyright { margin: 0; padding-top: 20px; border-top: 1px solid #dfe5f2; color: #7188b9; font-size: 13px; text-align: center; }
 @media (max-width: 959px) {
     .site-footer-main { grid-template-columns: auto 1fr; gap: 22px 28px; padding-inline: 12px; }
-    .footer-navigation { justify-self: end; }
+    .footer-navigation-group { justify-self: end; }
     .footer-email { grid-column: 1 / -1; justify-self: center; }
 }
 @media (max-width: 639px) {
@@ -429,10 +435,13 @@ html.drawer-open { overflow: hidden; }
     .site-footer-main { display: flex; padding: 0 0 26px; flex-direction: column; gap: 24px; }
     .footer-brand { justify-self: auto; font-size: clamp(22px, 6.7vw, 26px); }
     .footer-brand-crown { width: 44px; height: 37px; }
-    .footer-navigation { display: grid; max-width: 100%; grid-template-columns: repeat(3, max-content); justify-content: center; justify-items: center; row-gap: 8px; white-space: normal; font-size: 13px; }
+    .footer-navigation { display: flex; max-width: 100%; flex-direction: column; align-items: center; row-gap: 2px; white-space: normal; font-size: 13px; }
+    .footer-navigation-row { display: flex; align-items: center; justify-content: center; }
+    .footer-navigation-group { width: 100%; gap: 7px; }
     .footer-navigation a { padding: 3px 10px; white-space: nowrap; }
-    .footer-navigation a + a::before { height: 16px; }
-    .footer-navigation a:nth-child(4)::before { display: none; }
+    .footer-navigation a + a::before { content: '·'; width: auto; height: auto; background: none; color: #aab3c5; font-size: 15px; font-weight: 400; }
+    .footer-navigation-row + .footer-navigation-row a::before { display: none; }
+    .footer-visitor-stats { max-width: 100%; font-size: clamp(7px, 2.8vw, 11px); letter-spacing: -.1px; }
     .footer-email { gap: 9px; font-size: 13px; }
     .footer-email svg { width: 22px; height: 22px; }
     .site-footer-copyright { padding-top: 17px; font-size: 12px; }
@@ -476,6 +485,9 @@ html.drawer-open { overflow: hidden; }
 .fan-post-image { display: block; width: 100%; height: auto; object-fit: cover; aspect-ratio: 1 / 1; }
 .fan-post-image--landscape { aspect-ratio: 1.18 / 1; }
 .fan-post-image--portrait { aspect-ratio: .92 / 1; }
+.fan-post-image-link.fan-post-image-link--text { aspect-ratio: 3.5 / 1; display: grid; place-items: center; background: #f8f7fc; color: #b7a2df; }
+.fan-post-text-placeholder { display: flex; align-items: center; justify-content: center; }
+.fan-post-text-placeholder > svg { width: 32px; height: 32px; fill: #c9c3d4; stroke: none; }
 .post-statistics { display: flex; align-items: center; justify-content: flex-start; gap: 4px; padding: 8px 8px 7px; border-bottom: 1px solid #edf1f7; }
 .post-statistics-right { display: flex; align-items: center; gap: 7px; min-width: 0; margin-left: auto; }
 a.fan-post-image-link, a.post-statistics, .post-preview a { cursor: pointer; text-decoration: none; }
@@ -650,7 +662,8 @@ a.fan-post-image-link, a.post-statistics, .post-preview a { cursor: pointer; tex
 .ranking-voter-avatar { width: 56px; height: 56px; border-radius: 50%; object-fit: cover; }
 .member-identity-link, .ranking-voter-avatar-link, .ranking-voter-name-link { color: inherit; text-decoration: none; cursor: pointer; }
 .post-author-avatar-link, .member-post-avatar-link { display: block; flex-shrink: 0; line-height: 0; }
-.post-author-name-link { display: inline-flex; align-items: center; gap: 3px; flex: 0 1 auto; min-width: 0; overflow: hidden; }
+.post-author-name-link { display: inline-flex; align-items: center; gap: 3px; flex: 0 1 auto; min-width: 0; overflow: visible; }
+.post-author-name-link .country-flag { transform: translateY(-1px); }
 .post-author .fan-post-author-badge { flex: 0 1 auto; align-self: center; }
 .ranking-voter-avatar-link { display: block; border-radius: 50%; }
 .ranking-voter-info { min-width: 0; }
@@ -825,7 +838,8 @@ a.fan-post-image-link, a.post-statistics, .post-preview a { cursor: pointer; tex
 .fan-detail-columns { display: grid; grid-template-columns: minmax(0, 2fr) minmax(300px, 1fr); gap: 24px; align-items: start; }
 .fan-detail-main, .fan-detail-sidebar { display: grid; gap: 20px; }
 .fan-detail-author { display: flex; align-items: center; gap: 12px; font-size: 14px; font-weight: 600; overflow-wrap: anywhere; }
-.fan-detail-author .fan-post-author-badge { margin-left: 6px; vertical-align: middle; }
+.fan-detail-author-identity { display: inline-flex; align-items: center; gap: 4px; }
+.fan-post-detail .fan-detail-author-name .country-flag { width: 19px; height: 14px; flex-basis: 19px; }
 .fan-detail-author-name { display: inline-flex; align-items: center; gap: 3px; color: inherit; text-decoration: none; }
 .fan-detail-comment-content h3 .fan-detail-author-name { vertical-align: middle; }
 .fan-detail-author img:not(.country-flag), .fan-detail-comment-list img:not(.country-flag) { border-radius: 50%; object-fit: cover; flex-shrink: 0; }
@@ -1851,7 +1865,8 @@ html.watch-ad-open { overflow: hidden; }
 .attendance-card-language { flex: 0 0 auto; margin-left: auto; padding: 4px 6px; border-radius: 5px; background: #f0f5ff; color: #526a9d; font-size: 10px; font-weight: 700; }
 .attendance-card-message-row { display: block; margin-top: 13px; color: #34496f; font-size: 14px; line-height: 1.6; }
 .attendance-card-message { margin: 0; overflow-wrap: anywhere; white-space: pre-wrap; }
-.attendance-translate-toggle { display: inline-flex; margin-left: 6px; padding: 4px 9px; border: 1px solid #dce5f3; border-radius: 99px; background: #fff; color: #5870a3; font: inherit; font-size: 10px; font-weight: 700; line-height: 1.35; vertical-align: middle; white-space: nowrap; cursor: pointer; }
+.attendance-card-message [data-attendance-content] { margin-right: 6px; }
+.attendance-translate-toggle { display: inline-flex; margin-left: 0; padding: 4px 9px; border: 1px solid #dce5f3; border-radius: 99px; background: #fff; color: #5870a3; font: inherit; font-size: 10px; font-weight: 700; line-height: 1.35; vertical-align: middle; white-space: nowrap; cursor: pointer; }
 .attendance-translate-toggle:disabled { opacity: .6; cursor: wait; }
 .attendance-card-translation-status { margin: 6px 0 0; color: #7d89a1; font-size: 11px; line-height: 1.4; }
 .attendance-card-footer { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-top: 14px; padding-top: 10px; border-top: 1px solid #edf0f6; }

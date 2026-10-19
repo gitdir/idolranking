@@ -12,6 +12,7 @@
     @endphp
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="color-scheme" content="light">
     <meta name="theme-color" content="#ffffff">
     <meta name="default-image" content="{{ \App\Support\ManagedImageStorage::defaultUrl() }}">
     <title>@yield('title', $seoTitle)</title>

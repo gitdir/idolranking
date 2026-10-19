@@ -26,6 +26,7 @@ class ResolveMember
                         'profile_image_path',
                         'heart_balance',
                         'member_level',
+                        'is_dummy',
                     ]);
             }
             if ($member === null) {

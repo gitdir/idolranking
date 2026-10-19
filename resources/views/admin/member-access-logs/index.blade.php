@@ -46,7 +46,7 @@
                         <td><span class="admin-access-badge {{ $log->is_bot ? 'is-bot' : ($log->member_idx ? 'is-member' : 'is-guest') }}">{{ $log->is_bot ? '봇' : ($log->member_idx ? '로그인 회원' : '비로그인 방문자') }}</span></td>
                         <td>@if($log->member_idx)<a class="admin-text-link" href="{{ route('admin.members.show', $log->member_idx) }}">{{ $log->nickname ?: '탈퇴/비활성 회원' }}</a>@else - @endif</td>
                         <td>{{ $log->member_idx ? ($log->email ?: '-') : '-' }}</td>
-                        <td><a class="admin-ip-link" href="{{ route('admin.ip-access.index', ['ip_address' => $log->ip_address]) }}" title="IP 접근 제한 화면에서 확인">{{ $log->ip_address }}</a></td>
+                        <td>@if($log->ip_address)<a class="admin-ip-link" href="{{ route('admin.ip-access.index', ['ip_address' => $log->ip_address]) }}" title="IP 접근 제한 화면에서 확인">{{ $log->ip_address }}</a>@else - @endif</td>
                         <td><code>{{ $log->request_path }}</code></td>
                         <td><span class="admin-user-agent" title="{{ $log->user_agent }}">{{ $log->user_agent ?: '-' }}</span></td>
                     </tr>

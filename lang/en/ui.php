@@ -43,6 +43,8 @@ $translations = [
     'upload_image' => 'Upload Image', 'edit_crop' => 'Edit / Crop', 'remove' => 'Remove', 'image_help' => 'JPG, PNG or GIF. Max 5MB.',
     'email_cannot_change' => 'Email cannot be changed.', 'check' => 'Check', 'short_bio' => 'Short Bio', 'save_changes' => 'Save Changes',
     'change_password' => 'Change Password', 'comments_count' => 'Comments', 'all_rights_reserved' => 'All rights reserved.',
+    'footer_visitor_statistics' => 'Visitor statistics', 'footer_yesterday_uv' => 'Yesterday UV : :count', 'footer_yesterday_pv' => 'Yesterday PV : :count',
+    'footer_today_uv' => 'Today UV : :count', 'footer_today_pv' => 'Today PV : :count',
     'today' => 'Today', 'rank' => 'Rank', 'votes' => 'Votes', 'vote' => 'Vote', 'top_voters' => 'Top Voters',
     'current_month_rank' => 'Current Monthly Rank', 'monthly_votes' => 'Monthly Cumulative Votes', 'total_fan_posts' => 'Total Fan Posts',
     'popular_fan_post' => 'Popular Fan Post for :name', 'no_fan_post_images' => 'No public Fan Post images yet.', 'this_month' => 'This Month',

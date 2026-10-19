@@ -4,6 +4,7 @@ namespace App\Http\Middleware;
 
 use App\Support\BotUserAgentDetector;
 use App\Support\DatabaseAvailability;
+use Carbon\CarbonImmutable;
 use Closure;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -22,13 +23,14 @@ class TrackVisitor
         $databaseAvailable = DatabaseAvailability::isAvailable();
 
         if ($databaseAvailable && $this->shouldTrack($request, $response)) {
-            $date = now()->toDateString();
+            $date = CarbonImmutable::now('Asia/Seoul')->toDateString();
             $isBot = $this->botDetector->isBot($request->userAgent());
-            [$visitorId, $isNewVisitor] = $isBot ? [null, false] : $this->visitorId($request);
+            $isEligibleVisitor = $this->isEligibleVisitor($request, $isBot);
+            [$visitorId, $isNewVisitor] = $isEligibleVisitor ? $this->visitorId($request) : [null, false];
 
             try {
                 // Bots remain crawlable but never contribute to PV or UV analytics.
-                if (!$isBot && Schema::hasTable('visitor_daily_stats') && Schema::hasTable('visitor_daily_uniques')) {
+                if ($isEligibleVisitor && Schema::hasTable('visitor_daily_stats') && Schema::hasTable('visitor_daily_uniques')) {
                     DB::transaction(function () use ($date, $visitorId): void {
                         // Every meaningful public HTML request contributes one PV.
                         DB::table('visitor_daily_stats')->upsert(
@@ -41,7 +43,7 @@ class TrackVisitor
                         $isFirstVisitToday = DB::table('visitor_daily_uniques')->insertOrIgnore([
                             'stat_date' => $date,
                             'visitor_id' => $visitorId,
-                            'created_at' => now(),
+                            'created_at' => CarbonImmutable::now('Asia/Seoul'),
                         ]) === 1;
 
                         if ($isFirstVisitToday) {
@@ -56,7 +58,8 @@ class TrackVisitor
                         'member_idx' => $member?->idx,
                         'visitor_id' => $visitorId,
                         'is_bot' => (int) $isBot,
-                        'ip_address' => $request->ip(),
+                        // Visitor analytics and access logs do not retain raw IP addresses.
+                        'ip_address' => null,
                         // Query strings are intentionally excluded because they may contain sensitive values.
                         'request_path' => mb_substr('/'.ltrim($request->path(), '/'), 0, 1024),
                         'user_agent' => mb_substr((string) $request->userAgent(), 0, 1024) ?: null,
@@ -87,7 +90,18 @@ class TrackVisitor
 
     private function shouldTrack(Request $request, mixed $response): bool
     {
-        if (!$request->isMethod('GET') || $request->is('admin*', 'up', 'storage/*') || $request->ajax() || $request->expectsJson()) {
+        if (!$request->isMethod('GET') || $request->is('admin*', 'api', 'api/*', 'up', 'storage/*') || $request->ajax() || $request->expectsJson()) {
+            return false;
+        }
+
+        if ($request->headers->has('X-PJAX') || $request->headers->has('X-Inertia') || $request->headers->has('HX-Request')) {
+            return false;
+        }
+
+        $fetchMode = $request->header('Sec-Fetch-Mode');
+        $fetchDestination = $request->header('Sec-Fetch-Dest');
+        if (($fetchMode !== null && strtolower($fetchMode) !== 'navigate')
+            || ($fetchDestination !== null && strtolower($fetchDestination) !== 'document')) {
             return false;
         }
 
@@ -104,6 +118,18 @@ class TrackVisitor
         return $response->getStatusCode() >= 200
             && $response->getStatusCode() < 400
             && str_contains($contentType, 'text/html');
+    }
+
+    private function isEligibleVisitor(Request $request, bool $isBot): bool
+    {
+        if ($isBot) {
+            return false;
+        }
+
+        $member = $request->attributes->get('currentMember');
+
+        return $member === null
+            || ((int) $member->member_level < 10 && (int) ($member->is_dummy ?? 0) !== 1);
     }
 
     private function visitorId(Request $request): array

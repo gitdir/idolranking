@@ -11,14 +11,15 @@
                     <x-member-link :member-code="$post['author']['member_code'] ?? null" :label="isset($post['author']['member_code']) ? __('ui.member_view_posts_label', ['name' => $post['author']['nickname']]) : null">
                         <img src="{{ \App\Support\ManagedImageStorage::publicUrl($post['author']['image_url'] ?? null) }}" width="42" height="42" alt="">
                     </x-member-link>
-                    <div><x-member-link :member-code="$post['author']['member_code'] ?? null" class="fan-detail-author-name"><x-country-flag :code="$post['author']['country_code'] ?? null" />{{ $post['author']['nickname'] }}</x-member-link>
+                    <div><span class="fan-detail-author-identity"><x-member-link :member-code="$post['author']['member_code'] ?? null" class="fan-detail-author-name"><x-country-flag :code="$post['author']['country_code'] ?? null" />{{ $post['author']['nickname'] }}</x-member-link>
                         @if (\App\Support\FanPostLanguages::isValid($post['author']['language_code'] ?? null))
                             @php
                                 $authorLanguage = strtoupper($post['author']['language_code']);
                             @endphp
                             <span class="fan-post-author-badge" title="{{ $authorLanguage }}" aria-label="{{ $authorLanguage }}">{{ $authorLanguage }}</span>
                         @endif
-                        <small class="fan-detail-time">{{ $post['time'] }}</small></div>
+                    </span>
+                    <small class="fan-detail-time">{{ $post['time'] }}</small></div>
                 </div>
                 @if ($isOwnPost)
                     <div class="fan-detail-owner-actions">

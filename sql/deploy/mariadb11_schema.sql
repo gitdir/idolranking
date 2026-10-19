@@ -213,7 +213,7 @@ CREATE TABLE `admin_dummy_activity_requests` (
 
 CREATE TABLE `blocked_ips` (
   `idx` bigint unsigned NOT NULL AUTO_INCREMENT,
-  `ip_address` varchar(45) CHARACTER SET ascii COLLATE ascii_bin NOT NULL,
+  `ip_address` varchar(45) CHARACTER SET ascii COLLATE ascii_bin DEFAULT NULL COMMENT 'NULL for privacy-conscious visitor tracking; legacy values are retained until log expiry',
   `reason` varchar(1000) NOT NULL,
   `created_by_member_idx` bigint unsigned NOT NULL,
   `expires_at` datetime(6) DEFAULT NULL,

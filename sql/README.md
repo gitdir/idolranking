@@ -82,6 +82,10 @@ mariadb-dump --single-transaction --routines --triggers -u DB_USER -p DB_NAME > 
 
 Never put a database dump, production data, credentials, or `.env` file in this repository or commit them. Protect backups as production data and follow the applicable retention policy.
 
+## Visitor statistics privacy
+
+Patch `20261019_001_stop_storing_raw_visitor_ips.sql` makes `member_access_logs.ip_address` nullable. New public-page access rows no longer store raw IP addresses; existing values are retained until the existing 90-day access-log cleanup expires them. The visitor aggregates continue to use random first-party visitor IDs and do not depend on IP addresses.
+
 ## Compatibility notes
 
 - The deployment snapshot uses InnoDB and `utf8mb4_unicode_ci`, supported by both MySQL 8.4 and MariaDB 11.8. MySQL 8.4's `utf8mb4_0900_ai_ci` is not available in MariaDB 11.8; the selected collation has different Unicode sorting weights.

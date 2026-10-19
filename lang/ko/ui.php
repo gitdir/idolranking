@@ -43,6 +43,8 @@ $translations = [
     'upload_image' => '이미지 업로드', 'edit_crop' => '편집 / 자르기', 'remove' => '삭제', 'image_help' => 'JPG, PNG 또는 GIF. 최대 5MB.',
     'email_cannot_change' => '이메일은 변경할 수 없습니다.', 'check' => '확인', 'short_bio' => '한 줄 소개', 'save_changes' => '변경 사항 저장',
     'change_password' => '비밀번호 변경', 'comments_count' => '댓글', 'all_rights_reserved' => '모든 권리 보유.',
+    'footer_visitor_statistics' => '방문 통계', 'footer_yesterday_uv' => '어제 UV : :count', 'footer_yesterday_pv' => '어제 PV : :count',
+    'footer_today_uv' => '오늘 UV : :count', 'footer_today_pv' => '오늘 PV : :count',
     'today' => '오늘', 'rank' => '순위', 'votes' => '투표', 'vote' => '투표', 'top_voters' => '상위 투표자',
     'current_month_rank' => '이번 달 순위', 'monthly_votes' => '이번 달 누적 투표', 'total_fan_posts' => '전체 팬 포스트',
     'popular_fan_post' => ':name 인기 팬 포스트', 'no_fan_post_images' => '공개된 팬 포스트 이미지가 없습니다.', 'this_month' => '이번 달',

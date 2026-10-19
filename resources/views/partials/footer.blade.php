@@ -1,4 +1,8 @@
-@php($footerMember = request()->attributes->get('currentMember'))
+@php
+    $footerMember = request()->attributes->get('currentMember');
+    $footerIsAdmin = (int) ($footerMember?->member_level ?? 0) === 10
+        && (int) ($footerMember?->is_dummy ?? 0) !== 1;
+@endphp
 <footer class="site-footer">
     <div class="page-width site-footer-inner">
         <div class="site-footer-main">
@@ -12,16 +16,30 @@
                 <span><span class="brand-accent">IDOL</span> RANKING</span>
             </a>
 
-            <nav class="footer-navigation" aria-label="{{ __('ui.footer_ranking_navigation') }}">
-                <a href="{{ route('ranking.idol') }}">{{ __('ui.idol') }}</a>
-                <a href="{{ route('ranking.group') }}">{{ __('ui.group') }}</a>
-                <a href="{{ route('fan-posts.index') }}">{{ __('ui.fan_posts') }}</a>
-                <a href="{{ route('get-hearts') }}">{{ __('ui.get_hearts') }}</a>
-                <a href="{{ route('attendance') }}">{{ __('ui.attendance') }}</a>
-                @if ((int) ($footerMember?->member_level ?? 0) === 10)
-                    <a href="{{ route('admin.index') }}" target="_blank">{{ __('ui.admin') }}</a>
+            <div class="footer-navigation-group">
+                <nav class="footer-navigation" aria-label="{{ __('ui.footer_ranking_navigation') }}">
+                    <span class="footer-navigation-row">
+                        <a href="{{ route('ranking.idol') }}">{{ __('ui.idol') }}</a>
+                        <a href="{{ route('ranking.group') }}">{{ __('ui.group') }}</a>
+                        <a href="{{ route('fan-posts.index') }}">{{ __('ui.fan_posts') }}</a>
+                    </span>
+                    <span class="footer-navigation-row">
+                        <a href="{{ route('get-hearts') }}">{{ __('ui.get_hearts') }}</a>
+                        <a href="{{ route('attendance') }}">{{ __('ui.attendance') }}</a>
+                    </span>
+                    @if ((int) ($footerMember?->member_level ?? 0) === 10)
+                        <span class="footer-navigation-row"><a href="{{ route('admin.index') }}" target="_blank">{{ __('ui.admin') }}</a></span>
+                    @endif
+                </nav>
+                @if ($footerIsAdmin)
+                    <p class="footer-visitor-stats" aria-label="{{ __('ui.footer_visitor_statistics') }}">
+                        {{ __('ui.footer_yesterday_uv', ['count' => number_format($footerVisitorStats['yesterdayUv'])]) }}
+                        · {{ __('ui.footer_yesterday_pv', ['count' => number_format($footerVisitorStats['yesterdayPv'])]) }}
+                        · {{ __('ui.footer_today_uv', ['count' => number_format($footerVisitorStats['todayUv'])]) }}
+                        · {{ __('ui.footer_today_pv', ['count' => number_format($footerVisitorStats['todayPv'])]) }}
+                    </p>
                 @endif
-            </nav>
+            </div>
 
             <a class="footer-email" href="mailto:help@idolranking.com">
                 <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="m4 7 8 6 8-6"/></svg>
