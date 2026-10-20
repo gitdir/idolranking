@@ -156,9 +156,11 @@ if (modal) {
             if (!randomDummyMode) {
                 modal.dataset.myHearts = String(balance);
                 modal.querySelector('[data-heart-vote-balance]').textContent = formatter.format(balance);
-                document.querySelectorAll('[data-member-heart-balance]').forEach((element) => {
-                    element.textContent = formatter.format(balance);
-                });
+                if (document.body.dataset.activityMemberIsAuthenticated === 'true') {
+                    document.querySelectorAll('[data-member-heart-balance]').forEach((element) => {
+                        element.textContent = formatter.format(balance);
+                    });
+                }
             }
             if (target.month === payload.data?.vote_month) {
                 document.querySelectorAll('[data-heart-vote-open]').forEach((trigger) => {

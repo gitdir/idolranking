@@ -53,9 +53,14 @@ if (partnerRewardDialog && partnerClaimButton) {
             const result = await response.json();
 
             if (result.data?.heart_balance !== undefined) {
-                document.querySelectorAll('[data-get-hearts-balance], [data-member-heart-balance]').forEach((element) => {
+                document.querySelectorAll('[data-get-hearts-balance]').forEach((element) => {
                     element.textContent = Number(result.data.heart_balance).toLocaleString();
                 });
+                if (document.body.dataset.activityMemberIsAuthenticated === 'true') {
+                    document.querySelectorAll('[data-member-heart-balance]').forEach((element) => {
+                        element.textContent = Number(result.data.heart_balance).toLocaleString();
+                    });
+                }
             }
             if (result.data?.today_earned !== undefined) {
                 const todayEarned = document.querySelector('[data-get-hearts-today-earned]');

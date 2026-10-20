@@ -26,7 +26,7 @@
             </div>
             <div class="get-hearts-summary-item get-hearts-summary-item--today">
                 <span class="get-hearts-calendar" aria-hidden="true"><svg viewBox="0 0 24 24"><use href="#icon-heart"/></svg></span>
-                <span>{{ __('ui.today_earned_label') }}<strong data-get-hearts-today-earned>+ {{ number_format($todayEarned) }}</strong></span>
+                <span translate="no">Earned Today<strong data-get-hearts-today-earned>+ {{ number_format($todayEarned) }}</strong></span>
             </div>
             <p>{{ __('ui.collect_hearts') }}</p>
         </section>

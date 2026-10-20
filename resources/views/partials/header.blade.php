@@ -20,7 +20,7 @@
             'ranking_rate' => '12.5%',
             'fan_posts' => 28,
             'comments' => 56,
-            'hearts' => number_format((int) ($headerActivityMember->heart_balance ?? 0)),
+            'hearts' => number_format((int) $headerMember->heart_balance),
         ] : null;
     @endphp
     <header class="site-header">
@@ -178,9 +178,9 @@
                                         @endif
                                     </div>
                                     <span title="{{ $headerMember->email }}">{{ $headerMember->email }}</span>
-                                    <div class="header-account-hearts" aria-label="{{ number_format((int) ($headerActivityMember->heart_balance ?? 0)) }} Hearts">
+                                    <div class="header-account-hearts" aria-label="{{ number_format((int) $headerMember->heart_balance) }} Hearts">
                                         <span class="header-account-heart-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><use href="#icon-heart"/></svg></span>
-                                        <span>{{ number_format((int) ($headerActivityMember->heart_balance ?? 0)) }} {{ __('ui.my_hearts') }}</span>
+                                        <span>{{ number_format((int) $headerMember->heart_balance) }} {{ __('ui.my_hearts') }}</span>
                                     </div>
                                 </div>
                             </div>

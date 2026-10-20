@@ -48,6 +48,32 @@ class GetHeartsTest extends TestCase
         $this->assertSame(0, DB::table('partner_banner_clicks')->count());
     }
 
+    public function test_header_account_statistics_use_the_authenticated_member_in_dummy_mode(): void
+    {
+        $this->database();
+        DB::table('members')->insert([
+            ['idx' => 7, 'member_code' => 'DummyMember007', 'email' => 'dummy@example.test', 'nickname' => 'dummy', 'heart_balance' => 25, 'member_level' => 1, 'is_dummy' => 1, 'status' => 'active'],
+            ['idx' => 8, 'member_code' => 'AdminMember008', 'email' => 'admin@example.test', 'nickname' => 'admin', 'heart_balance' => 1234, 'member_level' => 10, 'is_dummy' => 0, 'status' => 'active'],
+            ['idx' => 9, 'member_code' => 'NormalMember009', 'email' => 'normal@example.test', 'nickname' => 'normal', 'heart_balance' => 456, 'member_level' => 1, 'is_dummy' => 0, 'status' => 'active'],
+        ]);
+        DB::table('members')->insert([
+            'idx' => 10, 'member_code' => 'DummyMember010', 'email' => 'dummy-two@example.test', 'nickname' => 'dummy_two',
+            'heart_balance' => 90, 'member_level' => 1, 'is_dummy' => 1, 'status' => 'active',
+        ]);
+
+        foreach ([
+            [['member_idx' => 8, 'acting_dummy_member_idx' => 7, 'acting_dummy_member_enabled' => false, 'acting_dummy_member_actor_idx' => 8], 'true'],
+            [['member_idx' => 8, 'acting_dummy_member_idx' => 7, 'acting_dummy_member_enabled' => true, 'acting_dummy_member_actor_idx' => 8], 'false'],
+            [['member_idx' => 8, 'acting_dummy_member_idx' => 10, 'acting_dummy_member_enabled' => true, 'acting_dummy_member_actor_idx' => 8], 'false'],
+            [['member_idx' => 9, 'acting_dummy_member_idx' => 7, 'acting_dummy_member_enabled' => true, 'acting_dummy_member_actor_idx' => 8], 'true'],
+        ] as [$session, $activityIsAuthenticated]) {
+            $response = $this->withSession($session)->get('/get-hearts')->assertOk();
+            $response->assertSee('data-activity-member-is-authenticated="'.$activityIsAuthenticated.'"', false);
+            $response->assertSee('data-member-heart-balance>'.number_format($session['member_idx'] === 8 ? 1234 : 456).'</strong>', false);
+            $response->assertSee('title="'.($session['member_idx'] === 8 ? 'admin@example.test' : 'normal@example.test').'"', false);
+        }
+    }
+
     public function test_write_comment_card_displays_its_saved_heart_range(): void
     {
         $this->database();

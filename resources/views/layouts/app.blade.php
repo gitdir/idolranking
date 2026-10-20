@@ -9,6 +9,11 @@
         $seoImage = $pageSeo['image'] ?? ($publicSettings['social_image_path'] ?? null);
         $seoImageUrl = \App\Support\ManagedImageStorage::publicUrl($seoImage);
         $canonicalUrl = $pageSeo['url'] ?? request()->url();
+        $authenticatedMember = request()->attributes->get('currentMember');
+        $activityMember = request()->attributes->get('activityMember');
+        $activityMemberIsAuthenticated = $authenticatedMember !== null && $activityMember !== null
+            && (int) $authenticatedMember->idx === (int) $activityMember->idx
+            && ! (bool) request()->attributes->get('randomDummyMode', false);
     @endphp
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -38,7 +43,7 @@
         window.idolRankingMessages = @json(__('js'));
     </script>
 </head>
-<body>
+<body data-activity-member-is-authenticated="{{ $activityMemberIsAuthenticated ? 'true' : 'false' }}">
     <svg class="icon-definitions" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
         <defs>
             <symbol id="icon-heart" viewBox="0 0 24 24">
