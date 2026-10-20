@@ -2,12 +2,14 @@
     $title = $reset ? __('ui.reset_your_password') : __('ui.forgot_password_title');
     $description = $reset ? __('ui.create_new_password_description') : __('ui.reset_email_description');
 @endphp
-<section class="password-page" aria-labelledby="password-page-title">
-    <header class="password-page-heading">
-        <h1 id="password-page-title">{{ $title }}</h1>
-        <p>{{ $description }}</p>
-        <svg class="password-page-decoration" viewBox="0 0 180 130" aria-hidden="true"><path fill="#f5d5fa" d="m45 30 30 30 28-42 18 52 42-23-28 62-84-24Z"/><path fill="#edd8ff" d="M18 65S-5 50 4 41q7-8 14 1 7-9 14-1 9 9-14 24"/><g fill="#fbe0f6"><circle cx="45" cy="21" r="8"/><circle cx="105" cy="9" r="8"/><circle cx="169" cy="42" r="8"/></g></svg>
-    </header>
+<section class="password-page{{ $reset ? '' : ' password-page--forgot' }}" aria-labelledby="{{ $reset ? 'password-page-title' : 'password-card-title' }}">
+    @if ($reset)
+        <header class="password-page-heading">
+            <h1 id="password-page-title">{{ $title }}</h1>
+            <p>{{ $description }}</p>
+            <svg class="password-page-decoration" viewBox="0 0 180 130" aria-hidden="true"><path fill="#f5d5fa" d="m45 30 30 30 28-42 18 52 42-23-28 62-84-24Z"/><path fill="#edd8ff" d="M18 65S-5 50 4 41q7-8 14 1 7-9 14-1 9 9-14 24"/><g fill="#fbe0f6"><circle cx="45" cy="21" r="8"/><circle cx="105" cy="9" r="8"/><circle cx="169" cy="42" r="8"/></g></svg>
+        </header>
+    @endif
     <div class="password-page-card">
         <svg class="password-page-art" viewBox="0 0 220 180" aria-hidden="true">
             <circle cx="110" cy="90" r="84" fill="#fff0fa"/>
@@ -20,7 +22,7 @@
             @endif
             <path d="m12 78-6-4m8 21-8 2m199-22 6-5m-6 24 8 2" stroke="#ff70b9" stroke-width="4" stroke-linecap="round"/>
         </svg>
-        <h2>{{ $title }}</h2>
+        <h2 @if(!$reset) id="password-card-title" @endif>{{ $title }}</h2>
         <p class="password-card-description">{{ $reset ? __('ui.enter_new_password_below') : $description }}</p>
         <form class="password-preview-fields password-page-form" data-password-page-form method="post"
               action="{{ $reset ? route('password.update') : route('password.email') }}">
@@ -52,7 +54,9 @@
         <div class="password-page-divider"><span>{{ __('ui.back_to') }}</span></div>
         <button type="button" class="password-page-sign-in" data-sign-in-open aria-haspopup="dialog" aria-controls="sign-in-modal"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M20 12H4m7-7-7 7 7 7"/></svg>{{ __('ui.sign_in') }}</button>
     </div>
-    <footer class="password-page-footer"><strong>IDOL RANKING</strong><p>&copy; {{ date('Y') }} IDOL RANKING. {{ __('ui.copyright') }}</p></footer>
+    @if ($reset)
+        <footer class="password-page-footer"><strong>IDOL RANKING</strong><p>&copy; {{ date('Y') }} IDOL RANKING. {{ __('ui.copyright') }}</p></footer>
+    @endif
 </section>
 <script>
     (() => {

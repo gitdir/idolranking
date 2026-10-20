@@ -5,7 +5,9 @@ namespace Tests\Feature;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Lang;
+use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Storage;
+use App\Mail\IdolRegistrationRequestNotification;
 use Tests\TestCase;
 
 class IdolRegistrationRequestTest extends TestCase
@@ -48,6 +50,16 @@ class IdolRegistrationRequestTest extends TestCase
     {
         $this->database();
         Storage::fake('public');
+        DB::table('members')->where('idx', 7)->update(['nickname' => '<script>applicant</script>']);
+        DB::table('members')->insert([
+            'idx' => 10, 'member_code' => 'AdminCode10', 'email' => 'admin@example.test', 'nickname' => 'admin',
+            'member_level' => 10, 'is_dummy' => 0, 'status' => 'active',
+        ]);
+        DB::table('members')->insert([
+            ['idx' => 11, 'member_code' => 'DummyAdmin11', 'email' => 'dummy-admin@example.test', 'nickname' => 'dummy admin', 'member_level' => 10, 'is_dummy' => 1, 'status' => 'active'],
+            ['idx' => 12, 'member_code' => 'InactiveAdmin12', 'email' => 'inactive-admin@example.test', 'nickname' => 'inactive admin', 'member_level' => 10, 'is_dummy' => 0, 'status' => 'inactive'],
+        ]);
+        Mail::fake();
 
         $this->withSession(['member_idx' => 7])->get('/idol-registration/request')
             ->assertOk()->assertSee('Idol Registration Request')->assertSee('Register Idol')
@@ -86,6 +98,48 @@ class IdolRegistrationRequestTest extends TestCase
             'description' => 'A concise and accurate introduction.',
         ]);
         Storage::disk('public')->assertExists(substr($saved->image_path, 8));
+        Mail::assertSent(IdolRegistrationRequestNotification::class, function (IdolRegistrationRequestNotification $mail) use ($saved): bool {
+            $rendered = $mail->render();
+
+            return $mail->hasTo('admin@example.test')
+                && $mail->requestType === 'individual'
+                && $mail->englishName === 'Test Idol'
+                && $mail->applicantNickname === '<script>applicant</script>'
+                && $mail->submittedAt === $saved->created_at
+                && $mail->reviewUrl === route('admin.idol-requests.show', ['idx' => $saved->idx])
+                && str_contains($rendered, '&lt;script&gt;applicant&lt;/script&gt;')
+                && !str_contains($rendered, '<script>applicant</script>');
+        });
+        Mail::assertSentCount(1);
+    }
+
+    public function test_mail_delivery_failure_does_not_undo_a_saved_registration_request(): void
+    {
+        $this->database();
+        Storage::fake('public');
+        DB::table('members')->insert([
+            'idx' => 10, 'member_code' => 'AdminCode10', 'email' => 'admin@example.test', 'nickname' => 'admin',
+            'member_level' => 10, 'is_dummy' => 0, 'status' => 'active',
+        ]);
+        Mail::shouldReceive('mailer')->once()->with('smtp')
+            ->andThrow(new \RuntimeException('Simulated mail transport failure.'));
+        $key = str_repeat('f', 64);
+        $search = $this->withSession(['member_idx' => 7, 'idol_registration_request_key' => $key])
+            ->getJson(route('idol-registration.duplicates', ['request_type' => 'girl_group', 'english_name' => 'Saved Despite Mail Failure']))
+            ->assertOk();
+
+        $this->withSession(['member_idx' => 7, 'idol_registration_request_key' => $key])
+            ->post('/idol-registration/request', [
+                'request_key' => $key,
+                'duplicate_search_token' => $search->json('token'),
+                'request_type' => 'girl_group',
+                'english_name' => 'Saved Despite Mail Failure',
+                'source_language_code' => 'en',
+                'content' => 'Group introduction',
+                'profile_image' => UploadedFile::fake()->image('group.png'),
+            ])->assertRedirect(route('idol-registration.create'))->assertSessionHas('success');
+
+        $this->assertSame(1, DB::table('idol_registration_requests')->count());
     }
 
     public function test_request_without_korean_name_uses_english_name_for_required_database_name(): void
@@ -115,6 +169,11 @@ class IdolRegistrationRequestTest extends TestCase
     {
         $this->database();
         Storage::fake('public');
+        DB::table('members')->insert([
+            'idx' => 10, 'member_code' => 'AdminCode10', 'email' => 'admin@example.test', 'nickname' => 'admin',
+            'member_level' => 10, 'is_dummy' => 0, 'status' => 'active',
+        ]);
+        Mail::fake();
         $key = str_repeat('b', 64);
 
         $this->withSession(['member_idx' => 7, 'idol_registration_request_key' => $key])
@@ -135,6 +194,11 @@ class IdolRegistrationRequestTest extends TestCase
             'request_idx' => $saved->idx, 'language_code' => 'ko', 'text_role' => 'submitted',
             'agency' => 'Sample Agency', 'genre' => 'Pop / R&B', 'leader' => 'Leader entered as free text',
         ]);
+        Mail::assertSent(IdolRegistrationRequestNotification::class, fn (IdolRegistrationRequestNotification $mail): bool =>
+            $mail->hasTo('admin@example.test')
+            && $mail->requestType === 'group'
+            && $mail->englishName === 'Sample Group'
+        );
     }
 
     public function test_member_profile_fields_are_preserved_under_the_selected_source_language(): void
@@ -305,6 +369,11 @@ class IdolRegistrationRequestTest extends TestCase
     {
         $this->database();
         Storage::fake('public');
+        DB::table('members')->insert([
+            'idx' => 10, 'member_code' => 'AdminCode10', 'email' => 'admin@example.test', 'nickname' => 'admin',
+            'member_level' => 10, 'is_dummy' => 0, 'status' => 'active',
+        ]);
+        Mail::fake();
         $key = str_repeat('c', 64);
 
         $this->withSession(['member_idx' => 7, 'idol_registration_request_key' => $key])
@@ -315,6 +384,7 @@ class IdolRegistrationRequestTest extends TestCase
             ])->assertSessionHasErrors('english_name');
 
         $this->assertSame(0, DB::table('idol_registration_requests')->count());
+        Mail::assertNothingOutgoing();
     }
 
     public function test_debut_date_rows_require_country_and_date_and_reject_duplicate_countries(): void
@@ -469,6 +539,11 @@ class IdolRegistrationRequestTest extends TestCase
     {
         $this->database();
         Storage::fake('public');
+        DB::table('members')->insert([
+            'idx' => 10, 'member_code' => 'AdminCode10', 'email' => 'admin@example.test', 'nickname' => 'admin',
+            'member_level' => 10, 'is_dummy' => 0, 'status' => 'active',
+        ]);
+        Mail::fake();
         $key = str_repeat('e', 64);
         $payload = [
             'request_key' => $key,
@@ -490,6 +565,7 @@ class IdolRegistrationRequestTest extends TestCase
 
         $this->assertSame(1, DB::table('idol_registration_requests')->count());
         $this->assertSame(2, DB::table('idol_registration_request_localizations')->where('text_role', 'submitted')->count());
+        Mail::assertSent(IdolRegistrationRequestNotification::class, 1);
     }
 
     public function test_submitted_localizations_preserve_exact_english_korean_and_japanese_text(): void

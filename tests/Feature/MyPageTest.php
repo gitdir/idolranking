@@ -120,6 +120,70 @@ class MyPageTest extends TestCase
         $response->assertSee(asset('images/flags/kr.svg'), false);
     }
 
+    public function test_admin_my_page_and_profile_always_use_the_authenticated_admin_in_dummy_mode(): void
+    {
+        $this->database();
+        DB::table('members')->insert([
+            'idx' => 10, 'member_code' => 'adminCode10', 'email' => 'admin@example.test',
+            'nickname' => 'admin_user', 'country_code' => 'KR', 'heart_balance' => 150,
+            'member_level' => 10, 'is_dummy' => 0,
+        ]);
+        DB::table('members')->insert([
+            'idx' => 20, 'member_code' => 'dummyCode20', 'email' => 'dummy@example.test',
+            'nickname' => 'dummy_user', 'country_code' => 'US', 'heart_balance' => 900,
+            'member_level' => 1, 'is_dummy' => 1,
+        ]);
+        DB::table('fan_posts')->insert([
+            ['idx' => 10, 'member_idx' => 10, 'content' => 'Admin own post'],
+            ['idx' => 20, 'member_idx' => 20, 'content' => 'Selected dummy post'],
+        ]);
+        DB::table('heart_histories')->insert([
+            ['idx' => 10, 'member_idx' => 10, 'amount' => 15, 'reason' => 'daily_attendance', 'created_at' => now()],
+            ['idx' => 20, 'member_idx' => 20, 'amount' => 90, 'reason' => 'daily_attendance', 'created_at' => now()],
+        ]);
+        DB::statement('CREATE TABLE heart_reward_settings (action_code TEXT, is_enabled INTEGER, heart_amount INTEGER, min_heart_amount INTEGER, max_heart_amount INTEGER, daily_limit INTEGER)');
+        DB::table('heart_reward_settings')->insert([
+            'action_code' => 'profile_complete', 'is_enabled' => 1, 'heart_amount' => 50,
+            'min_heart_amount' => null, 'max_heart_amount' => null, 'daily_limit' => 1,
+        ]);
+
+        $dummyModeSession = [
+            'member_idx' => 10,
+            'acting_dummy_member_idx' => 20,
+            'acting_dummy_member_enabled' => true,
+            'acting_dummy_member_actor_idx' => 10,
+        ];
+
+        $this->withSession($dummyModeSession)->get('/my-page?tab=posts')->assertOk()
+            ->assertViewHas('currentMember', fn ($member) => (int) $member->idx === 10)
+            ->assertViewHas('posts', fn ($posts) => count($posts) === 1 && $posts[0][2] === 'Admin own post')
+            ->assertViewHas('memberStats', fn ($stats) => $stats['fan_post_count'] === 1)
+            ->assertSee('150')
+            ->assertDontSee('Selected dummy post');
+
+        $this->withSession($dummyModeSession)->get('/my-page/heart-history')->assertOk()
+            ->assertViewHas('currentMember', fn ($member) => (int) $member->idx === 10)
+            ->assertViewHas('heartHistories', fn ($histories) => $histories->total() === 1
+                && (int) $histories->items()[0]->amount === 15)
+            ->assertDontSee('+90 Heart');
+
+        $this->withSession($dummyModeSession)->get('/my-page/fan-posts')
+            ->assertRedirect('/member/adminCode10/fan-posts');
+
+        $this->withSession($dummyModeSession)->putJson('/my-page/profile', [
+            'member_idx' => 20,
+            'nickname' => 'admin_updated',
+            'country_code' => 'CA',
+        ])->assertOk()->assertJson(['success' => true]);
+
+        $this->assertSame('admin_updated', DB::table('members')->where('idx', 10)->value('nickname'));
+        $this->assertSame('CA', DB::table('members')->where('idx', 10)->value('country_code'));
+        $this->assertSame('dummy_user', DB::table('members')->where('idx', 20)->value('nickname'));
+        $this->assertSame('US', DB::table('members')->where('idx', 20)->value('country_code'));
+        $this->assertSame(900, (int) DB::table('members')->where('idx', 20)->value('heart_balance'));
+        $this->assertSame(150, (int) DB::table('members')->where('idx', 10)->value('heart_balance'));
+    }
+
     public function test_heart_history_is_member_scoped_newest_first_and_keeps_tab_on_next_page(): void
     {
         $this->database();

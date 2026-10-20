@@ -11,7 +11,7 @@ class MemberFanPostController extends Controller
 {
     public function mine(Request $request): RedirectResponse
     {
-        $member = $request->attributes->get('activityMember');
+        $member = $request->attributes->get('currentMember');
 
         return redirect()->route('member.fan-posts', [
             'member_code' => $member->member_code,
@@ -125,7 +125,7 @@ class MemberFanPostController extends Controller
         ];
 
         $showSamplePagination = false;
-        $currentMember = $request->attributes->get('activityMember');
+        $currentMember = $request->attributes->get('currentMember');
         $canCreateFanPost = $currentMember !== null && (int) $currentMember->idx === (int) $member->idx;
 
         return view('members.fan-posts', compact('memberSummary', 'fanPosts', 'sort', 'showSamplePagination', 'member_code', 'canCreateFanPost'));

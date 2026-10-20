@@ -17,7 +17,7 @@ class MyPageController extends Controller
 {
     public function checkNickname(Request $request)
     {
-        $member = $request->attributes->get('activityMember');
+        $member = $request->attributes->get('currentMember');
         $request->merge(['nickname' => trim((string) $request->input('nickname'))]);
         $formatValidator = Validator::make($request->all(), [
             'nickname' => ['required', 'string', 'min:2', 'max:20'],
@@ -73,7 +73,7 @@ class MyPageController extends Controller
 
     public function updateProfile(Request $request)
     {
-        $member = $request->attributes->get('activityMember');
+        $member = $request->attributes->get('currentMember');
         $actor = $request->attributes->get('activityActor');
         $request->merge([
             'nickname' => trim((string) $request->input('nickname')),
@@ -125,7 +125,7 @@ class MyPageController extends Controller
 
     public function show(Request $request)
     {
-        $member = $request->attributes->get('activityMember');
+        $member = $request->attributes->get('currentMember');
         $activeTab = in_array($request->query('tab'), ['hearts', 'posts', 'invites'], true)
             ? $request->query('tab') : 'hearts';
         $publishedPosts = DB::table('fan_posts as p')
@@ -213,7 +213,7 @@ class MyPageController extends Controller
 
     public function heartHistory(Request $request)
     {
-        $member = $request->attributes->get('activityMember');
+        $member = $request->attributes->get('currentMember');
         $filter = in_array($request->query('filter'), ['all', 'earned', 'spent'], true)
             ? $request->query('filter') : 'all';
 

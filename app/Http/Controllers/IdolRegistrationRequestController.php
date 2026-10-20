@@ -7,12 +7,16 @@ use App\Support\IdolDebutDates;
 use App\Support\IdolDuplicateMatcher;
 use App\Support\SocialLinks;
 use App\Support\RandomDummyActivity;
+use App\Mail\IdolRegistrationRequestNotification;
 use Illuminate\Database\QueryException;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\Rule;
 use Illuminate\Http\JsonResponse;
+use Throwable;
 
 class IdolRegistrationRequestController extends Controller
 {
@@ -311,9 +315,10 @@ class IdolRegistrationRequestController extends Controller
 
         $stored = $request->file('profile_image')->store('idol-registration-requests', 'public');
         $imagePath = 'storage/'.$stored;
+        $createdRequestIdx = null;
         try {
             $reservation = $randomMode ? $randomActivities->reserve($request, 'idol_registration', $validated['request_key'], $randomPayload) : null;
-            $approvedIdolIdx = DB::transaction(function () use ($request, $member, $actor, $isGroup, $gender, $validated, $imagePath, $legacyName, $legacyEnglishName, $legacyContent, $submittedLocalizations, $debutDates, $randomActivities, $reservation): ?int {
+            $approvedIdolIdx = DB::transaction(function () use ($request, $member, $actor, $isGroup, $gender, $validated, $imagePath, $legacyName, $legacyEnglishName, $legacyContent, $submittedLocalizations, $debutDates, $randomActivities, $reservation, &$createdRequestIdx): ?int {
                 $reservation = $reservation ? $randomActivities->lockReservation($reservation) : null;
                 if ($reservation?->replay) {
                     return DB::table('idol_registration_requests')->where('idx', $reservation->result_idx)->value('approved_idol_idx');
@@ -336,6 +341,7 @@ class IdolRegistrationRequestController extends Controller
                     'request_key' => $validated['request_key'], 'status' => 'pending',
                     'created_at' => now(), 'updated_at' => now(),
                 ], 'idx');
+                $createdRequestIdx = (int) $requestIdx;
 
                 IdolDebutDates::insertForRequest($requestIdx, $debutDates);
 
@@ -384,12 +390,66 @@ class IdolRegistrationRequestController extends Controller
         $request->session()->forget('idol_registration_request_key');
         $request->session()->forget('idol_registration_duplicate_search');
 
+        if ($createdRequestIdx !== null) {
+            $this->notifyAdministrators($createdRequestIdx);
+        }
+
         if ($approvedIdolIdx !== null) {
             return redirect()->route('idol.show', ['idx' => $approvedIdolIdx])
                 ->with('success', '등록 신청이 승인되어 공개되었습니다.');
         }
 
         return redirect()->route('idol-registration.create')->with('success', __('messages.idol_request_submitted'));
+    }
+
+    private function notifyAdministrators(int $requestIdx): void
+    {
+        try {
+            $registrationRequest = DB::table('idol_registration_requests as request')
+                ->join('members as applicant', 'applicant.idx', '=', 'request.member_idx')
+                ->where('request.idx', $requestIdx)
+                ->first([
+                    'request.type', 'request.english_name', 'request.created_at',
+                    'applicant.nickname as applicant_nickname',
+                ]);
+            if ($registrationRequest === null) {
+                return;
+            }
+
+            $recipientEmails = DB::table('members')
+                ->where('member_level', 10)
+                ->where('is_dummy', 0)
+                ->where('status', 'active')
+                ->whereNull('deleted_at')
+                ->whereNotNull('email')
+                ->where('email', '<>', '')
+                ->pluck('email')
+                ->unique()
+                ->values();
+
+            foreach ($recipientEmails as $email) {
+                try {
+                    Mail::mailer('smtp')->to((string) $email)->send(new IdolRegistrationRequestNotification(
+                        requestType: (string) $registrationRequest->type,
+                        englishName: (string) $registrationRequest->english_name,
+                        applicantNickname: (string) $registrationRequest->applicant_nickname,
+                        submittedAt: (string) $registrationRequest->created_at,
+                        reviewUrl: rtrim((string) config('app.url'), '/')
+                            .route('admin.idol-requests.show', ['idx' => $requestIdx], false),
+                    ));
+                } catch (Throwable $exception) {
+                    Log::warning('Idol registration admin email could not be sent.', [
+                        'request_idx' => $requestIdx,
+                        'exception' => $exception::class,
+                    ]);
+                }
+            }
+        } catch (Throwable $exception) {
+            Log::warning('Idol registration admin email notification failed.', [
+                'request_idx' => $requestIdx,
+                'exception' => $exception::class,
+            ]);
+        }
     }
 
     private function candidateData(object $idol): array
