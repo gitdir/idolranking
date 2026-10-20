@@ -83,7 +83,7 @@
             </symbol>
         </defs>
     </svg>
-    <a class="skip-link" href="#main-content">Skip to content</a>
+    <a class="skip-link" href="#main-content">{{ __('ui.skip_to_content') }}</a>
     @include('partials.header')
     <main id="main-content" class="page-width main-content">
         @yield('content')
@@ -91,10 +91,14 @@
     @include('partials.footer')
     @php
         $voteMember = request()->attributes->get('activityMember') ?? request()->attributes->get('currentMember');
+        $voteActor = request()->attributes->get('currentMember');
         $voteSignedIn = request()->attributes->get('currentMember') !== null || session()->has('member_idx');
         $randomDummyMode = (bool) request()->attributes->get('randomDummyMode', false);
+        $randomDummyVoteMode = ($voteActor !== null && (int) $voteActor->member_level === 10
+            && (int) $voteActor->is_dummy === 0)
+            && ($randomDummyMode || (bool) request()->attributes->get('activityDummyMode', false));
     @endphp
-    <x-heart-vote-modal :my-hearts="$randomDummyMode ? 0 : ($voteMember?->heart_balance ?? 12540)" :signed-in="$voteSignedIn" :random-dummy-mode="$randomDummyMode" />
+    <x-heart-vote-modal :my-hearts="$randomDummyVoteMode ? 0 : ($voteMember?->heart_balance ?? 12540)" :signed-in="$voteSignedIn" :random-dummy-mode="$randomDummyVoteMode" />
     <x-sign-in-modal />
     <x-idol-image-report-modal />
     <x-global-notification />

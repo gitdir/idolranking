@@ -499,6 +499,9 @@ html.drawer-open { overflow: hidden; }
 .ranking-row-stats { display: flex; align-items: center; justify-content: space-between; gap: 6px; }
 .ranking-stat { display: inline-flex; align-items: center; gap: 4px; margin: 0; font-size: 12px; line-height: 1.2; font-weight: 400; color: var(--muted); font-variant-numeric: tabular-nums; white-space: nowrap; }
 .ranking-stat svg { width: 15px; height: 15px; flex-shrink: 0; }
+@media (min-width: 768px) {
+    .ranking-panel .heart-total svg, .ranking-panel .ranking-row-posts svg { width: 17px; height: 17px; }
+}
 .ranking-member h3 { margin: 0 0 5px; font-size: 14px; font-weight: 700; line-height: 1.25; overflow-wrap: anywhere; }
 .heart-total svg { color: var(--pink); }
 .heart-vote { width: 36px; height: 36px; display: grid; place-items: center; border: 0; border-radius: 50%; background: white; padding: 8px; color: var(--pink); }
@@ -754,7 +757,8 @@ a.fan-post-image-link, a.post-statistics, .post-preview a { cursor: pointer; tex
 .idol-ranking-stats { display: flex; justify-content: space-between; align-items: center; gap: 6px; margin-top: auto; font-size: 12px; color: var(--muted); font-variant-numeric: tabular-nums; }
 .idol-ranking-stats > span { display: inline-flex; align-items: center; gap: 4px; white-space: nowrap; }
 .idol-ranking-stats svg { width: 15px; height: 15px; flex-shrink: 0; }
-.idol-ranking-hearts svg { color: var(--pink); }
+.idol-ranking-hearts { font-size: 14px; }
+.idol-ranking-hearts svg { width: 17px; height: 17px; color: var(--pink); }
 .idol-ranking-vote { width: 100%; display: inline-flex; align-items: center; justify-content: center; gap: 7px; min-height: 38px; border: 1px solid var(--pink); border-radius: 999px; background: #fff; color: var(--pink); font-size: 14px; font-weight: 700; }
 .idol-ranking-vote svg { width: 17px; height: 17px; }
 @media (max-width: 1199px) {
@@ -770,6 +774,8 @@ a.fan-post-image-link, a.post-statistics, .post-preview a { cursor: pointer; tex
     .idol-ranking-stats { font-size: 11px; }
     .idol-ranking-stats > span { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
     .idol-ranking-stats svg { width: 13px; height: 13px; }
+    .idol-ranking-hearts { font-size: 13px; }
+    .idol-ranking-hearts svg { width: 15px; height: 15px; }
 }
 
 /* Idol detail: scoped additions leave existing home and ranking styles unchanged. */

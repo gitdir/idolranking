@@ -1,6 +1,22 @@
 <?php
 
 return [
+    'get_hearts_title' => '하트 받기',
+    'hearts_earned_not_bought' => '하트는 구매하는 것이 아니라 활동을 통해 획득합니다.',
+    'get_hearts_intro' => '팬 활동에 참여하고 하트를 모아 좋아하는 아이돌을 응원해 보세요!',
+    'invite_reward_description' => '친구가 회원가입을 완료하면 하트 :amount개를 받습니다.',
+    'activity_unavailable' => '현재 이용할 수 없는 활동입니다.',
+    'watch_ad' => '광고 보기',
+    'watch_ads' => '광고 시청',
+    'watch_ad_intro' => '짧은 광고를 시청하고 하트를 받아 보세요!',
+    'heart_reward_settings' => '하트 보상 설정에 지정된 값',
+    'status' => '상태',
+    'partner_banner' => '제휴 배너',
+    'banner_reward_confirm' => '새 탭에서 제휴 페이지가 열렸습니다. 아래에서 보상을 요청해 주세요.',
+    'claim_reward' => '보상 받기',
+    'skip_to_content' => '본문으로 건너뛰기',
+    'member_not_found_title' => '회원을 찾을 수 없습니다',
+    'member_not_found_description' => '요청하신 회원 페이지를 찾을 수 없습니다.',
     'homepage_ranking_view_all' => '더보기',
     'random_dummy_vote_mode' => '랜덤 더미 모드',
     'random_dummy_vote_notice' => '무작위로 선택된 더미 회원이 투표합니다. 하트가 부족하면 이번 투표에 필요한 만큼만 충전됩니다.',

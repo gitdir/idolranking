@@ -77,5 +77,16 @@ class AppServiceProvider extends ServiceProvider
                     'success' => false, 'message' => 'Too many attempts. Please wait a minute and try again.',
                 ], 429, $headers));
         });
+
+        RateLimiter::for('public-translations', function (Request $request) {
+            $routeName = $request->route()?->getName() ?? 'unknown';
+
+            return Limit::perMinute(60)->by('translation:'.$routeName.':'.$request->ip())
+                ->response(fn (Request $request, array $headers) => response()->json([
+                    'success' => false,
+                    'code' => 'translation_rate_limited',
+                    'message' => __('js.translation_error'),
+                ], 429, $headers));
+        });
     }
 }

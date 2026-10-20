@@ -69,6 +69,8 @@ class GetHeartsTest extends TestCase
         ] as [$session, $activityIsAuthenticated]) {
             $response = $this->withSession($session)->get('/get-hearts')->assertOk();
             $response->assertSee('data-activity-member-is-authenticated="'.$activityIsAuthenticated.'"', false);
+            $randomVoteMode = $session['member_idx'] === 8 && (bool) ($session['acting_dummy_member_enabled'] ?? false);
+            $response->assertSee('data-random-dummy-mode="'.($randomVoteMode ? 'true' : 'false').'"', false);
             $response->assertSee('data-member-heart-balance>'.number_format($session['member_idx'] === 8 ? 1234 : 456).'</strong>', false);
             $response->assertSee('title="'.($session['member_idx'] === 8 ? 'admin@example.test' : 'normal@example.test').'"', false);
         }

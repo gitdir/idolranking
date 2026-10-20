@@ -48,4 +48,28 @@ class PublicLocaleTest extends TestCase
 
         $this->assertSame('en', app()->getLocale());
     }
+
+    public function test_active_get_hearts_and_accessibility_copy_has_korean_translations(): void
+    {
+        foreach ([
+            'get_hearts_title', 'hearts_earned_not_bought', 'get_hearts_intro',
+            'invite_reward_description', 'activity_unavailable', 'watch_ad', 'watch_ads',
+            'watch_ad_intro', 'heart_reward_settings', 'status', 'partner_banner',
+            'banner_reward_confirm', 'claim_reward', 'skip_to_content',
+            'member_not_found_title', 'member_not_found_description',
+        ] as $key) {
+            $this->assertNotSame(__('ui.'.$key, [], 'en'), __('ui.'.$key, [], 'ko'), $key);
+        }
+    }
+
+    public function test_public_translation_routes_use_the_shared_rate_limit(): void
+    {
+        foreach ([
+            'attendance.translation', 'fan-post.translation', 'fan-post.comments.translation',
+        ] as $routeName) {
+            $route = app('router')->getRoutes()->getByName($routeName);
+            $this->assertNotNull($route, $routeName);
+            $this->assertContains('throttle:public-translations', $route->gatherMiddleware(), $routeName);
+        }
+    }
 }

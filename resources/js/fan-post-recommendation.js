@@ -30,7 +30,7 @@ if (button) {
 
             recommendationSaved = Boolean(result.data.recommended);
             button.setAttribute('aria-pressed', String(recommendationSaved));
-            label.textContent = window.idolRankingT('recommend');
+            label.textContent = 'Likes';
             count.textContent = formatter.format(result.data.recommendations);
             monthlyCount.textContent = formatter.format(result.data.monthly_recommendations);
         } catch (error) {

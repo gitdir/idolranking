@@ -26,14 +26,14 @@ class HeartVoteController extends Controller
         $memberIdx = (int) $request->attributes->get('activityMember')->idx;
         $actorMemberIdx = (int) $request->attributes->get('activityActor')->idx;
         $randomActivities = app(RandomDummyActivity::class);
-        $randomMode = $randomActivities->enabled($request);
+        $adminDummyVoteMode = (bool) $request->attributes->get('activityDummyMode', false);
         $idolIdx = (int) $validated['idol_idx'];
         $heartAmount = (int) $validated['heart_amount'];
         $requestKey = $validated['request_key'];
 
-        $reservation = $randomMode ? $randomActivities->reserve($request, 'heart_vote', $requestKey, [
+        $reservation = $randomActivities->reserve($request, 'heart_vote', $requestKey, [
             'idol_idx' => $idolIdx, 'heart_amount' => $heartAmount,
-        ]) : null;
+        ], $adminDummyVoteMode);
 
         $result = DB::transaction(function () use ($request, $memberIdx, $actorMemberIdx, $idolIdx, $heartAmount, $requestKey, $randomActivities, $reservation): array {
             $reservation = $reservation ? $randomActivities->lockReservation($reservation) : null;
@@ -84,7 +84,7 @@ class HeartVoteController extends Controller
 
             $balance = (int) $member->heart_balance;
             if ($reservation !== null && $heartAmount > $balance) {
-                // Random-mode votes receive only the exact shortage, and this history row
+                // Randomly assigned admin votes receive only the exact shortage, and this history row
                 // rolls back together with the vote if any later write fails.
                 $shortage = $heartAmount - $balance;
                 $balance = $heartAmount;

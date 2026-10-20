@@ -89,7 +89,7 @@ Route::get('/get-hearts', GetHeartsController::class)->name('get-hearts');
 Route::get('/fan-garden', fn () => abort(404))->name('fan-garden.index');
 Route::get('/attendance', [AttendanceController::class, 'index'])->name('attendance');
 Route::get('/attendance/{idx}/translation', [AttendanceController::class, 'translation'])
-    ->whereNumber('idx')->name('attendance.translation');
+    ->whereNumber('idx')->middleware('throttle:public-translations')->name('attendance.translation');
 Route::get('/partner-banners/{idx}/click', [GetHeartsController::class, 'clickPartnerBanner'])
     ->whereNumber('idx')->name('partner-banners.click');
 Route::post('/get-hearts/daily-check-in', [GetHeartsController::class, 'claimDailyCheckIn'])
@@ -98,9 +98,9 @@ Route::post('/get-hearts/partner-banners/{idx}/claim', [GetHeartsController::cla
     ->whereNumber('idx')->middleware(RequireMember::class)->name('get-hearts.partner-banners.claim');
 Route::get('/fan-post/{idx}', [FanPostController::class, 'show'])->whereNumber('idx')->name('fan-post.show');
 Route::get('/fan-post/{idx}/translation', [FanPostController::class, 'translation'])
-    ->whereNumber('idx')->name('fan-post.translation');
+    ->whereNumber('idx')->middleware('throttle:public-translations')->name('fan-post.translation');
 Route::get('/fan-post/{idx}/comments/{commentIdx}/translation', [FanPostController::class, 'commentTranslation'])
-    ->whereNumber('idx')->whereNumber('commentIdx')->name('fan-post.comments.translation');
+    ->whereNumber('idx')->whereNumber('commentIdx')->middleware('throttle:public-translations')->name('fan-post.comments.translation');
 Route::get('/fan-post/create', [FanPostController::class, 'create'])
     ->middleware(RequireMember::class)->name('fan-post.create');
 Route::get('/fan-post', fn () => redirect()->route('fan-posts.index'));

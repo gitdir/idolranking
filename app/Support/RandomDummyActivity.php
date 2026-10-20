@@ -15,6 +15,7 @@ final class RandomDummyActivity
         $actor = $request->attributes->get('currentMember');
 
         return (int) ($actor?->member_level ?? 0) === 10
+            && (int) ($actor?->is_dummy ?? 1) === 0
             && filter_var($request->session()->get(self::SESSION_KEY, false), FILTER_VALIDATE_BOOLEAN);
     }
 
@@ -40,19 +41,26 @@ final class RandomDummyActivity
     }
 
     /** Persist the actor/action/request identity before the activity transaction starts. */
-    public function reserve(Request $request, string $action, string $requestKey, array $payload): ?object
+    public function reserve(Request $request, string $action, string $requestKey, array $payload, bool $adminDummyVoteMode = false): ?object
     {
-        if (! $this->enabled($request)) {
+        $actor = $request->attributes->get('currentMember');
+        $isAdmin = (int) ($actor?->member_level ?? 0) === 10 && (int) ($actor?->is_dummy ?? 1) === 0;
+        $modeEnabled = $this->enabled($request)
+            || ($action === 'heart_vote' && $isAdmin && $adminDummyVoteMode);
+        $reuseVoteReservation = $action === 'heart_vote' && $isAdmin;
+
+        // Admin vote retries must find an existing reservation even if the checkbox was toggled off.
+        if (! $modeEnabled && ! $reuseVoteReservation) {
             return null;
         }
 
-        $actor = $request->attributes->get('currentMember');
-        abort_unless((int) $actor->member_level === 10, 403);
+        abort_unless($isAdmin, 403);
         $payloadHash = hash('sha256', json_encode($payload, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_THROW_ON_ERROR));
 
-        return DB::transaction(function () use ($actor, $action, $requestKey, $payloadHash): object {
+        return DB::transaction(function () use ($actor, $action, $requestKey, $payloadHash, $modeEnabled): ?object {
             // Serialize reservation creation for this administrator in a short transaction.
             $lockedAdmin = DB::table('members')->where('idx', $actor->idx)->where('member_level', 10)
+                ->where('is_dummy', 0)
                 ->where('status', 'active')->whereNull('deleted_at')->lockForUpdate()->first(['idx']);
             abort_if($lockedAdmin === null, 403);
 
@@ -63,6 +71,10 @@ final class RandomDummyActivity
                 abort_if(! hash_equals($existing->payload_hash, $payloadHash), 409, '동일한 요청 키로 다른 내용을 제출할 수 없습니다.');
 
                 return $this->reservation($existing);
+            }
+
+            if (! $modeEnabled) {
+                return null;
             }
 
             $dummy = DB::table('members')->where('member_level', 1)->where('is_dummy', 1)

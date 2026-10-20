@@ -379,7 +379,11 @@ class AuthController extends Controller
 
     public function logout(Request $request)
     {
+        $locale = $request->session()->get('locale', 'en');
+        $locale = in_array($locale, ['ko', 'en'], true) ? $locale : 'en';
+
         $request->session()->invalidate();
+        $request->session()->put('locale', $locale);
         $request->session()->regenerateToken();
 
         return redirect()->route('home');

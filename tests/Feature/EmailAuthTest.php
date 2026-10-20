@@ -355,14 +355,14 @@ class EmailAuthTest extends TestCase
         $this->database();
         $idx = $this->member();
 
-        $this->postJson('/login', [
+        $this->withSession(['locale' => 'ko'])->postJson('/login', [
             'email' => ' MEMBER@EXAMPLE.TEST ',
             'password' => 'Strong-password1!',
             'return_url' => '/ranking/boy?period=monthly',
         ])->assertOk()->assertJson([
             'success' => true,
             'redirect' => '/ranking/boy?period=monthly',
-        ])->assertSessionHas('member_idx', $idx);
+        ])->assertSessionHas('member_idx', $idx)->assertSessionHas('locale', 'ko');
         $this->assertSame(0, DB::table('daily_check_ins')->count());
         $this->assertSame(0, DB::table('heart_histories')->where('member_idx', $idx)->where('reason', 'daily_attendance')->count());
         $this->get('/my-page')->assertOk()->assertSee('member@example.test');
@@ -403,8 +403,8 @@ class EmailAuthTest extends TestCase
         $this->get('/my-page/fan-posts')->assertRedirect('/');
 
         $idx = $this->member();
-        $this->withSession(['member_idx' => $idx])->post('/logout')
-            ->assertRedirect('/')->assertSessionMissing('member_idx');
+        $this->withSession(['member_idx' => $idx, 'locale' => 'ko'])->post('/logout')
+            ->assertRedirect('/')->assertSessionMissing('member_idx')->assertSessionHas('locale', 'ko');
         $this->get('/my-page')->assertRedirect('/');
     }
 

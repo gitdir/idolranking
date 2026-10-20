@@ -19,7 +19,7 @@
                 <path stroke="#ff4596" stroke-width="3" d="M11 38h26"/>
                 <g fill="#ff80b6"><circle cx="4" cy="10" r="3"/><circle cx="24" cy="3" r="3"/><circle cx="44" cy="10" r="3"/></g>
             </svg>
-            <span><span class="brand-accent">IDOL</span> RANKING</span>
+            <span translate="no"><span class="brand-accent">IDOL</span> RANKING</span>
         </a>
 
         <section class="error-page-card" aria-labelledby="error-page-heading">
