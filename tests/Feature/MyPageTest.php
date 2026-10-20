@@ -311,7 +311,7 @@ class MyPageTest extends TestCase
             });
     }
 
-    public function test_my_balance_card_shows_hearts_stars_and_disabled_purchase_without_history_link(): void
+    public function test_my_balance_card_shows_hearts_only_without_history_link(): void
     {
         $this->database();
 
@@ -319,8 +319,8 @@ class MyPageTest extends TestCase
             ->assertDontSee('href="'.route('my-page.heart-history').'"', false)
             ->assertDontSee('View Heart History')
             ->assertSee('<span>Hearts</span>', false)
-            ->assertSee('<span>Stars</span>', false)
-            ->assertSee('<button class="my-stars-buy" type="button" disabled><span class="my-stars-buy-desktop">Star Buy</span><span class="my-stars-buy-mobile">Star Buy</span></button>', false);
+            ->assertDontSee('Stars')
+            ->assertDontSee('Star Buy');
     }
 
     public function test_dedicated_history_uses_the_selected_korean_locale(): void

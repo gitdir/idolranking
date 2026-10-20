@@ -2,7 +2,7 @@
 
 return [
     'page_title' => 'Fan Garden',
-    'page_description' => 'Visit a fan garden and preview flowers, Stars, guestbook, and recent visitor cards.',
+    'page_description' => 'Visit a fan garden and preview flowers, guestbook, and recent visitor cards.',
     'preview_label' => 'Fan Garden preview · sample data',
     'sample_preview' => 'SAMPLE PREVIEW',
     'garden_title' => ":idol's Garden",
@@ -11,7 +11,6 @@ return [
     'random_garden' => 'Random Garden',
     'garden_shop' => 'Garden Shop',
     'my_garden_info' => 'My Garden Info',
-    'my_stars' => 'My Stars',
     'sample_introduction' => "A little garden with my favorite idol.\nLet's grow beautiful flowers together! ♡",
     'flower_cherry' => 'Cherry Blossom',
     'flower_rose' => 'Rose',

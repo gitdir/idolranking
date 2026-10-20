@@ -78,11 +78,6 @@
                     </div>
                     <p class="fan-garden-introduction">{{ $garden['introduction'] }}</p>
                 </section>
-                <section class="fan-garden-stars-card" aria-label="{{ __('fan_garden.my_stars') }}">
-                    <span class="fan-garden-stars-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="m12 2 2.9 6 6.6.9-4.8 4.6 1.1 6.5-5.8-3.1-5.8 3.1 1.1-6.5-4.8-4.6 6.6-.9Z"/></svg></span>
-                    <strong>{{ __('fan_garden.my_stars') }}</strong>
-                    <b>{{ number_format($garden['stars']) }}</b>
-                </section>
             </aside>
         </div>
 
@@ -102,7 +97,6 @@
                         <article class="fan-garden-shop-item">
                             <div class="fan-garden-shop-art"><img src="{{ asset('images/fan-garden/'.$item['image']) }}" width="92" height="78" alt="{{ $item['name'] }}"></div>
                             <strong>{{ $item['name'] }}</strong>
-                            <span class="fan-garden-item-price"><span aria-hidden="true">★</span> {{ number_format($item['price']) }}</span>
                             <button type="button" disabled>{{ __('fan_garden.purchase') }}</button>
                         </article>
                     @endforeach

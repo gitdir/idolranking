@@ -74,7 +74,7 @@
                             data-csrf="{{ csrf_token() }}" aria-pressed="{{ $isRecommended ? 'true' : 'false' }}"
                             @disabled($isRecommended)>
                             <svg aria-hidden="true"><use href="#icon-recommend"/></svg>
-                            <span>{{ __('ui.recommend') }}</span>
+                            <span translate="no">Likes</span>
                         </button>
                         <button class="fan-detail-report" type="button" data-fan-post-report-open
                             data-endpoint="{{ route('fan-post.report', ['idx' => $post['idx']]) }}" data-report-title="{{ __('ui.report_fan_post') }}"
@@ -110,7 +110,7 @@
                                         <option value="{{ $code }}" @selected(old('language_code', ($randomDummyMode ?? false) ? 'ko' : app()->getLocale()) === $code)>{{ $name }} ({{ strtoupper($code) }})</option>
                                     @endforeach
                                 </select>
-                                <button type="submit">{{ __('ui.post_comment') }}</button>
+                                <button type="submit" translate="no">Submit</button>
                             </div>
                         </div>
                     </form>
@@ -122,7 +122,19 @@
                                     <img src="{{ \App\Support\ManagedImageStorage::publicUrl($comment['image_url'] ?? null) }}" width="38" height="38" alt="" loading="lazy">
                                 </x-member-link>
                                 <div class="fan-detail-comment-content">
-                                    <h3><x-member-link :member-code="$comment['member_code'] ?? null" class="fan-detail-author-name"><x-country-flag :code="$comment['country_code'] ?? null" /><span translate="no">{{ $comment['nickname'] }}</span></x-member-link> <small class="fan-detail-time">{{ $comment['time'] }}</small></h3>
+                                    <div class="fan-detail-comment-heading">
+                                        <h3><x-member-link :member-code="$comment['member_code'] ?? null" class="fan-detail-author-name"><x-country-flag :code="$comment['country_code'] ?? null" /><span translate="no">{{ $comment['nickname'] }}</span></x-member-link> <small class="fan-detail-time">{{ $comment['time'] }}</small></h3>
+                                        @if ($comment['can_delete'] ?? false)
+                                            <button class="fan-detail-comment-delete" type="button" data-comment-delete
+                                                data-endpoint="{{ route('fan-post.comments.destroy', ['idx' => $post['idx'], 'commentIdx' => $comment['idx']]) }}"
+                                                data-csrf="{{ csrf_token() }}">{{ __('ui.delete_comment') }}</button>
+                                        @elseif ($comment['can_report'] ?? false)
+                                            <button class="fan-detail-comment-report" type="button" data-comment-report-open
+                                                data-endpoint="{{ $comment['report_url'] }}" data-report-title="{{ __('ui.report_comment') }}"
+                                                data-signed-in="{{ request()->attributes->get('currentMember') ? 'true' : 'false' }}"
+                                                aria-haspopup="dialog" aria-controls="fan-post-report-modal">{{ __('ui.report') }}</button>
+                                        @endif
+                                    </div>
                                     @if (\App\Support\FanPostLanguages::isValid($comment['language_code'] ?? null) && strtolower($comment['language_code']) !== app()->getLocale())
                                         <div class="fan-post-comment-translation" data-comment-translation
                                             data-endpoint="{{ route('fan-post.comments.translation', ['idx' => $post['idx'], 'commentIdx' => $comment['idx']]) }}"
@@ -138,16 +150,6 @@
                                         <span class="fan-detail-comment-reward">+{{ number_format($comment['rewarded_hearts']) }} Heart</span>
                                     @endif
                                 </div>
-                                @if ($comment['can_delete'] ?? false)
-                                    <button class="fan-detail-comment-delete" type="button" data-comment-delete
-                                        data-endpoint="{{ route('fan-post.comments.destroy', ['idx' => $post['idx'], 'commentIdx' => $comment['idx']]) }}"
-                                        data-csrf="{{ csrf_token() }}">{{ __('ui.delete_comment') }}</button>
-                                @elseif ($comment['can_report'] ?? false)
-                                    <button class="fan-detail-comment-report" type="button" data-comment-report-open
-                                        data-endpoint="{{ $comment['report_url'] }}" data-report-title="{{ __('ui.report_comment') }}"
-                                        data-signed-in="{{ request()->attributes->get('currentMember') ? 'true' : 'false' }}"
-                                        aria-haspopup="dialog" aria-controls="fan-post-report-modal">{{ __('ui.report') }}</button>
-                                @endif
                             </li>
                         @endforeach
                     </ul>
@@ -162,7 +164,7 @@
         <x-fan-post-list :posts="$posts" :current-fan-post-idx="$post['idx']" heading-id="detail-fan-posts-title" :empty-message="__('ui.no_fan_posts')">
             <x-slot:heading>
                 <div class="member-post-list-heading public-fan-posts-heading">
-                    <div><h2 id="detail-fan-posts-title">{{ __('ui.fan_post_detail_posts') }}</h2></div>
+                    <div><h2 id="detail-fan-posts-title" translate="no">Fan Posts</h2></div>
                     <div class="idol-detail-fan-post-actions member-fan-post-actions fan-post-toolbar">
                         <form method="get" action="{{ route('fan-post.show', ['idx' => $post['idx']]) }}">
                             <label class="sr-only" for="detail-fan-post-sort">{{ __('ui.sort_fan_posts') }}</label>

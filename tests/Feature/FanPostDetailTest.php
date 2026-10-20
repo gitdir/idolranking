@@ -1075,10 +1075,10 @@ class FanPostDetailTest extends TestCase
         ]);
 
         $english = $this->get('/fan-post/70')->assertOk();
-        $english->assertSee('<span data-monthly-recommendation-count>2</span> (<span data-recommendation-count>3</span>)</span> <span>Recommendations', false);
+        $english->assertSee('<span data-monthly-recommendation-count>2</span> (<span data-recommendation-count>3</span>)</span> <span>Likes', false);
 
         $korean = $this->withSession(['locale' => 'ko'])->get('/fan-post/71')->assertOk();
-        $korean->assertSee('<span data-monthly-recommendation-count>0</span> (<span data-recommendation-count>0</span>)</span> <span>추천', false);
+        $korean->assertSee('<span data-monthly-recommendation-count>0</span> (<span data-recommendation-count>0</span>)</span> <span>좋아요', false);
     }
 
     public function test_self_comment_is_saved_without_reward_and_can_still_be_deleted(): void

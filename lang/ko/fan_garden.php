@@ -2,7 +2,7 @@
 
 return [
     'page_title' => '팬 가든',
-    'page_description' => '팬 가든의 꽃과 스타, 방명록, 최근 방문자 미리보기입니다.',
+    'page_description' => '팬 가든의 꽃, 방명록, 최근 방문자 미리보기입니다.',
     'preview_label' => '팬 가든 미리보기 · 샘플 데이터',
     'sample_preview' => '샘플 미리보기',
     'garden_title' => ':idol의 정원',
@@ -11,7 +11,6 @@ return [
     'random_garden' => '랜덤 정원',
     'garden_shop' => '정원 상점',
     'my_garden_info' => '내 정원 정보',
-    'my_stars' => '내 스타',
     'sample_introduction' => "좋아하는 아이돌과 함께 가꾸는 작은 정원이에요.\n예쁜 꽃을 함께 키워봐요! ♡",
     'flower_cherry' => '벚꽃',
     'flower_rose' => '장미',

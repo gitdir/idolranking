@@ -15,7 +15,6 @@ class FanGardenController extends Controller
                 'member_nickname' => 'SampleFan',
                 'country_code' => 'KR',
                 'country_name' => Countries::localizedName('KR', app()->getLocale()),
-                'stars' => 1250,
                 'introduction' => __('fan_garden.sample_introduction'),
                 'flowers' => [
                     ['name' => __('fan_garden.flower_cherry'), 'level' => 3, 'experience' => 320, 'next_level' => 500, 'image' => 'cherry-blossom.svg'],
@@ -23,10 +22,10 @@ class FanGardenController extends Controller
                     ['name' => __('fan_garden.flower_hydrangea'), 'level' => 1, 'experience' => 50, 'next_level' => 100, 'image' => 'hydrangea.svg'],
                 ],
                 'shop_items' => [
-                    ['name' => __('fan_garden.flower_cherry'), 'price' => 500, 'image' => 'cherry-blossom.svg'],
-                    ['name' => __('fan_garden.flower_rose'), 'price' => 500, 'image' => 'rose.svg'],
-                    ['name' => __('fan_garden.flower_hydrangea'), 'price' => 500, 'image' => 'hydrangea.svg'],
-                    ['name' => __('fan_garden.flower_sunflower'), 'price' => 700, 'image' => 'sunflower.svg'],
+                    ['name' => __('fan_garden.flower_cherry'), 'image' => 'cherry-blossom.svg'],
+                    ['name' => __('fan_garden.flower_rose'), 'image' => 'rose.svg'],
+                    ['name' => __('fan_garden.flower_hydrangea'), 'image' => 'hydrangea.svg'],
+                    ['name' => __('fan_garden.flower_sunflower'), 'image' => 'sunflower.svg'],
                 ],
                 'guestbook_entries' => [
                     ['nickname' => 'HappyFan', 'age' => __('fan_garden.time_two_hours'), 'message' => __('fan_garden.sample_guestbook_one'), 'avatar' => 'sample-avatar-blue.svg'],

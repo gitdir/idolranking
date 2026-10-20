@@ -92,7 +92,7 @@
             </div>
             <div class="idol-detail-sidebar">
                 <section class="idol-detail-box top-voters" aria-labelledby="voters-title">
-                    <h2 id="voters-title">{{ __('ui.top_voters') }} <span>({{ __('ui.this_month') }})</span></h2>
+                    <h2 id="voters-title" translate="no">Top Voters <span>(This Month)</span></h2>
                     <ol class="top-voters-list">
                         @foreach (array_slice($voters, 0, 5) as $voter)
                             <li>
@@ -113,8 +113,8 @@
                     @endif
                 </section>
                 <section class="idol-detail-box voting-trend" aria-labelledby="trend-title">
-                    <h2 id="trend-title">{{ __('ui.voting_trend') }}</h2>
-                    <p class="trend-period">{{ __('ui.daily_votes_period') }}</p>
+                    <h2 id="trend-title" translate="no">Voting Trend</h2>
+                    <p class="trend-period" translate="no">Daily votes · Last 30 days</p>
                     <x-voting-trend :days="$trend" />
                 </section>
             </div>
@@ -122,7 +122,7 @@
         <x-fan-post-list :posts="$posts" :empty-message="__('ui.be_first_fan_post')">
             <x-slot:heading>
                 <div class="idol-detail-fan-post-heading">
-                    <h2 id="fan-posts-title">{{ __('ui.fan_posts') }}</h2>
+                    <h2 id="fan-posts-title" translate="no">Fan Posts</h2>
                     <div class="idol-detail-fan-post-actions fan-post-toolbar">
                         <form method="get" action="{{ route('idol.show', ['idx' => $idol['idx']]) }}">
                             <label class="sr-only" for="idol-fan-post-sort">{{ __('ui.sort_fan_posts') }}</label>

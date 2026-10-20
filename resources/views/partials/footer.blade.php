@@ -50,6 +50,6 @@
             <a href="{{ route('privacy') }}">{{ __('legal.footer_privacy') }}</a>
             <a href="{{ route('terms') }}">{{ __('legal.footer_terms') }}</a>
         </nav>
-        <p class="site-footer-copyright">&copy; 2026 <span translate="no">IDOL RANKING</span>. {{ __('ui.all_rights_reserved') }}</p>
+        <p class="site-footer-copyright" translate="no">&copy; {{ date('Y') }} IDOL RANKING. All rights reserved.</p>
     </div>
 </footer>

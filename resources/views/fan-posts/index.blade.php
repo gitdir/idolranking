@@ -7,7 +7,7 @@
     <x-fan-post-list :posts="$fanPosts" heading-id="public-fan-posts-title" :empty-message="__('ui.no_fan_posts')">
         <x-slot:heading>
             <div class="member-post-list-heading public-fan-posts-heading">
-                <div><h2 id="public-fan-posts-title">{{ __('ui.fan_posts') }}</h2></div>
+                <div><h2 id="public-fan-posts-title" translate="no">Fan Posts</h2></div>
                 <div class="idol-detail-fan-post-actions member-fan-post-actions fan-post-toolbar">
                     <form method="get" action="{{ route('fan-posts.index') }}">
                         <label class="sr-only" for="public-fan-post-sort">{{ __('ui.sort_fan_posts') }}</label>

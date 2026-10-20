@@ -138,7 +138,7 @@ class PublicFanPostTest extends TestCase
         $this->database();
 
         $this->withSession(['locale' => 'ko'])->get('/fan-posts')->assertOk()
-            ->assertSeeInOrder(['최신순', '이번 달 추천', '누적 추천', '댓글순']);
+            ->assertSeeInOrder(['최신순', '이번 달 좋아요', '누적 좋아요', '댓글순']);
     }
 
     public function test_header_has_fan_posts_before_register_idol(): void

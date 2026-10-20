@@ -18,7 +18,7 @@ Implemented scope visible in routes, controllers, SQL, and tests:
 Deferred or intentionally unavailable:
 
 - Fan Garden remains in source, views, translations, assets, and tests for future work, but `/fan-garden` deliberately returns 404 and has a regression test. Do not remove those preserved sources as part of recovery.
-- Stars are displayed on My Page; the Star purchase button is disabled. No payment integration is in scope.
+- Heart is the only supported currency. Star currency and payment functionality are not implemented.
 - Quiz/rewarded-ad delivery and other unrequested features are not production-ready. The seeded `watch_ads` reward is disabled.
 
 ## Application structure and implementation constraints

@@ -3,7 +3,7 @@
 <section id="ranking-{{ $panel['key'] }}" class="ranking-panel ranking-panel--{{ $panel['theme'] }}" aria-labelledby="title-{{ $panel['key'] }}">
     <header class="ranking-heading">
         <h2 id="title-{{ $panel['key'] }}">{{ $panel['title'] }}</h2>
-<a class="view-all" href="{{ route(str_contains($panel['key'], 'group') ? 'ranking.group' : 'ranking.idol', ['gender' => str_starts_with($panel['key'], 'boy') ? 'boy' : 'girl']) }}">{{ __('ui.view_all') }} <span aria-hidden="true">&#8250;</span></a>
+<a class="view-all" href="{{ route(str_contains($panel['key'], 'group') ? 'ranking.group' : 'ranking.idol', ['gender' => str_starts_with($panel['key'], 'boy') ? 'boy' : 'girl']) }}">{{ __('ui.homepage_ranking_view_all') }} <span aria-hidden="true">&#8250;</span></a>
     </header>
     <ol class="ranking-list">
         @foreach ($panel['members'] as $member)

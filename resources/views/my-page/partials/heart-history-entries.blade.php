@@ -1,8 +1,9 @@
 <div class="my-heart-history-table" role="table" aria-label="{{ __('ui.heart_history_aria') }}">
     <div class="my-heart-history-row my-heart-history-head" role="row"><span role="columnheader">{{ __('ui.date') }}</span><span role="columnheader">{{ __('ui.activity') }}</span><span role="columnheader">{{ __('ui.hearts') }}</span></div>
     @forelse ($heartHistories as $history)
+        @php($createdAt = \Illuminate\Support\Carbon::parse($history->created_at))
         <div class="my-heart-history-row" role="row">
-            <time role="cell" datetime="{{ $history->created_at }}">{{ \Illuminate\Support\Carbon::parse($history->created_at)->format('Y-m-d H:i') }}</time>
+            <time role="cell" datetime="{{ $history->created_at }}"><span>{{ $createdAt->format('Y-m-d') }}</span> <span>{{ $createdAt->format('H:i') }}</span></time>
             <span class="my-heart-history-activity" role="cell">
                 <span class="my-heart-history-icon my-heart-history-icon--{{ $history->icon }}" aria-hidden="true">
                     @if ($history->icon === 'heart')

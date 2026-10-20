@@ -37,16 +37,6 @@
                                     <strong data-member-heart-balance>{{ number_format($currentMember?->heart_balance ?? 12540) }}</strong>
                                 </div>
                             </div>
-                            <div class="my-balance-item my-balance-item--stars">
-                                <div class="my-balance-item-heading">
-                                    <span class="my-stars-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="m12 2 2.9 6 6.6.9-4.8 4.6 1.1 6.5-5.8-3.1-5.8 3.1 1.1-6.5-4.8-4.6 6.6-.9Z"/></svg></span>
-                                    <span>{{ __('ui.balance_stars') }}</span>
-                                </div>
-                                <div class="my-balance-item-values">
-                                    <strong>0</strong>
-                                    <button class="my-stars-buy" type="button" disabled><span class="my-stars-buy-desktop">{{ __('ui.buy_stars') }}</span><span class="my-stars-buy-mobile">{{ __('ui.buy_short') }}</span></button>
-                                </div>
-                            </div>
                         </div>
                         <p id="profile-update-status" class="my-password-success" role="status" hidden></p>
                         <form id="my-profile-form" class="my-profile-form" method="post" action="{{ route('my-page.profile') }}" enctype="multipart/form-data" novalidate>
@@ -74,7 +64,7 @@
                 </section>
             @elseif ($activeTab === 'posts')
                 <x-fan-post-list :posts="$posts" heading-id="my-fan-posts-title" layout="my-page" :empty-message="__('ui.no_fan_posts')">
-                    <x-slot:heading><div class="my-posts-heading"><h2 id="my-fan-posts-title">{{ __('ui.my_fan_posts') }}</h2>@if (count($posts))<a href="{{ route('member.fan-posts', ['member_code' => $currentMember->member_code]) }}">{{ __('ui.view_all') }} <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><path d="m6 4 4 4-4 4"/></svg></a>@endif</div></x-slot:heading>
+                    <x-slot:heading><div class="my-posts-heading"><h2 id="my-fan-posts-title" translate="no">Fan Posts</h2>@if (count($posts))<a href="{{ route('member.fan-posts', ['member_code' => $currentMember->member_code]) }}">{{ __('ui.view_all') }} <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><path d="m6 4 4 4-4 4"/></svg></a>@endif</div></x-slot:heading>
                 </x-fan-post-list>
             @else
                 @php($myInviteUrl = url('/?ref='.rawurlencode($currentMember->member_code)))

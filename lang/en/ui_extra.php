@@ -1,6 +1,7 @@
 <?php
 
 return [
+    'homepage_ranking_view_all' => 'View All',
     'random_dummy_vote_mode' => 'Random Dummy Mode',
     'random_dummy_vote_notice' => 'A randomly selected dummy member will vote. Any Heart shortage is credited only for this vote.',
     'profile_label_debut_dates' => 'Debut Date',
@@ -47,7 +48,7 @@ return [
     'images_editable' => 'Images can be cropped or edited', 'one_youtube_video' => 'Only one video', 'youtube_embedded' => 'Rendered as an embedded player',
     'no_hate_speech' => 'No hate speech, harassment, or abusive content.', 'no_illegal_content' => 'Do not post illegal, explicit, or copyrighted material.',
     'friendly_community' => 'Keep our community friendly and positive.', 'crop_image' => 'Crop Image', 'close_crop_image' => 'Close crop image',
-    'zoom_out' => 'Zoom out', 'zoom_in' => 'Zoom in', 'tags_label' => 'Tags', 'views_label' => 'Views', 'recommendations_label' => 'Recommendations',
+    'zoom_out' => 'Zoom out', 'zoom_in' => 'Zoom in', 'tags_label' => 'Tags', 'views_label' => 'Views', 'recommendations_label' => 'Likes',
     'comment_pages' => 'Comment pages', 'comment_placeholder' => 'Write a kind comment...', 'delete_comment' => 'Delete', 'more_posts_author' => 'More Posts by This Author',
     'trending_fan_posts' => 'Trending Fan Posts', 'report_dialog_close' => 'Close report dialog', 'report_spam' => 'Spam', 'report_harassment' => 'Harassment or Hate',
     'report_inappropriate' => 'Inappropriate Content', 'report_copyright' => 'Copyright', 'report_misinformation' => 'Misinformation', 'report_other' => 'Other',
@@ -72,7 +73,7 @@ return [
     'fan_post_not_found' => 'Fan Post not found.', 'cannot_report_own_post' => 'You cannot report your own Fan Post.', 'already_reported_post' => 'You have already reported this Fan Post.',
     'report_submitted_thanks' => 'Report submitted. Thank you for letting us know.', 'password_email_invalid' => 'Please enter a valid email address.', 'password_entries_invalid' => 'Please check your password entries.',
     'password_link_invalid' => 'This password reset link is invalid, expired, or has already been used. Please request a new one.', 'reset_password_button' => 'Reset Password',
-    'popular_idol_images' => 'Top three fan-post images by recommendations',
+    'popular_idol_images' => 'Top three Fan Post images by likes',
     'posts_written_by' => 'Posts written by :name', 'member_stats_aria' => 'Member Fan Post statistics',
     'close_invite' => 'Close Invite Friends', 'referral_url' => 'Your referral URL', 'share_invitation' => 'Share invitation',
     'invite_reward_message' => "When your friend signs up through your link, you'll get :amount Hearts!", 'logout_confirm' => 'Log out?',
@@ -88,7 +89,7 @@ return [
     'fan_post_guidelines' => 'Fan Post guidelines', 'image_zoom' => 'Image zoom', 'choose_profile_image' => 'Choose profile image',
     'view_all' => 'View All', 'no_fan_post_images' => 'No Fan Post images yet.', 'fan_post_image_for' => 'Fan Post image for :name',
     'fan_post_thumbnail' => 'Fan post image', 'youtube_thumbnail' => 'YouTube video thumbnail', 'fan_post_placeholder_image' => 'Fan post illustration placeholder',
-    'hearts_aria' => 'Hearts: ', 'views_aria' => ':amount views', 'recommendations_aria' => ':amount recommendations', 'comments_aria' => ':amount comments',
+    'hearts_aria' => 'Hearts: ', 'views_aria' => ':amount views', 'recommendations_aria' => ':amount likes', 'comments_aria' => ':amount comments',
     'member_fan_posts_label' => "View :name's Fan Posts", 'top_voters' => 'Top Voters', 'no_month_votes' => 'No votes have been recorded for this month.',
     'search_result_type' => 'Search result type', 'search_results' => 'Search Results', 'search_results_for' => 'Search results for “:query”',
     'results_found' => ':amount results found', 'enter_keyword' => 'Enter a keyword to search.', 'search_help' => 'Use the search field in the header to find an Idol, Group, or Fan Post.',

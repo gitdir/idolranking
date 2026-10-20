@@ -253,7 +253,7 @@
         </div>
         <dialog id="site-search-dialog" class="search-dialog" aria-modal="true" aria-labelledby="site-search-title">
             <div class="search-dialog-header">
-                <h2 id="site-search-title">{{ __('ui.search') }}</h2>
+                <h2 id="site-search-title" translate="no">Search</h2>
                 <button class="search-dialog-close" type="button" data-search-close aria-label="{{ __('ui.close') }}">
                     <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m6 6 12 12M18 6 6 18"/></svg>
                 </button>
