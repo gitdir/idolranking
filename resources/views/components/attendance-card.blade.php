@@ -14,7 +14,7 @@
             <img src="{{ $checkIn['profile_image_url'] }}" width="40" height="40" loading="lazy" alt="">
         </a>
         <div class="attendance-card-author-details">
-            <a class="attendance-card-nickname" href="{{ $checkIn['member_url'] }}"><x-country-flag :code="$checkIn['country_code'] ?? null" />{{ $checkIn['nickname'] }}</a>
+            <a class="attendance-card-nickname" translate="no" href="{{ $checkIn['member_url'] }}"><x-country-flag :code="$checkIn['country_code'] ?? null" />{{ $checkIn['nickname'] }}</a>
         </div>
         @if ($sourceLanguage)
             <span class="attendance-card-language" title="{{ $badgeLanguage }}" aria-label="{{ $badgeLanguage }}">{{ $badgeLanguage }}</span>

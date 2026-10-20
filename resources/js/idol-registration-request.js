@@ -92,10 +92,12 @@ if (requestForm) {
             option.dataset.groupGender = group.gender;
             const english = document.createElement('strong');
             english.textContent = group.english_name || group.name;
+            english.setAttribute('translate', 'no');
             option.append(english);
             if (group.name && group.name.toLocaleLowerCase() !== (group.english_name || group.name).toLocaleLowerCase()) {
                 const korean = document.createElement('span');
                 korean.textContent = group.name;
+                korean.setAttribute('translate', 'no');
                 option.append(korean);
             }
             option.addEventListener('click', () => chooseGroup(group));
@@ -272,12 +274,15 @@ if (requestForm) {
             category.textContent = candidate.category;
             const name = document.createElement('strong');
             name.textContent = candidate.name;
+            name.setAttribute('translate', 'no');
             const englishName = document.createElement('span');
             englishName.textContent = candidate.english_name || '—';
+            englishName.setAttribute('translate', 'no');
             details.append(category, name, englishName);
             if (candidate.group_name) {
                 const group = document.createElement('span');
                 group.textContent = window.idolRankingT('idol_duplicate_group', { name: candidate.group_name });
+                group.setAttribute('translate', 'no');
                 details.append(group);
             }
             if (showExact && candidate.exact) {

@@ -2,7 +2,7 @@
 @php($detailUrl = route('idol.show', ['idx' => $idol['idx']]))
 
 <section class="ranking-featured" aria-labelledby="ranking-featured-name">
-    <h2 id="ranking-featured-name" class="sr-only"><a href="{{ $detailUrl }}">{{ $idol['name'] }}</a></h2>
+    <h2 id="ranking-featured-name" class="sr-only"><a translate="no" href="{{ $detailUrl }}">{{ $idol['name'] }}</a></h2>
     <a class="ranking-featured-images" href="{{ $detailUrl }}" aria-label="{{ __('ui.popular_rank_details', ['name' => $idol['name']]) }}">
         @foreach ($images as $image)
             <img src="{{ $image }}" width="320" height="320" alt="{{ __('ui.fan_post_image_for', ['name' => $idol['name']]) }}" loading="lazy">

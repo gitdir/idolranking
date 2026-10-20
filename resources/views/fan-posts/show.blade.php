@@ -11,7 +11,7 @@
                     <x-member-link :member-code="$post['author']['member_code'] ?? null" :label="isset($post['author']['member_code']) ? __('ui.member_view_posts_label', ['name' => $post['author']['nickname']]) : null">
                         <img src="{{ \App\Support\ManagedImageStorage::publicUrl($post['author']['image_url'] ?? null) }}" width="42" height="42" alt="">
                     </x-member-link>
-                    <div><span class="fan-detail-author-identity"><x-member-link :member-code="$post['author']['member_code'] ?? null" class="fan-detail-author-name"><x-country-flag :code="$post['author']['country_code'] ?? null" />{{ $post['author']['nickname'] }}</x-member-link>
+                    <div><span class="fan-detail-author-identity"><x-member-link :member-code="$post['author']['member_code'] ?? null" class="fan-detail-author-name"><x-country-flag :code="$post['author']['country_code'] ?? null" /><span translate="no">{{ $post['author']['nickname'] }}</span></x-member-link>
                         @if (\App\Support\FanPostLanguages::isValid($post['author']['language_code'] ?? null))
                             @php
                                 $authorLanguage = strtoupper($post['author']['language_code']);
@@ -122,7 +122,7 @@
                                     <img src="{{ \App\Support\ManagedImageStorage::publicUrl($comment['image_url'] ?? null) }}" width="38" height="38" alt="" loading="lazy">
                                 </x-member-link>
                                 <div class="fan-detail-comment-content">
-                                    <h3><x-member-link :member-code="$comment['member_code'] ?? null" class="fan-detail-author-name"><x-country-flag :code="$comment['country_code'] ?? null" />{{ $comment['nickname'] }}</x-member-link> <small class="fan-detail-time">{{ $comment['time'] }}</small></h3>
+                                    <h3><x-member-link :member-code="$comment['member_code'] ?? null" class="fan-detail-author-name"><x-country-flag :code="$comment['country_code'] ?? null" /><span translate="no">{{ $comment['nickname'] }}</span></x-member-link> <small class="fan-detail-time">{{ $comment['time'] }}</small></h3>
                                     @if (\App\Support\FanPostLanguages::isValid($comment['language_code'] ?? null) && strtolower($comment['language_code']) !== app()->getLocale())
                                         <div class="fan-post-comment-translation" data-comment-translation
                                             data-endpoint="{{ route('fan-post.comments.translation', ['idx' => $post['idx'], 'commentIdx' => $comment['idx']]) }}"

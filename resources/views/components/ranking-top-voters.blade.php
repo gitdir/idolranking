@@ -16,7 +16,7 @@
                 @endif
                 <div class="ranking-voter-info">
                     <div class="ranking-voter-heading">
-                        <h3>
+                        <h3 translate="no">
                             <x-country-flag :code="$voter['country_code'] ?? null" />
                             @if (! empty($voter['member_code']))
                                 <a class="ranking-voter-name-link" href="{{ route('member.fan-posts', ['member_code' => $voter['member_code']]) }}">{{ $voter['nickname'] }}</a>

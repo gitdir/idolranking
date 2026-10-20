@@ -12,7 +12,7 @@
     <section class="heart-vote-target" aria-label="{{ __('ui.vote_target') }}">
         <img data-heart-vote-image src="{{ \App\Support\ManagedImageStorage::defaultUrl() }}" width="150" height="150" alt="">
         <div class="heart-vote-target-details">
-            <div class="heart-vote-target-heading"><strong data-heart-vote-name>Idol</strong><span data-heart-vote-meta></span></div>
+            <div class="heart-vote-target-heading"><strong translate="no" data-heart-vote-name>Idol</strong><span translate="no" data-heart-vote-meta></span></div>
             <div class="heart-vote-target-stats">
                 <span><svg aria-hidden="true"><use href="#icon-heart"/></svg><b data-heart-vote-total>0</b></span>
                 <span><svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.7"><rect x="3" y="3" width="18" height="18" rx="3"/><circle cx="8" cy="8" r="1.5"/><path d="m4 17 5-5 4 4 3-3 5 5"/></svg><b data-heart-vote-posts>0</b></span>

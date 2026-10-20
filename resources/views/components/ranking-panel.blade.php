@@ -25,7 +25,7 @@
                     </a>
                 @endif
                 <div class="ranking-member">
-                    <h3><a href="{{ $detailUrl }}">{{ $member[0] }}</a></h3>
+                    <h3><a translate="no" href="{{ $detailUrl }}">{{ $member[0] }}</a></h3>
                         <div class="ranking-row-stats">
                             <p class="ranking-stat heart-total"><svg aria-hidden="true"><use href="#icon-heart"/></svg><span class="sr-only">{{ __('ui.hearts_aria') }}</span><span data-vote-total-display="{{ $member['idx'] }}">{{ number_format($member[1]) }}</span></p>
                             @if (($member[2] ?? 0) > 0)

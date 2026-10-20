@@ -5,7 +5,7 @@
 @section('content')
     <div class="idol-detail">
         <header class="idol-detail-heading">
-            <h1><a href="{{ route('idol.show', ['idx' => $idol['idx']]) }}">{{ $idol['name'] }}</a></h1><span>@if (!empty($idol['group_idx']))<a href="{{ route('idol.show', ['idx' => $idol['group_idx']]) }}">{{ $idol['group'] }}</a>@else{{ $idol['group'] }}@endif</span>
+            <h1><a translate="no" href="{{ route('idol.show', ['idx' => $idol['idx']]) }}">{{ $idol['name'] }}</a></h1><span translate="no">@if (!empty($idol['group_idx']))<a href="{{ route('idol.show', ['idx' => $idol['group_idx']]) }}">{{ $idol['group'] }}</a>@else{{ $idol['group'] }}@endif</span>
         </header>
         <div class="idol-detail-columns">
             <div class="idol-detail-main">
@@ -71,9 +71,9 @@
                                                 @endforeach
                                             </div>
                                         @elseif (in_array($label, ['Name', 'English Name'], true))
-                                            <a href="{{ route('idol.show', ['idx' => $idol['idx']]) }}">{{ $value }}</a>
+                                            <a translate="no" href="{{ route('idol.show', ['idx' => $idol['idx']]) }}">{{ $value }}</a>
                                         @elseif ($label === 'Group' && !empty($idol['group_idx']))
-                                            <a href="{{ route('idol.show', ['idx' => $idol['group_idx']]) }}">{{ $value }}</a>
+                                            <a translate="no" href="{{ route('idol.show', ['idx' => $idol['group_idx']]) }}">{{ $value }}</a>
                                         @elseif ($label === 'Type')
                                             {{ $value === 'Group' ? __('ui.group') : __('ui.individual') }}
                                         @elseif ($label === 'Group' && in_array($value, ['Solo', 'Boy Group', 'Girl Group'], true))
@@ -101,7 +101,7 @@
                                     <img class="top-voter-avatar" src="{{ \App\Support\ManagedImageStorage::publicUrl($voter['image_url'] ?? null) }}" width="44" height="44" alt="{{ __('ui.profile_image_alt', ['name' => $voter['nickname']]) }}">
                                 </x-member-link>
                                 <div class="voter-info">
-                                    <div class="voter-name"><h3><x-country-flag :code="$voter['country_code'] ?? null" /><x-member-link :member-code="$voter['member_code'] ?? null">{{ $voter['nickname'] }}</x-member-link></h3><span>{{ number_format($voter['votes']) }} <span class="sr-only">{{ __('ui.monthly_votes_aria') }}</span></span></div>
+                                    <div class="voter-name"><h3 translate="no"><x-country-flag :code="$voter['country_code'] ?? null" /><x-member-link :member-code="$voter['member_code'] ?? null">{{ $voter['nickname'] }}</x-member-link></h3><span>{{ number_format($voter['votes']) }} <span class="sr-only">{{ __('ui.monthly_votes_aria') }}</span></span></div>
                                     <p>{{ $voter['bio'] }}</p>
                                     <progress value="{{ $voter['votes'] }}" max="{{ max(array_column($voters, 'votes')) }}" aria-label="{{ __('ui.voter_contribution_aria', ['name' => $voter['nickname']]) }}">{{ $voter['votes'] }}</progress>
                                 </div>

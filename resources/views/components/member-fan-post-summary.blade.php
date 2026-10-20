@@ -7,7 +7,7 @@
             <img class="member-post-avatar" src="{{ $member['profile_image_url'] }}" width="136" height="136" alt="{{ __('ui.profile_image_alt', ['name' => $member['nickname']]) }}">
         </x-member-link>
         <div>
-            <h1 id="member-post-summary-name"><x-member-link :member-code="$member['member_code'] ?? null">{{ $member['nickname'] }}</x-member-link></h1>
+            <h1 id="member-post-summary-name" translate="no"><x-member-link :member-code="$member['member_code'] ?? null">{{ $member['nickname'] }}</x-member-link></h1>
             <p class="member-post-country">
                 <x-country-flag :code="$member['country_code'] ?? null" />
                 {{ $member['country'] }}

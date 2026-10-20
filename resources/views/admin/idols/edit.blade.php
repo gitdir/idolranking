@@ -43,7 +43,7 @@
             <div class="admin-review-full admin-idol-group-field">
                 <label for="admin-idol-group-search">그룹</label>
                 <div class="idol-group-autocomplete" data-admin-group-autocomplete data-search-url="{{ route('idol-registration.groups') }}" data-request-type="{{ $idol->gender === 'male' ? 'boy' : 'girl' }}">
-                    <input id="admin-idol-group-search" name="group_search" type="search" value="{{ old('group_search', $selectedGroupLabel) }}" maxlength="200" autocomplete="off" placeholder="그룹 이름을 검색하세요" role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="admin-idol-group-results" aria-describedby="admin-idol-group-help" data-group-search data-selected-gender="{{ $selectedGroup->gender ?? '' }}" data-no-group-selected="false">
+                    <input id="admin-idol-group-search" name="group_search" type="search" value="{{ old('group_search', $selectedGroupLabel) }}" maxlength="200" autocomplete="off" placeholder="그룹 이름을 검색하세요" role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="admin-idol-group-results" aria-describedby="admin-idol-group-help" data-group-search translate="no" data-selected-gender="{{ $selectedGroup->gender ?? '' }}" data-no-group-selected="false">
                     <input type="hidden" name="group_idx" value="{{ old('group_idx', $groupIdx) }}" data-group-id>
                     <button type="button" class="idol-group-no-group" data-group-none>소속 그룹 없음</button>
                     <div class="idol-group-results" id="admin-idol-group-results" role="listbox" hidden data-group-results></div>

@@ -11,8 +11,8 @@
     </a>
     <div class="idol-ranking-info">
         <div class="idol-ranking-name">
-            <h2><a href="{{ $detailUrl }}">{{ $idol['name'] }}</a></h2>
-            <span>@if (!empty($idol['group_idx']))<a href="{{ route('idol.show', ['idx' => $idol['group_idx']]) }}">{{ $idol['group'] }}</a>@else{{ $idol['group'] }}@endif</span>
+            <h2><a translate="no" href="{{ $detailUrl }}">{{ $idol['name'] }}</a></h2>
+            <span translate="no">@if (!empty($idol['group_idx']))<a href="{{ route('idol.show', ['idx' => $idol['group_idx']]) }}">{{ $idol['group'] }}</a>@else{{ $idol['group'] }}@endif</span>
         </div>
         <div class="idol-ranking-stats">
             <span class="idol-ranking-hearts" data-vote-total-display="{{ $idol['idx'] }}" aria-label="{{ __('ui.voter_hearts_aria', ['amount' => number_format($idol['hearts'])]) }}">

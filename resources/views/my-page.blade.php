@@ -93,7 +93,7 @@
                             <div class="my-invites-row" role="row">
                                 <span role="cell">{{ $invitedMembers->firstItem() + $loop->index }}</span>
                                 <time role="cell" datetime="{{ $invited->created_at }}">{{ \Illuminate\Support\Carbon::parse($invited->created_at)->format('Y-m-d H:i') }}</time>
-                                <span class="my-invites-member" role="cell"><x-member-link :member-code="$invited->member_code" :label="__('ui.member_view_posts_label', ['name' => $invited->nickname])"><img src="{{ \App\Support\ManagedImageStorage::publicUrl($invited->profile_image_path) }}" width="30" height="30" alt=""><span>{{ $invited->nickname }}</span></x-member-link></span>
+                                <span class="my-invites-member" role="cell"><x-member-link :member-code="$invited->member_code" :label="__('ui.member_view_posts_label', ['name' => $invited->nickname])"><img src="{{ \App\Support\ManagedImageStorage::publicUrl($invited->profile_image_path) }}" width="30" height="30" alt=""><span translate="no">{{ $invited->nickname }}</span></x-member-link></span>
                                 <strong @class(['my-invites-reward', 'is-earned' => $invited->reward_amount !== null]) role="cell">{{ $invited->reward_amount === null ? __('ui.reward_pending') : __('ui.reward_hearts', ['amount' => number_format($invited->reward_amount)]) }}</strong>
                             </div>
                         @empty

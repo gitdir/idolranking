@@ -83,7 +83,7 @@
             </x-member-link>
             <x-member-link :member-code="$post['member_code'] ?? null" class="post-author-name-link">
                 <x-country-flag :code="$post['country_code'] ?? null" />
-                <span>{{ $post[1] }}</span>
+                <span translate="no">{{ $post[1] }}</span>
             </x-member-link>
         </div>
         <p class="post-preview">@if ($detailUrl)<a href="{{ $detailUrl }}" @if ($isCurrent) aria-current="page" @endif>{{ $post[2] }}</a>@else{{ $post[2] }}@endif</p>

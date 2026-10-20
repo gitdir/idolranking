@@ -68,7 +68,7 @@
             <div class="fan-post-create-field idol-request-field-full" data-individual-only data-group-field>
                 <label for="idol-request-group-search">{{ __('ui.group') }}</label>
                 <div class="idol-group-autocomplete" data-group-autocomplete data-search-url="{{ route('idol-registration.groups') }}">
-                    <input id="idol-request-group-search" type="search" value="{{ $selectedGroupLabel }}" maxlength="200" autocomplete="off" placeholder="{{ __('ui.group_search_placeholder') }}" role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="idol-group-results" aria-describedby="idol-group-help" aria-label="{{ __('ui.group_search_label') }}" data-selected-gender="{{ $selectedGroup->gender ?? '' }}" data-group-search>
+                    <input id="idol-request-group-search" type="search" value="{{ $selectedGroupLabel }}" maxlength="200" autocomplete="off" placeholder="{{ __('ui.group_search_placeholder') }}" role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="idol-group-results" aria-describedby="idol-group-help" aria-label="{{ __('ui.group_search_label') }}" data-selected-gender="{{ $selectedGroup->gender ?? '' }}" data-group-search translate="no">
                     <input type="hidden" name="group_idx" value="{{ $selectedGroup->idx ?? '' }}" data-group-id>
                     <button type="button" class="idol-group-no-group" data-group-none>{{ __('ui.no_group_option') }}</button>
                     <div class="idol-group-results" id="idol-group-results" role="listbox" hidden data-group-results></div>

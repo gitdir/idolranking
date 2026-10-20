@@ -22,11 +22,11 @@
                 <div>
                     @if($editing)
                         <select id="fan-post-idol" disabled aria-disabled="true">
-                            <option selected>{{ $editingPost['idol_name'] }}{{ $editingPost['idol_type'] === 'group' ? ' ('.__('ui.group_type').')' : '' }}</option>
+                            <option translate="no" selected>{{ $editingPost['idol_name'] }}{{ $editingPost['idol_type'] === 'group' ? ' ('.__('ui.group_type').')' : '' }}</option>
                         </select>
                         <small>{{ __('ui.fan_post_edit_fields_immutable') }}</small>
                     @else
-                        <select id="fan-post-idol" name="idol_idx" required><option value="">{{ __('ui.select_idol') }}</option>@foreach($idols as $idol)<option value="{{ $idol->idx }}" @selected((string) old('idol_idx', request('idol_idx')) === (string) $idol->idx)>{{ $idol->name }}{{ $idol->type === 'group' ? ' ('.__('ui.group_type').')' : '' }}</option>@endforeach</select><small>{{ __('ui.choose_post_idol') }}</small>
+                        <select id="fan-post-idol" name="idol_idx" required><option value="">{{ __('ui.select_idol') }}</option>@foreach($idols as $idol)<option translate="no" value="{{ $idol->idx }}" @selected((string) old('idol_idx', request('idol_idx')) === (string) $idol->idx)>{{ $idol->name }}{{ $idol->type === 'group' ? ' ('.__('ui.group_type').')' : '' }}</option>@endforeach</select><small>{{ __('ui.choose_post_idol') }}</small>
                     @endif
                 </div>
             </div>

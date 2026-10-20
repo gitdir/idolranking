@@ -9,7 +9,7 @@
                 <div class="member-post-list-heading">
                     <div>
                         <h2 id="member-fan-posts-title">{{ __('ui.member_fan_posts') }}</h2>
-                        <p>{{ __('ui.posts_written_by', ['name' => $memberSummary['nickname']]) }}</p>
+                        <p translate="no">{{ __('ui.posts_written_by', ['name' => $memberSummary['nickname']]) }}</p>
                     </div>
                     <div class="idol-detail-fan-post-actions member-fan-post-actions fan-post-toolbar">
                         <form method="get" action="{{ route('member.fan-posts', ['member_code' => $member_code]) }}">

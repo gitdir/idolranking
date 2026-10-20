@@ -450,6 +450,9 @@ html.drawer-open { overflow: hidden; }
     .footer-legal-links { margin-bottom: 10px; font-size: 12px; }
     .site-footer-copyright { padding-top: 17px; font-size: 12px; }
 }
+@media (max-width: 767px) {
+    .footer-navigation a { font-size: 16px; }
+}
 
 /* Public legal documents use the shared site container and typography. */
 .legal-document { width: min(900px, 100%); margin: 30px auto 56px; padding: clamp(20px, 4vw, 38px); border: 1px solid #e0e8f3; border-radius: 12px; background: #fff; color: #34496f; line-height: 1.75; overflow-wrap: anywhere; }
@@ -551,7 +554,9 @@ a.fan-post-image-link, a.post-statistics, .post-preview a { cursor: pointer; tex
 .post-author span { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 11px; font-weight: 700; line-height: 1.2; }
 .fan-post-author-badge { display: inline-block; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; padding: 2px 5px; border: 1px solid #e5eaf2; border-radius: 999px; background: #f7f9fc; color: #66758e; font-size: 9px !important; font-weight: 600 !important; line-height: 1.2; }
 .fan-post-card-language-badge { position: absolute; top: 7px; right: 7px; z-index: 1; padding: 4px 6px; border-radius: 5px; background: rgba(255, 255, 255, .9); color: #354e7b; font-size: 10px; font-weight: 700; line-height: 1; pointer-events: none; }
-.fan-posts--my-page .fan-post-card-language-badge, .fan-posts--member .fan-post-card-language-badge { padding: 0; border-radius: 0; background: transparent; }
+@media (min-width: 768px) {
+    .fan-posts--my-page .fan-post-card-language-badge, .fan-posts--member .fan-post-card-language-badge { padding: 0; border-radius: 0; background: transparent; }
+}
 .post-preview { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; margin: 0; color: #354e7b; font-size: 14px; line-height: 1.45; overflow-wrap: anywhere; }
 
 @media (max-width: 1399px) {
@@ -1970,6 +1975,14 @@ html.watch-ad-open { overflow: hidden; }
     .attendance-card-language { max-width: 76px; overflow: hidden; text-overflow: ellipsis; }
     .attendance-card-message-row { font-size: 13px; }
 }
+@media (max-width: 767px) {
+    .attendance-page .attendance-guest-prompt p { min-width: 0; flex: 1 1 auto; }
+    .attendance-page .attendance-guest-prompt button { flex: 0 0 auto; white-space: nowrap; }
+    .attendance-page .attendance-card-nickname { font-size: 16px; }
+    .attendance-page .attendance-card-nickname .country-flag { width: 20px; height: 14px; flex-basis: 20px; }
+    .attendance-page .attendance-card-message { font-size: 16px; line-height: 1.6; }
+    .attendance-page .attendance-card-footer time { font-size: 14px; }
+}
 @media (max-width: 379px) { .attendance-grid { column-count: 1; } }
 
 /* Idol registration request additions to the shared Create Fan Post form. */
@@ -2116,16 +2129,14 @@ html.invite-friends-open { overflow: hidden; }
     .main-nav .drawer-content > .header-fan-posts > span,
     .main-nav .drawer-content > .header-get-hearts > span,
     .main-nav .drawer-content > .header-attendance > span,
-    .main-nav .drawer-content > .header-search-trigger .header-search-label { font-size: 18px; }
+    .main-nav .drawer-content > .header-search-trigger .header-search-label { font-size: 16px; }
 
     .idol-detail .idol-detail-metrics dd { font-size: 22px; }
     .idol-detail .idol-detail-metrics dd svg { width: 22px; height: 22px; }
 
-    body:has(#home-fan-posts-title) .fan-posts .post-author { align-items: center; }
-    body:has(#home-fan-posts-title) .fan-posts .post-author-name-link { align-items: center; font-size: 15px; }
-    body:has(#home-fan-posts-title) .fan-posts .post-author-name-link > span { font-size: 15px; }
-    body:has(#home-fan-posts-title) .fan-posts .post-author-name-link .country-flag { width: 21px; height: 15px; flex-basis: 21px; transform: none; }
-    body:has(#home-fan-posts-title) .fan-posts .fan-post-card-language-badge { font-size: 14px; }
-    body:has(#home-fan-posts-title) .fan-posts .post-stat { font-size: 14px; }
-    body:has(#home-fan-posts-title) .fan-posts .post-stat svg { width: 14px; height: 14px; }
+    .fan-posts .post-author-name-link > span { font-size: 15px; }
+    .fan-posts .post-author-name-link .country-flag { width: 21px; height: 15px; flex-basis: 21px; transform: none; }
+    .fan-posts .fan-post-card-language-badge { font-size: 13px; }
+    .fan-posts .post-stat { font-size: 14px; }
+    .fan-posts .post-stat svg { width: 14px; height: 14px; }
 }

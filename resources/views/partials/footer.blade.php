@@ -13,22 +13,22 @@
                     <path stroke="#ff4596" stroke-width="3" d="M11 38h26"/>
                     <g fill="#ff80b6"><circle cx="4" cy="10" r="3"/><circle cx="24" cy="3" r="3"/><circle cx="44" cy="10" r="3"/></g>
                 </svg>
-                <span><span class="brand-accent">IDOL</span> RANKING</span>
+                <span translate="no"><span class="brand-accent">IDOL</span> RANKING</span>
             </a>
 
             <div class="footer-navigation-group">
                 <nav class="footer-navigation" aria-label="{{ __('ui.footer_ranking_navigation') }}">
                     <span class="footer-navigation-row">
-                        <a href="{{ route('ranking.idol') }}">{{ __('ui.idol') }}</a>
-                        <a href="{{ route('ranking.group') }}">{{ __('ui.group') }}</a>
-                        <a href="{{ route('fan-posts.index') }}">{{ __('ui.fan_posts') }}</a>
+                        <a translate="no" href="{{ route('ranking.idol') }}">{{ __('ui.idol') }}</a>
+                        <a translate="no" href="{{ route('ranking.group') }}">{{ __('ui.group') }}</a>
+                        <a translate="no" href="{{ route('fan-posts.index') }}">{{ __('ui.fan_posts') }}</a>
                     </span>
                     <span class="footer-navigation-row">
-                        <a href="{{ route('get-hearts') }}">{{ __('ui.get_hearts') }}</a>
-                        <a href="{{ route('attendance') }}">{{ __('ui.attendance') }}</a>
+                        <a translate="no" href="{{ route('get-hearts') }}">{{ __('ui.get_hearts') }}</a>
+                        <a translate="no" href="{{ route('attendance') }}">{{ __('ui.attendance') }}</a>
                     </span>
                     @if ((int) ($footerMember?->member_level ?? 0) === 10)
-                        <span class="footer-navigation-row"><a href="{{ route('admin.index') }}" target="_blank">{{ __('ui.admin') }}</a></span>
+                        <span class="footer-navigation-row"><a translate="no" href="{{ route('admin.index') }}" target="_blank">{{ __('ui.admin') }}</a></span>
                     @endif
                 </nav>
                 @if ($footerIsAdmin)
@@ -50,6 +50,6 @@
             <a href="{{ route('privacy') }}">{{ __('legal.footer_privacy') }}</a>
             <a href="{{ route('terms') }}">{{ __('legal.footer_terms') }}</a>
         </nav>
-        <p class="site-footer-copyright">&copy; 2026 IDOL RANKING. {{ __('ui.all_rights_reserved') }}</p>
+        <p class="site-footer-copyright">&copy; 2026 <span translate="no">IDOL RANKING</span>. {{ __('ui.all_rights_reserved') }}</p>
     </div>
 </footer>

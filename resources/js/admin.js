@@ -50,11 +50,13 @@ document.querySelectorAll('[data-admin-group-autocomplete]').forEach((autocomple
             option.setAttribute('aria-selected', 'false');
             const english = document.createElement('strong');
             english.textContent = group.localized_english_name || group.english_name || group.name;
+            english.setAttribute('translate', 'no');
             option.append(english);
             const koreanName = group.localized_korean_name || group.name;
             if (koreanName && koreanName.toLocaleLowerCase() !== english.textContent.toLocaleLowerCase()) {
                 const korean = document.createElement('span');
                 korean.textContent = koreanName;
+                korean.setAttribute('translate', 'no');
                 option.append(korean);
             }
             option.addEventListener('click', () => {
