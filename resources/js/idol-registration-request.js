@@ -56,6 +56,7 @@ if (requestForm) {
     const clearGroupSelection = (clearText = true) => {
         groupId.value = '';
         groupSearch.dataset.selectedGender = '';
+        groupAutocomplete.classList.remove('is-no-group-selected');
         if (clearText) groupSearch.value = '';
         closeGroupResults();
     };
@@ -73,6 +74,7 @@ if (requestForm) {
     const chooseGroup = (group) => {
         groupId.value = String(group.idx);
         groupSearch.dataset.selectedGender = group.gender;
+        groupAutocomplete.classList.remove('is-no-group-selected');
         groupSearch.value = displayGroupName(group);
         groupResults.replaceChildren();
         groupStatus.textContent = window.idolRankingT('group_selected', { name: groupSearch.value });
@@ -175,8 +177,9 @@ if (requestForm) {
         groupId.value = '';
         groupSearch.dataset.selectedGender = '';
         groupSearch.value = noGroupButton.textContent;
+        groupAutocomplete.classList.add('is-no-group-selected');
         groupResults.replaceChildren();
-        groupStatus.textContent = window.idolRankingT('group_none_selected');
+        groupStatus.textContent = '';
         closeGroupResults();
     });
 
@@ -406,6 +409,21 @@ if (requestForm) {
     });
     requestForm.querySelector('[data-image-remove]').addEventListener('click', crop.clear);
     requestForm.addEventListener('submit', (event) => {
+        const invalidRequiredFields = [...requestForm.querySelectorAll('[required]:not(:disabled)')]
+            .filter((control) => !control.checkValidity());
+        if (invalidRequiredFields.length) {
+            event.preventDefault();
+            const labels = [...new Set(invalidRequiredFields.map((control) => {
+                const field = control.closest('.fan-post-create-field');
+                const label = field?.querySelector(':scope > label, :scope > .fan-post-create-label');
+                return label?.textContent.replace(/\s*\*\s*$/, '').trim() || control.name;
+            }))];
+            window.alert(`${requestForm.dataset.requiredFieldsMessage}\n\n- ${labels.join('\n- ')}`);
+            const firstInvalidField = invalidRequiredFields[0];
+            firstInvalidField.focus({ preventScroll: true });
+            firstInvalidField.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            return;
+        }
         if (!duplicateCheckComplete || duplicateCheckFingerprint !== currentDuplicateFingerprint()) {
             event.preventDefault();
             searchDuplicates();

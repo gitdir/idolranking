@@ -257,6 +257,30 @@ class RankingLinksTest extends TestCase
             ->assertSee('<meta property="og:description" content="English bio">', false);
     }
 
+    public function test_member_fan_post_like_percentile_uses_public_likes_and_assigns_ties_consistently(): void
+    {
+        $this->database();
+        $this->addRealRecords();
+        DB::table('fan_posts')->insert([
+            'idx' => 22, 'idol_idx' => 11, 'member_idx' => 2, 'title' => 'Second member post',
+            'media_type' => 'image', 'image_path' => 'fan-posts/second.jpg', 'content' => 'Second post',
+            'status' => 'published', 'created_at' => now(),
+        ]);
+        DB::table('fan_post_likes')->insert([
+            ['fan_post_idx' => 21, 'member_idx' => 2, 'created_at' => now()],
+            ['fan_post_idx' => 21, 'member_idx' => 3, 'created_at' => now()],
+            ['fan_post_idx' => 22, 'member_idx' => 1, 'created_at' => now()],
+            ['fan_post_idx' => 22, 'member_idx' => 3, 'created_at' => now()],
+        ]);
+
+        $ranking = app(\App\Support\PublicRanking::class);
+
+        $this->assertSame(34, $ranking->memberFanPostLikesPercentile(1));
+        $this->assertSame(34, $ranking->memberFanPostLikesPercentile(2));
+        $this->assertSame(100, $ranking->memberFanPostLikesPercentile(3));
+        $this->assertNull($ranking->memberFanPostLikesPercentile(999));
+    }
+
     public function test_idol_names_and_descriptions_are_escaped_in_document_title_and_seo_metadata(): void
     {
         $this->database();

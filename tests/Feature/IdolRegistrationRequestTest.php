@@ -29,6 +29,8 @@ class IdolRegistrationRequestTest extends TestCase
         }
         DB::statement("CREATE TABLE members (idx INTEGER PRIMARY KEY, member_code TEXT, email TEXT, nickname TEXT, country_code TEXT, profile_image_path TEXT, heart_balance INTEGER DEFAULT 0, member_level INTEGER DEFAULT 1, is_dummy INTEGER DEFAULT 0, status TEXT DEFAULT 'active', deleted_at TEXT)");
         DB::statement("CREATE TABLE idols (idx INTEGER PRIMARY KEY, name TEXT, english_name TEXT, image_path TEXT, type TEXT, gender TEXT, status TEXT DEFAULT 'active')");
+        DB::statement("CREATE TABLE fan_posts (idx INTEGER PRIMARY KEY, member_idx INTEGER, idol_idx INTEGER, status TEXT, deleted_at TEXT)");
+        DB::statement('CREATE TABLE fan_post_likes (fan_post_idx INTEGER, member_idx INTEGER, created_at TEXT)');
         DB::statement("CREATE TABLE idol_localizations (idx INTEGER PRIMARY KEY AUTOINCREMENT, idol_idx INTEGER NOT NULL, language_code TEXT NOT NULL, localized_name TEXT, description TEXT, agency TEXT, position TEXT, genre TEXT, leader TEXT, created_at TEXT, updated_at TEXT, UNIQUE(idol_idx, language_code))");
         DB::statement("CREATE TABLE idol_name_aliases (idx INTEGER PRIMARY KEY AUTOINCREMENT, idol_idx INTEGER NOT NULL, language_code TEXT NOT NULL, alias_name TEXT NOT NULL, created_at TEXT, updated_at TEXT)");
         DB::statement("CREATE TABLE idol_group_members (individual_idx INTEGER, group_idx INTEGER, created_at TEXT, PRIMARY KEY (individual_idx, group_idx))");
@@ -63,7 +65,8 @@ class IdolRegistrationRequestTest extends TestCase
 
         $this->withSession(['member_idx' => 7])->get('/idol-registration/request')
             ->assertOk()->assertSee('Request Idol Registration')->assertSee('Register Idol')
-            ->assertSee('Approval Reward: 4,321 Hearts')->assertSee('Hearts are awarded after your request is approved.');
+            ->assertSee('Approval Reward:')->assertSee('+4,321')
+            ->assertSee('Hearts are awarded after your request is approved.');
 
         $this->withSession(['member_idx' => 7, 'idol_registration_request_key' => str_repeat('a', 64)]);
         $response = $this->post('/idol-registration/request', [
@@ -280,13 +283,12 @@ class IdolRegistrationRequestTest extends TestCase
                 'data-group-autocomplete',
             ], false)
             ->assertSee('data-duplicate-other-section', false)
-            ->assertSee('다른 유형에 등록된 대상')
             ->assertSee('value="ko" selected', false)
             ->assertDontSee('value="und"', false);
 
         $this->withSession(['member_idx' => 7, 'locale' => 'en'])->get('/idol-registration/request')->assertOk()
             ->assertSee('value="en" selected', false)
-            ->assertSee('Matches registered in other categories');
+            ->assertSee('Idols or Groups Registered in Other Categories');
     }
 
     public function test_duplicate_check_starts_with_compact_neutral_status(): void
@@ -326,7 +328,7 @@ class IdolRegistrationRequestTest extends TestCase
                 'idol_duplicate_status_exact' => '등록 신청이 불가능합니다.',
                 'idol_duplicate_status_similar' => '유사한 이름이 있습니다. 확인이 필요합니다.',
                 'idol_duplicate_status_error' => '중복 확인에 실패했습니다. 다시 시도해 주세요.',
-                'idol_duplicate_status_available_description' => '선택한 유형에서 동일하거나 유사한 이름을 찾지 못했습니다.',
+                'idol_duplicate_status_available_description' => '선택한 분류에서 동일하거나 유사한 이름을 찾지 못했습니다.',
                 'idol_duplicate_status_exact_heading' => '이미 등록된 아이돌은 승인되지 않습니다.',
                 'idol_duplicate_status_exact_description' => '동일한 아이돌/그룹이 이미 등록되어 있어 신청할 수 없습니다.',
                 'idol_duplicate_status_similar_heading' => '유사한 이름이 있습니다. 확인이 필요합니다.',
@@ -339,7 +341,7 @@ class IdolRegistrationRequestTest extends TestCase
                 'idol_duplicate_status_exact' => 'This registration request cannot be submitted.',
                 'idol_duplicate_status_similar' => 'A similar name exists. Please review it.',
                 'idol_duplicate_status_error' => 'Unable to check the name. Please try again.',
-                'idol_duplicate_status_available_description' => 'No exact or similar matches were found in this category.',
+                'idol_duplicate_status_available_description' => 'No identical or similar names were found in the selected category.',
                 'idol_duplicate_status_exact_heading' => 'Already registered idols or groups cannot be approved.',
                 'idol_duplicate_status_exact_description' => 'The same idol or group is already registered in this category, so this request cannot be submitted.',
                 'idol_duplicate_status_similar_heading' => 'A similar name exists. Please review it.',

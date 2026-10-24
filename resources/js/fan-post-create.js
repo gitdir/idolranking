@@ -3,6 +3,118 @@ import { initSquareImageCrop } from './square-image-crop';
 const form = document.querySelector('[data-fan-post-create]');
 
 if (form) {
+    const categoryOptions = form.querySelector('[data-idol-category-options]');
+    if (categoryOptions) {
+        const categoryInputs = [...categoryOptions.querySelectorAll('[name="idol_category"]')];
+        const idolSelect = form.querySelector('[data-idol-select]');
+        const dependentFields = form.querySelector('[data-dependent-fields]');
+        const registrationToggle = form.querySelector('[data-registration-toggle]');
+        const registrationPanel = form.querySelector('[data-registration-panel]');
+        const setDependentFields = (visible) => {
+            dependentFields.hidden = !visible;
+            dependentFields.querySelectorAll('input, select, textarea, button').forEach((control) => {
+                control.disabled = !visible;
+            });
+        };
+        const setIdolOptions = (idols, selectedIdol = '') => {
+            const placeholder = idolSelect.options[0];
+            idolSelect.replaceChildren(placeholder);
+            idols.forEach((idol) => {
+                const option = document.createElement('option');
+                option.value = String(idol.idx);
+                option.textContent = `${idol.name}${idol.type === 'group' ? ` (${categoryOptions.dataset.groupLabel})` : ''}`;
+                option.translate = 'no';
+                option.selected = option.value === String(selectedIdol);
+                idolSelect.append(option);
+            });
+        };
+        let categoryRequest;
+        const loadCategory = async (category) => {
+            categoryRequest?.abort();
+            categoryRequest = new AbortController();
+            idolSelect.disabled = true;
+            const placeholder = idolSelect.options[0];
+            idolSelect.replaceChildren(placeholder);
+            try {
+                const url = new URL(categoryOptions.dataset.idolCategoryUrl, window.location.origin);
+                url.searchParams.set('category', category);
+                const response = await fetch(url, {
+                    headers: { Accept: 'application/json' },
+                    signal: categoryRequest.signal,
+                });
+                if (!response.ok) throw new Error('Unable to load idols for this category.');
+                const data = await response.json();
+                const idols = data.idols ?? [];
+                setIdolOptions(idols);
+                idolSelect.disabled = idols.length === 0;
+            } catch (error) {
+                if (error.name !== 'AbortError') console.error(error);
+            }
+        };
+
+        categoryInputs.forEach((input) => input.addEventListener('change', () => {
+            if (!input.checked) return;
+            setDependentFields(false);
+            idolSelect.value = '';
+            loadCategory(input.value);
+        }));
+        idolSelect.addEventListener('change', () => {
+            const hasSelection = Boolean(idolSelect.value);
+            setDependentFields(hasSelection);
+        });
+        registrationToggle.addEventListener('click', () => {
+            registrationPanel.hidden = !registrationPanel.hidden;
+            registrationToggle.setAttribute('aria-expanded', String(!registrationPanel.hidden));
+        });
+
+        const selectedCategory = categoryInputs.find((input) => input.checked)?.value;
+        const hasSelection = Boolean(selectedCategory && idolSelect.value);
+        setDependentFields(Boolean(selectedCategory && hasSelection));
+        if (selectedCategory && idolSelect.options.length <= 1) {
+            loadCategory(selectedCategory);
+        } else if (!selectedCategory) {
+            idolSelect.disabled = true;
+        }
+    }
+
+    if (!form.classList.contains('fan-post-edit-form')) {
+        const validationMessage = form.dataset.validationAlertMessage;
+        const fieldLabel = (control) => {
+            if (control.name === 'idol_category') {
+                return form.querySelector('.idol-request-type-row > .fan-post-create-label')?.textContent.replace(/\s*\*\s*$/, '').trim() || control.name;
+            }
+            const explicitLabel = control.labels?.[0]?.textContent.replace(/\s*\*\s*$/, '').trim();
+            if (explicitLabel) return explicitLabel;
+            const field = control.closest('.fan-post-create-field');
+            const label = field?.querySelector(':scope > label, :scope > .fan-post-create-label');
+            return label?.textContent.replace(/\s*\*\s*$/, '').trim() || control.name;
+        };
+        const focusInvalidField = (control) => {
+            control.focus({ preventScroll: true });
+            control.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        };
+
+        form.addEventListener('submit', (event) => {
+            const invalidFields = [...form.querySelectorAll('[required]:not(:disabled)')]
+                .filter((control) => !control.closest('[hidden]') && !control.validity.valid);
+            const mediaTypeInput = form.querySelector('[data-media-type]');
+            const mediaType = mediaTypeInput?.value;
+            const imageInput = form.querySelector('[data-image-input]');
+            const youtubeInput = form.querySelector('#fan-post-youtube');
+            if (mediaTypeInput && !['text', 'image', 'youtube'].includes(mediaType)) invalidFields.push(mediaTypeInput);
+            if (mediaType === 'image' && imageInput && !imageInput.files.length) invalidFields.push(imageInput);
+            if (mediaType === 'youtube' && youtubeInput && !youtubeInput.value.trim()) invalidFields.push(youtubeInput);
+
+            const uniqueInvalidFields = [...new Set(invalidFields)];
+            if (!uniqueInvalidFields.length) return;
+
+            event.preventDefault();
+            const labels = [...new Set(uniqueInvalidFields.map(fieldLabel))];
+            window.alert(`${validationMessage}\n\n- ${labels.join('\n- ')}`);
+            focusInvalidField(uniqueInvalidFields[0]);
+        });
+    }
+
     const mediaType = form.querySelector('[data-media-type]');
     const tabs = [...form.querySelectorAll('[data-media-tab]')];
     if (tabs.length) {

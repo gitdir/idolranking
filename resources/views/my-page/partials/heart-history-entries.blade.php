@@ -19,7 +19,7 @@
                     @endif
                 </span>{{ $history->activity }}
             </span>
-            <strong @class(['my-heart-history-amount', 'is-positive' => $history->amount >= 0, 'is-negative' => $history->amount < 0]) role="cell">{{ $history->amount >= 0 ? '+' : '' }}{{ number_format((int) $history->amount) }} {{ __('ui.heart_unit') }}</strong>
+            <strong @class(['my-heart-history-amount', 'is-positive' => $history->amount >= 0, 'is-negative' => $history->amount < 0]) role="cell"><svg class="heart-icon--default" aria-hidden="true"><use href="#icon-heart"/></svg>{{ $history->amount >= 0 ? '+' : '' }}{{ number_format((int) $history->amount) }}</strong>
         </div>
     @empty
         <p class="my-heart-history-empty">{{ __('ui.no_heart_history') }}</p>

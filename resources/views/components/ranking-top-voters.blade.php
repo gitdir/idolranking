@@ -21,14 +21,14 @@
                             @if (! empty($voter['member_code']))
                                 <a class="ranking-voter-name-link" href="{{ route('member.fan-posts', ['member_code' => $voter['member_code']]) }}">{{ $voter['nickname'] }}</a>
                             @else
-                                {{ $voter['nickname'] }}
+                                <span class="ranking-voter-name-link">{{ $voter['nickname'] }}</span>
                             @endif
                         </h3>
-                        <span aria-label="{{ __('ui.voter_hearts_aria', ['amount' => number_format($voter['hearts'])]) }}">{{ number_format($voter['hearts']) }}</span>
+                        <span class="ranking-voter-heart-count" aria-label="{{ __('ui.voter_hearts_aria', ['amount' => number_format($voter['hearts'])]) }}"><svg class="ranking-voter-heart-icon heart-icon--small" aria-hidden="true"><use href="#icon-heart"/></svg>{{ number_format($voter['hearts']) }}</span>
                     </div>
-                    <p>{{ $voter['bio'] }}</p>
                     {{-- Relative contribution: the leading voter represents 100%. --}}
                     <progress max="{{ $voters[0]['hearts'] }}" value="{{ $voter['hearts'] }}" aria-label="{{ __('ui.voter_contribution_aria', ['name' => $voter['nickname']]) }}"></progress>
+                    <p>{{ $voter['bio'] }}</p>
                 </div>
             </li>
         @endforeach

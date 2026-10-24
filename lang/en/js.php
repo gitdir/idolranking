@@ -1,7 +1,7 @@
 <?php
 
 return [
-    'idol_duplicate_status_available_description' => 'No exact or similar matches were found in this category.',
+    'idol_duplicate_status_available_description' => 'No identical or similar names were found in the selected category.',
     'idol_duplicate_status_exact_heading' => 'Already registered idols or groups cannot be approved.',
     'idol_duplicate_status_exact_description' => 'The same idol or group is already registered in this category, so this request cannot be submitted.',
     'idol_duplicate_status_similar_heading' => 'A similar name exists. Please review it.',

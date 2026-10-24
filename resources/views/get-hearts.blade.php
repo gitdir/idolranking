@@ -7,7 +7,6 @@
     <section class="get-hearts-hero" aria-labelledby="get-hearts-title">
         <div>
             <h1 id="get-hearts-title">{{ __('ui.get_hearts_title') }}</h1>
-            <strong>{{ __('ui.hearts_earned_not_bought') }}</strong>
             <p>{{ __('ui.get_hearts_intro') }}</p>
         </div>
         <svg viewBox="0 0 420 190" aria-hidden="true">
@@ -26,7 +25,7 @@
             </div>
             <div class="get-hearts-summary-item get-hearts-summary-item--today">
                 <span class="get-hearts-calendar" aria-hidden="true"><svg viewBox="0 0 24 24"><use href="#icon-heart"/></svg></span>
-                <span translate="no">Earned Today<strong data-get-hearts-today-earned>+ {{ number_format($todayEarned) }}</strong></span>
+                <span>{{ __('ui.today_earned_label') }}<strong data-get-hearts-today-earned>+{{ number_format($todayEarned) }}</strong></span>
             </div>
             <p>{{ __('ui.collect_hearts') }}</p>
         </section>
@@ -59,7 +58,7 @@
                         <span><strong>{{ $activity->name }}</strong><small>{{ $activity->description }}</small></span>
                     </div>
                     <div class="get-hearts-reward">
-                        <strong><svg aria-hidden="true"><use href="#icon-heart"/></svg>@if($activity->code === 'comment_create' && $activity->min_heart_amount !== $activity->max_heart_amount)+{{ number_format($activity->min_heart_amount) }}~{{ number_format($activity->max_heart_amount) }}@elseif($activity->code === 'daily_attendance' && $activity->min_heart_amount !== $activity->max_heart_amount)+ {{ number_format($activity->min_heart_amount) }}~{{ number_format($activity->max_heart_amount) }}@else+ {{ number_format($activity->heart_amount) }}@endif</strong>
+                        <strong><svg class="heart-icon--large" aria-hidden="true"><use href="#icon-heart"/></svg>@if($activity->code === 'comment_create' && $activity->min_heart_amount !== $activity->max_heart_amount)+{{ number_format($activity->min_heart_amount) }}~{{ number_format($activity->max_heart_amount) }}@elseif($activity->code === 'daily_attendance' && $activity->min_heart_amount !== $activity->max_heart_amount)+{{ number_format($activity->min_heart_amount) }}~{{ number_format($activity->max_heart_amount) }}@else+{{ number_format($activity->heart_amount) }}@endif</strong>
                         <small>@if(!$activity->is_enabled){{ __('ui.unavailable') }} @elseif($activity->daily_limit > 0){{ __('ui.per_day', ['limit' => number_format($activity->daily_limit)]) }} @else {{ __('ui.no_daily_limit') }} @endif</small>
                     </div>
                     @if($activity->daily_limit > 0)

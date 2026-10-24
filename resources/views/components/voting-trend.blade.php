@@ -23,7 +23,7 @@
 @else
 <div class="voting-trend-chart-wrap" data-voting-trend data-heart-label="{{ __('ui.hearts') }}">
 <svg class="voting-trend-chart" viewBox="0 0 576 260" role="group" aria-label="{{ __('ui.daily_votes_chart_aria') }}">
-    <text x="38" y="18" class="trend-axis-label">{{ __('ui.daily_votes') }}</text>
+    <text x="0" y="18" class="trend-axis-label">{{ __('ui.daily_votes') }}</text>
     @for ($tick = 0; $tick <= 3; $tick++)
         @php($y = 202 - $tick * 164 / 3)
         <line class="trend-grid-line" x1="38" x2="556" y1="{{ $y }}" y2="{{ $y }}"/>

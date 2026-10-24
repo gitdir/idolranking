@@ -1,7 +1,7 @@
 <?php
 
 return [
-    'idol_duplicate_status_available_description' => '선택한 유형에서 동일하거나 유사한 이름을 찾지 못했습니다.',
+    'idol_duplicate_status_available_description' => '선택한 분류에서 동일하거나 유사한 이름을 찾지 못했습니다.',
     'idol_duplicate_status_exact_heading' => '이미 등록된 아이돌은 승인되지 않습니다.',
     'idol_duplicate_status_exact_description' => '동일한 아이돌/그룹이 이미 등록되어 있어 신청할 수 없습니다.',
     'idol_duplicate_status_similar_heading' => '유사한 이름이 있습니다. 확인이 필요합니다.',

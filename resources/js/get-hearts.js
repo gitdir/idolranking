@@ -64,7 +64,7 @@ if (partnerRewardDialog && partnerClaimButton) {
             }
             if (result.data?.today_earned !== undefined) {
                 const todayEarned = document.querySelector('[data-get-hearts-today-earned]');
-                if (todayEarned) todayEarned.textContent = `+ ${Number(result.data.today_earned).toLocaleString()}`;
+                if (todayEarned) todayEarned.textContent = `+${Number(result.data.today_earned).toLocaleString()}`;
             }
 
             if (result.data?.completed_today) {

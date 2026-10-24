@@ -24,15 +24,56 @@ class FanPostController extends Controller
     private const VIEW_WINDOW_SECONDS = 3600;
     private const VIEW_COOKIE_MAX_POSTS = 40;
 
-    public function create(Request $request)
+    public function create(Request $request, HeartRewardManager $heartRewards)
     {
-        $idols = DB::table('idols')->where('status', 'active')
-            ->orderBy('name')->orderBy('idx')->get(['idx', 'name', 'type']);
-        $currentMember = $request->attributes->get('currentMember');
+        $idolCategories = ['boy', 'boy_group', 'girl', 'girl_group'];
+        $category = old('idol_category');
+        $preselectedIdolIdx = null;
 
-        return view('fan-posts.create', ['idols' => $idols, 'editingPost' => null, 'postLanguages' => FanPostLanguages::all(),
+        if ($request->query->has('idol_idx')) {
+            $queryIdolIdx = $request->query('idol_idx');
+            abort_unless(is_string($queryIdolIdx) && ctype_digit($queryIdolIdx), 404);
+            $preselectedIdol = DB::table('idols')->where('idx', $queryIdolIdx)->where('status', 'active')
+                ->first(['idx', 'type', 'gender']);
+            abort_if($preselectedIdol === null, 404);
+            $preselectedCategory = $this->idolCategory($preselectedIdol);
+            abort_if($preselectedCategory === null, 404);
+            abort_if($request->query->has('idol_category') && $request->query('idol_category') !== $preselectedCategory, 404);
+
+            $category ??= $preselectedCategory;
+            $preselectedIdolIdx = (int) $preselectedIdol->idx;
+        }
+
+        if (!in_array($category, $idolCategories, true)) {
+            $category = null;
+        }
+
+        $selectedIdolIdx = old('idol_idx', $preselectedIdolIdx);
+        $idols = $category === null ? collect() : $this->activeIdolsForCategory($category);
+        if ($selectedIdolIdx !== null && !$idols->contains(fn (object $idol): bool => (int) $idol->idx === (int) $selectedIdolIdx)) {
+            $selectedIdolIdx = null;
+        }
+        $currentMember = $request->attributes->get('currentMember');
+        $fanPostRewardSetting = DB::table('heart_reward_settings')->where('action_code', 'fan_post_create')
+            ->first(['heart_amount', 'daily_limit', 'is_enabled']);
+        $fanPostRewardEnabled = $fanPostRewardSetting !== null
+            && (bool) $fanPostRewardSetting->is_enabled
+            && (int) $fanPostRewardSetting->heart_amount > 0;
+
+        return view('fan-posts.create', ['idols' => $idols, 'idolCategory' => $category, 'selectedIdolIdx' => $selectedIdolIdx,
+            'idolCategories' => $idolCategories, 'editingPost' => null, 'postLanguages' => FanPostLanguages::all(),
+            'approvalRewardAmount' => $heartRewards->enabledAmount('idol_registration_approved'),
+            'fanPostRewardAmount' => $fanPostRewardEnabled ? (int) $fanPostRewardSetting->heart_amount : 0,
+            'fanPostRewardDailyLimit' => $fanPostRewardEnabled ? max(0, (int) $fanPostRewardSetting->daily_limit) : 0,
             'requestKey' => bin2hex(random_bytes(32)), 'randomDummyMode' => app(RandomDummyActivity::class)->enabled($request),
             'isAdmin' => $currentMember !== null && (int) $currentMember->member_level === 10 && (int) $currentMember->is_dummy === 0]);
+    }
+
+    public function idolsForCategory(Request $request)
+    {
+        $validated = $request->validate(['category' => ['required', Rule::in(['boy', 'boy_group', 'girl', 'girl_group'])]]);
+
+        return response()->json(['idols' => $this->activeIdolsForCategory($validated['category'])]);
     }
 
     public function store(Request $request)
@@ -53,8 +94,19 @@ class FanPostController extends Controller
             'media_type' => $mediaType,
             'language_code' => $request->input('language_code') ?? app()->getLocale(),
         ]);
+        $fieldNames = [
+            'idol_category' => __('ui.request_type'), 'idol_idx' => __('ui.idol'), 'title' => __('ui.title'),
+            'content' => __('ui.content'), 'language_code' => __('ui.post_language'), 'media_type' => __('ui.media'),
+            'image' => __('ui.image'), 'youtube_url' => __('ui.youtube_url'), 'tags' => __('ui.tags'),
+        ];
+        $category = $request->validate(
+            ['idol_category' => ['required', Rule::in(['boy', 'boy_group', 'girl', 'girl_group'])]],
+            [],
+            $fieldNames
+        )['idol_category'];
+        [$idolType, $idolGender] = $this->categoryParts($category);
         $validated = $request->validate([
-            'idol_idx' => ['required', 'integer', Rule::exists('idols', 'idx')->where('status', 'active')],
+            'idol_idx' => ['required', 'integer', Rule::exists('idols', 'idx')->where('status', 'active')->where('type', $idolType)->where('gender', $idolGender)],
             'title' => ['required', 'string', 'max:100'],
             'content' => ['required', 'string', 'max:2000'],
             'language_code' => ['required', 'string', Rule::in(array_keys(FanPostLanguages::all()))],
@@ -67,7 +119,7 @@ class FanPostController extends Controller
         ], [
             'language_code.required' => __('ui.post_language_required'),
             'language_code.in' => __('ui.post_language_invalid'),
-        ]);
+        ], $fieldNames);
 
         $youtubeId = null;
         if ($mediaType === 'youtube') {
@@ -204,6 +256,33 @@ class FanPostController extends Controller
         }
 
         return $redirect;
+    }
+
+    private function activeIdolsForCategory(string $category)
+    {
+        [$type, $gender] = $this->categoryParts($category);
+
+        return DB::table('idols')->where('status', 'active')->where('type', $type)->where('gender', $gender)
+            ->orderBy('name')->orderBy('idx')->get(['idx', 'name', 'type']);
+    }
+
+    private function categoryParts(string $category): array
+    {
+        return match ($category) {
+            'boy' => ['individual', 'male'],
+            'boy_group' => ['group', 'male'],
+            'girl' => ['individual', 'female'],
+            'girl_group' => ['group', 'female'],
+        };
+    }
+
+    private function idolCategory(object $idol): ?string
+    {
+        if (!in_array($idol->type, ['individual', 'group'], true) || !in_array($idol->gender, ['male', 'female'], true)) {
+            return null;
+        }
+
+        return ($idol->gender === 'male' ? 'boy' : 'girl').($idol->type === 'group' ? '_group' : '');
     }
 
     public function edit(Request $request, string $idx)

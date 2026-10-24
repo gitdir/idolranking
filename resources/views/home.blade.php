@@ -32,7 +32,7 @@
                 <div class="idol-detail-fan-post-actions member-fan-post-actions fan-post-toolbar">
                     <form method="get" action="{{ route('home') }}">
                         <label class="sr-only" for="home-fan-post-sort">{{ __('ui.sort_fan_posts') }}</label>
-                        <select id="home-fan-post-sort" name="sort" onchange="this.form.submit()">
+                        <select id="home-fan-post-sort" class="fan-post-sort-select" name="sort" onchange="this.form.submit()">
                             <option value="latest" @selected($fanPostSort === 'latest')>{{ __('ui.latest') }}</option>
                             <option value="monthly_liked" @selected($fanPostSort === 'monthly_liked')>{{ __('ui.monthly_liked') }}</option>
                             <option value="liked" @selected($fanPostSort === 'liked')>{{ __('ui.most_liked') }}</option>

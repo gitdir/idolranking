@@ -8,7 +8,7 @@
         <span class="attendance-hero-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="17" rx="2"/><path d="M8 2v4m8-4v4M3 9h18m-13 5 2 2 4-4"/></svg></span>
         <div>
             <h1>{{ __('ui.attendance_title') }}</h1>
-            <p>{{ __('ui.attendance_description') }}</p>
+            <p>{{ __('ui.attendance_description_prefix') }} <span class="attendance-hero-reward"><svg class="heart-icon--small" aria-hidden="true"><use href="#icon-heart"/></svg>+{{ number_format((int) ($attendanceReward?->min_heart_amount ?? $attendanceReward?->heart_amount ?? 0)) }}~{{ number_format((int) ($attendanceReward?->max_heart_amount ?? $attendanceReward?->heart_amount ?? 0)) }}</span> {{ __('ui.attendance_description_suffix') }}</p>
         </div>
     </header>
 
@@ -43,7 +43,7 @@
                     <small>{{ __('ui.attendance_text_only_hint') }}</small>
                     <div class="attendance-form-actions">
                         <label class="sr-only" for="attendance-language">{{ __('ui.check_in_language') }}</label>
-                        <select id="attendance-language" name="language_code" required aria-label="{{ __('ui.check_in_language') }}">
+                        <select id="attendance-language" class="fan-post-sort-select" name="language_code" required aria-label="{{ __('ui.check_in_language') }}">
                             @foreach (\App\Support\FanPostLanguages::all() as $code => $name)
                                 <option value="{{ $code }}" @selected($code === app()->getLocale())>{{ $name }} ({{ strtoupper($code) }})</option>
                             @endforeach

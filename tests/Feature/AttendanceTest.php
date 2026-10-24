@@ -16,6 +16,9 @@ class AttendanceTest extends TestCase
         Http::preventStrayRequests();
 
         DB::statement("CREATE TABLE members (idx INTEGER PRIMARY KEY, member_code TEXT UNIQUE, email TEXT, nickname TEXT, country_code TEXT, profile_image_path TEXT, heart_balance INTEGER DEFAULT 0, member_level INTEGER DEFAULT 1, is_dummy INTEGER DEFAULT 0, status TEXT DEFAULT 'active', deleted_at TEXT, updated_at TEXT)");
+        DB::statement("CREATE TABLE idols (idx INTEGER PRIMARY KEY, status TEXT DEFAULT 'active')");
+        DB::statement("CREATE TABLE fan_posts (idx INTEGER PRIMARY KEY, member_idx INTEGER, idol_idx INTEGER, status TEXT, deleted_at TEXT)");
+        DB::statement('CREATE TABLE fan_post_likes (fan_post_idx INTEGER, member_idx INTEGER, created_at TEXT)');
         DB::statement('CREATE TABLE daily_check_ins (idx INTEGER PRIMARY KEY AUTOINCREMENT, member_idx INTEGER NOT NULL, actor_member_idx INTEGER NOT NULL, language_code TEXT, content TEXT NOT NULL, awarded_hearts INTEGER NOT NULL, check_in_date TEXT NOT NULL, created_at TEXT, updated_at TEXT, UNIQUE (member_idx, check_in_date))');
         DB::statement('CREATE TABLE daily_check_in_translations (idx INTEGER PRIMARY KEY AUTOINCREMENT, daily_check_in_idx INTEGER NOT NULL, source_language_code TEXT NOT NULL, target_language_code TEXT NOT NULL, translated_content TEXT NOT NULL, source_hash TEXT NOT NULL, created_at TEXT, updated_at TEXT, UNIQUE (daily_check_in_idx, source_language_code, target_language_code))');
         DB::statement('CREATE TABLE heart_reward_settings (idx INTEGER PRIMARY KEY AUTOINCREMENT, action_code TEXT UNIQUE, heart_amount INTEGER, min_heart_amount INTEGER, max_heart_amount INTEGER, daily_limit INTEGER, is_enabled INTEGER)');

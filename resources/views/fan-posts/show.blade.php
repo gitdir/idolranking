@@ -147,7 +147,7 @@
                                         <p>{{ $comment['body'] }}</p>
                                     @endif
                                     @if ($comment['rewarded_hearts'] !== null)
-                                        <span class="fan-detail-comment-reward">+{{ number_format($comment['rewarded_hearts']) }} Heart</span>
+                                        <span class="fan-detail-comment-reward"><svg aria-hidden="true"><use href="#icon-heart"/></svg><span>+{{ number_format($comment['rewarded_hearts']) }}</span></span>
                                     @endif
                                 </div>
                             </li>

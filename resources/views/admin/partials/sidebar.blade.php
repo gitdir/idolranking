@@ -51,7 +51,11 @@
         'admin.hearts.settings' => ['admin.hearts.settings*'],
     ];
 @endphp
-<aside class="admin-sidebar" aria-label="관리자 메뉴">
+<button class="admin-nav-overlay" type="button" data-admin-nav-close aria-label="관리자 메뉴 닫기" hidden></button>
+<aside id="admin-sidebar" class="admin-sidebar" aria-label="관리자 메뉴">
+    <button class="admin-nav-close" type="button" data-admin-nav-close aria-label="관리자 메뉴 닫기">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m6 6 12 12M18 6 6 18"/></svg>
+    </button>
     <nav>
         @foreach ($adminMenu as $menuItem)
             @php

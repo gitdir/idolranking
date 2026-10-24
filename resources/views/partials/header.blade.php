@@ -16,8 +16,12 @@
         $inviteRewardAmount = $headerActivityMember
             ? number_format(app(\App\Support\HeartRewardManager::class)->configuredAmount('invite_friend'))
             : '0';
+        $drawerLikesPercentile = $headerMember
+            ? app(\App\Support\PublicRanking::class)->memberFanPostLikesPercentile((int) $headerMember->idx)
+            : null;
+        $drawerLikesRanking = $drawerLikesPercentile === null ? '—' : $drawerLikesPercentile.'%';
         $drawerStats = $headerMember ? [
-            'ranking_rate' => '12.5%',
+            'likes_ranking' => $drawerLikesRanking,
             'fan_posts' => 28,
             'comments' => 56,
             'hearts' => number_format((int) $headerMember->heart_balance),
@@ -139,9 +143,9 @@
                         </div>
                     </section>
                     <section class="drawer-stats" aria-label="{{ __('ui.account_statistics') }}">
-                        <div class="drawer-stat drawer-stat--pink">
-                            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 4h8v5a4 4 0 0 1-8 0ZM8 6H4v2a4 4 0 0 0 4 4m8-6h4v2a4 4 0 0 1-4 4M12 13v4m-4 3h8m-6-3h4"/></svg>
-                            <strong>{{ $drawerStats['ranking_rate'] }}</strong><span>Ranking Rate</span>
+                        <div class="drawer-stat drawer-stat--pink drawer-stat--likes">
+                            <svg viewBox="0 0 24 24" aria-hidden="true"><use href="#icon-thumbs-up"/></svg>
+                            <strong>{{ $drawerStats['likes_ranking'] }}</strong><span>{{ __('ui.drawer_likes_ranking') }}</span>
                         </div>
                         <div class="drawer-stat drawer-stat--blue">
                             <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 3h9l4 4v14H6Z"/><path d="M15 3v5h4M9 12h7M9 16h7"/></svg>
@@ -274,7 +278,7 @@
             <dialog id="invite-friends-dialog" class="invite-friends-dialog" aria-labelledby="invite-friends-title">
                 <button class="invite-friends-close" type="button" data-invite-friends-close aria-label="{{ __('ui.close_invite') }}"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m6 6 12 12M18 6 6 18"/></svg></button>
                 <h2 id="invite-friends-title">{{ __('ui.invite_friends') }}</h2>
-                <p>{{ __('ui.invite_cta', ['amount' => $inviteRewardAmount]) }}</p>
+                <p>{{ __('ui.invite_cta_modal_before') }} <span class="invite-reward-inline"><svg class="heart-icon--default" aria-hidden="true"><use href="#icon-heart"/></svg>+{{ $inviteRewardAmount }}</span>{{ __('ui.invite_cta_modal_after') }}</p>
                 <div class="invite-referral-link">
                     <svg class="invite-referral-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M10.5 13.5a4 4 0 0 0 5.7.1l3-3a4 4 0 0 0-5.7-5.7l-1.7 1.7M13.5 10.5a4 4 0 0 0-5.7-.1l-3 3a4 4 0 0 0 5.7 5.7l1.7-1.7"/></svg>
                     <div class="invite-referral-copy">
@@ -293,7 +297,7 @@
                     <button type="button" data-invite-share="kakao">KakaoTalk</button>
                     <a href="https://www.facebook.com/sharer/sharer.php?u={{ urlencode($referralUrl) }}" target="_blank" rel="noopener">Facebook</a>
                 </div>
-                <p class="invite-reward-message">{{ __('ui.invite_reward_message', ['amount' => $inviteRewardAmount]) }}</p>
+                <p class="invite-reward-message">{{ __('ui.invite_reward_message_before') }} <span class="invite-reward-inline"><svg class="heart-icon--default" aria-hidden="true"><use href="#icon-heart"/></svg>+{{ $inviteRewardAmount }}</span>{{ __('ui.invite_reward_message_after') }}</p>
             </dialog>
             <dialog id="drawer-logout-dialog" class="drawer-logout-dialog" aria-labelledby="drawer-logout-title" aria-describedby="drawer-logout-description">
                 <div class="drawer-logout-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M10 5V3H4v18h6v-2M14 8l4 4-4 4m4-4H8"/></svg></div>

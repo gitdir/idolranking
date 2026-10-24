@@ -101,9 +101,9 @@
                                     <img class="top-voter-avatar" src="{{ \App\Support\ManagedImageStorage::publicUrl($voter['image_url'] ?? null) }}" width="44" height="44" alt="{{ __('ui.profile_image_alt', ['name' => $voter['nickname']]) }}">
                                 </x-member-link>
                                 <div class="voter-info">
-                                    <div class="voter-name"><h3 translate="no"><x-country-flag :code="$voter['country_code'] ?? null" /><x-member-link :member-code="$voter['member_code'] ?? null">{{ $voter['nickname'] }}</x-member-link></h3><span>{{ number_format($voter['votes']) }} <span class="sr-only">{{ __('ui.monthly_votes_aria') }}</span></span></div>
-                                    <p>{{ $voter['bio'] }}</p>
+                                    <div class="voter-name"><h3 translate="no"><x-country-flag :code="$voter['country_code'] ?? null" /><span class="voter-name-label"><x-member-link :member-code="$voter['member_code'] ?? null">{{ $voter['nickname'] }}</x-member-link></span></h3><span class="voter-heart-count"><svg class="ranking-voter-heart-icon heart-icon--small" aria-hidden="true"><use href="#icon-heart"/></svg>{{ number_format($voter['votes']) }} <span class="sr-only">{{ __('ui.monthly_votes_aria') }}</span></span></div>
                                     <progress value="{{ $voter['votes'] }}" max="{{ max(array_column($voters, 'votes')) }}" aria-label="{{ __('ui.voter_contribution_aria', ['name' => $voter['nickname']]) }}">{{ $voter['votes'] }}</progress>
+                                    <p>{{ $voter['bio'] }}</p>
                                 </div>
                             </li>
                         @endforeach
@@ -126,7 +126,7 @@
                     <div class="idol-detail-fan-post-actions fan-post-toolbar">
                         <form method="get" action="{{ route('idol.show', ['idx' => $idol['idx']]) }}">
                             <label class="sr-only" for="idol-fan-post-sort">{{ __('ui.sort_fan_posts') }}</label>
-                            <select id="idol-fan-post-sort" name="sort" onchange="this.form.submit()">
+                            <select id="idol-fan-post-sort" class="fan-post-sort-select" name="sort" onchange="this.form.submit()">
                                 <option value="latest" @selected($fanPostSort === 'latest')>{{ __('ui.latest') }}</option>
                                 <option value="monthly_liked" @selected($fanPostSort === 'monthly_liked')>{{ __('ui.monthly_liked') }}</option>
                                 <option value="liked" @selected($fanPostSort === 'liked')>{{ __('ui.most_liked') }}</option>

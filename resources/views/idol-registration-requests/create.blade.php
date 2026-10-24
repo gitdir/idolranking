@@ -12,11 +12,10 @@
     @if (session('success'))<div class="idol-request-success" role="status">{{ session('success') }}</div>@endif
 
     <div class="fan-post-create-layout">
-        <form class="fan-post-create-form" method="post" action="{{ route('idol-registration.store') }}" enctype="multipart/form-data" data-idol-request-form novalidate>
+        <form class="fan-post-create-form" method="post" action="{{ route('idol-registration.store') }}" enctype="multipart/form-data" data-idol-request-form data-required-fields-message="{{ __('ui.idol_request_required_fields') }}" novalidate>
             @csrf
             <input type="hidden" name="request_key" value="{{ $requestKey }}">
             <input type="hidden" name="duplicate_search_token" value="{{ old('duplicate_search_token', '') }}" data-duplicate-search-token>
-            @if ($errors->any())<div class="fan-post-create-errors" role="alert"><strong>{{ __('ui.check_form') }}</strong><ul>@foreach ($errors->all() as $error)<li>{{ $error }}</li>@endforeach</ul></div>@endif
 
             <div class="fan-post-create-field idol-request-type-row">
                 <div class="fan-post-create-label">{{ __('ui.request_type') }} <span>*</span></div>
@@ -53,7 +52,7 @@
             <div class="fan-post-create-field idol-request-source-language-field idol-request-field-full">
                 <label for="idol-request-source-language">{{ __('ui.source_language') }} <span>*</span></label>
                 <div>
-                    <select id="idol-request-source-language" name="source_language_code" required disabled data-progressive-required>
+                    <select id="idol-request-source-language" class="fan-post-sort-select" name="source_language_code" required disabled data-progressive-required>
                         <option value="" disabled @selected(!in_array($sourceLanguage, ['ko', 'en', 'ja', 'zh-CN', 'zh-TW'], true))>{{ __('ui.source_language_select') }}</option>
                         <option value="ko" @selected($sourceLanguage === 'ko')>{{ __('ui.language_korean') }} (KO)</option>
                         <option value="en" @selected($sourceLanguage === 'en')>{{ __('ui.language_english') }} (EN)</option>
@@ -79,7 +78,7 @@
             <div class="fan-post-create-field" data-individual-only><label for="idol-request-birth-date">{{ __('ui.profile_label_date_of_birth') }}</label><div>@include('partials.localized-date-input', ['id' => 'idol-request-birth-date', 'name' => 'birth_date', 'value' => old('birth_date', ''), 'max' => now()->toDateString(), 'locale' => app()->getLocale(), 'ariaLabel' => __('ui.profile_label_date_of_birth')])</div></div>
             <div class="fan-post-create-field" data-individual-only><label for="idol-request-height">{{ __('ui.height_cm') }}</label><div><input id="idol-request-height" type="number" name="height_cm" value="{{ old('height_cm') }}" min="50" max="300" step="0.1" placeholder="e.g. 178"></div></div>
             <div class="fan-post-create-field" data-individual-only><label for="idol-request-weight">{{ __('ui.weight_kg') }}</label><div><input id="idol-request-weight" type="number" name="weight_kg" value="{{ old('weight_kg') }}" min="10" max="500" step="0.1" placeholder="e.g. 65"></div></div>
-            <div class="fan-post-create-field" data-individual-only><label for="idol-request-blood">{{ __('ui.profile_label_blood_type') }}</label><div><select id="idol-request-blood" name="blood_type"><option value="">{{ __('ui.select_blood_type') }}</option>@foreach (['A', 'B', 'AB', 'O'] as $blood)<option value="{{ $blood }}" @selected(old('blood_type') === $blood)>{{ $blood }}</option>@endforeach</select></div></div>
+            <div class="fan-post-create-field" data-individual-only><label for="idol-request-blood">{{ __('ui.profile_label_blood_type') }}</label><div><select id="idol-request-blood" class="fan-post-sort-select" name="blood_type"><option value="">{{ __('ui.select_blood_type') }}</option>@foreach (['A', 'B', 'AB', 'O'] as $blood)<option value="{{ $blood }}" @selected(old('blood_type') === $blood)>{{ $blood }}</option>@endforeach</select></div></div>
             <div class="fan-post-create-field"><label for="idol-request-agency">{{ __('ui.profile_label_agency') }}</label><div><input id="idol-request-agency" name="agency" value="{{ old('agency') }}" maxlength="200" placeholder="{{ __('ui.enter_agency') }}"></div></div>
             <div class="fan-post-create-field idol-request-field-full" data-group-full><label>{{ __('ui.profile_label_debut_dates') }}</label><div>@include('partials.debut-date-inputs', ['debutDateRows' => old('debut_dates', [['country_code' => '', 'debut_date' => '']]), 'idPrefix' => 'idol-request-debut-country', 'namePrefix' => 'debut_dates', 'admin' => false, 'dateInputLang' => app()->getLocale()])<small>{{ __('ui.debut_dates_help') }}</small></div></div>
             <div class="fan-post-create-field" data-individual-only><label for="idol-request-position">{{ __('ui.profile_label_position') }}</label><div><input id="idol-request-position" name="position" value="{{ old('position') }}" maxlength="200" placeholder="{{ __('ui.position_example') }}"></div></div>
@@ -105,16 +104,16 @@
         <aside class="fan-post-guidelines" aria-label="{{ __('ui.registration_guidelines') }}">
             <section>
                 <h2><span>{{ __('ui.before_submit') }}</span></h2>
-                <ul><li>{{ __('ui.check_not_registered') }}</li><li>{{ __('ui.official_profile_info') }}</li><li>{{ __('ui.requests_reviewed') }}</li></ul>
+                <ul><li>{{ __('ui.check_not_registered') }}</li><li>{{ __('ui.official_profile_info') }}</li><li>{{ __('ui.requests_reviewed') }}</li><li>{{ __('ui.request_rejection_notice') }}</li></ul>
                 @if ($approvalRewardAmount > 0)
                     <div class="idol-request-reward-notice">
-                        <strong>{{ __('ui.approval_reward', ['amount' => number_format($approvalRewardAmount)]) }}</strong>
+                        <strong><span class="idol-request-reward-label">{{ __('ui.approval_reward') }}</span><span class="idol-request-reward-amount"><svg class="heart-icon--small" viewBox="0 0 24 24" aria-hidden="true"><use href="#icon-heart"/></svg><span>+{{ number_format($approvalRewardAmount) }}</span></span></strong>
                         <p>{{ __('ui.reward_after_approval') }}</p>
                     </div>
                 @endif
             </section>
             <section><h2><span>{{ __('ui.profile_image_guidelines') }}</span></h2><ul><li>{{ __('ui.use_clear_image') }}</li><li>{{ __('ui.one_image_upload') }}</li><li>{{ __('ui.square_crop_image') }}</li></ul></section>
-            <section><h2><span>{{ __('ui.community_guidelines') }}</span></h2><ul><li>{{ __('ui.respectful_factual_intro') }}</li><li>{{ __('ui.no_private_info') }}</li></ul></section>
+            <section><h2><span>{{ __('ui.community_guidelines') }}</span></h2><ul><li>{{ __('ui.no_private_info') }}</li></ul></section>
         </aside>
     </div>
 </div>
@@ -127,4 +126,12 @@
         <div class="fan-post-crop-actions"><button type="button" data-crop-cancel>{{ __('ui.cancel') }}</button><button type="button" data-crop-apply>{{ __('ui.apply') }}</button></div>
     </form>
 </dialog>
+@if ($errors->any())
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const errors = @json($errors->all());
+            window.alert([@json(__('ui.check_form')), '', ...errors.map((message) => `- ${message}`)].join('\n'));
+        });
+    </script>
+@endif
 @endsection

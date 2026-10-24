@@ -31,8 +31,10 @@ class AttendanceController extends Controller
                 $todayCheckIn->awarded_hearts = (int) $reward->amount;
             }
         }
-        $checkInEnabled = (bool) DB::table('heart_reward_settings')
-            ->where('action_code', 'daily_attendance')->where('is_enabled', 1)->exists();
+        $attendanceReward = DB::table('heart_reward_settings')
+            ->where('action_code', 'daily_attendance')
+            ->first(['is_enabled', 'heart_amount', 'min_heart_amount', 'max_heart_amount']);
+        $checkInEnabled = (bool) ($attendanceReward?->is_enabled ?? false);
 
         $checkIns = $this->publicCheckIns()
             ->select([
@@ -73,6 +75,7 @@ class AttendanceController extends Controller
             'member' => $member,
             'todayCheckIn' => $todayCheckIn,
             'checkInEnabled' => $checkInEnabled,
+            'attendanceReward' => $attendanceReward,
             'checkIns' => $checkIns,
             'seo' => [
                 'title' => __('ui.attendance_title').' | IdolRanking',

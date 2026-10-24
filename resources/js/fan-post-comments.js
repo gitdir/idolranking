@@ -84,7 +84,14 @@ if (form) {
         }
 
         if (rewardRecorded) {
-            content.append(makeElement('span', 'fan-detail-comment-reward', `+${Number(rewardedHearts).toLocaleString()} Heart`));
+            const reward = makeElement('span', 'fan-detail-comment-reward');
+            const heart = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+            heart.setAttribute('aria-hidden', 'true');
+            const use = document.createElementNS('http://www.w3.org/2000/svg', 'use');
+            use.setAttribute('href', '#icon-heart');
+            heart.append(use);
+            reward.append(heart, makeElement('span', '', `+${Number(rewardedHearts).toLocaleString()}`));
+            content.append(reward);
         }
         item.append(content);
 

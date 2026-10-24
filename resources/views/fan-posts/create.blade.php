@@ -9,27 +9,52 @@
         <p>{{ __('ui.share_favorite') }}</p>
     </header>
     <div class="fan-post-create-layout">
-        <form class="fan-post-create-form{{ $editing ? ' fan-post-edit-form' : '' }}" method="POST" action="{{ $editing ? route('fan-post.update', ['idx' => $editingPost['idx']]) : route('fan-post.store') }}" @unless($editing) enctype="multipart/form-data" data-existing-image="" @endunless data-fan-post-create novalidate>
+        <form class="fan-post-create-form{{ $editing ? ' fan-post-edit-form' : '' }}" method="POST" action="{{ $editing ? route('fan-post.update', ['idx' => $editingPost['idx']]) : route('fan-post.store') }}" @unless($editing) enctype="multipart/form-data" data-existing-image="" data-validation-alert-message="{{ __('ui.fan_post_validation_alert') }}" @endunless data-fan-post-create novalidate>
             @csrf
             @unless($editing)
                 <input type="hidden" name="request_key" value="{{ $requestKey }}">
             @endunless
             @if($editing) @method('PUT') @endif
-            @if ($errors->any())<div class="fan-post-create-errors" role="alert"><strong>{{ __('ui.check_form') }}</strong><ul>@foreach ($errors->all() as $error)<li>{{ $error }}</li>@endforeach</ul></div>@endif
+            @if ($editing && $errors->any())<div class="fan-post-create-errors" role="alert"><strong>{{ __('ui.check_form') }}</strong><ul>@foreach ($errors->all() as $error)<li>{{ $error }}</li>@endforeach</ul></div>@endif
 
+            @unless($editing)
+            <div class="fan-post-create-field idol-request-type-row">
+                <div class="fan-post-create-label">{{ __('ui.request_type') }} <span>*</span></div>
+                <div class="idol-request-type-options" data-idol-category-options data-idol-category-url="{{ route('fan-post.create.idols') }}" data-group-label="{{ __('ui.group_type') }}">
+                    @foreach (['boy' => __('ui.boy'), 'boy_group' => __('ui.boy_group'), 'girl' => __('ui.girl'), 'girl_group' => __('ui.girl_group')] as $value => $label)
+                        <label><input type="radio" name="idol_category" value="{{ $value }}" @checked($idolCategory === $value) required><span>{{ $label }}</span></label>
+                    @endforeach
+                </div>
+            </div>
+            @endunless
             <div class="fan-post-create-field">
                 <label for="fan-post-idol">{{ __('ui.idol') }} <span>*</span></label>
                 <div>
                     @if($editing)
-                        <select id="fan-post-idol" disabled aria-disabled="true">
+                        <select id="fan-post-idol" class="fan-post-sort-select" disabled aria-disabled="true">
                             <option translate="no" selected>{{ $editingPost['idol_name'] }}{{ $editingPost['idol_type'] === 'group' ? ' ('.__('ui.group_type').')' : '' }}</option>
                         </select>
                         <small>{{ __('ui.fan_post_edit_fields_immutable') }}</small>
                     @else
-                        <select id="fan-post-idol" name="idol_idx" required><option value="">{{ __('ui.select_idol') }}</option>@foreach($idols as $idol)<option translate="no" value="{{ $idol->idx }}" @selected((string) old('idol_idx', request('idol_idx')) === (string) $idol->idx)>{{ $idol->name }}{{ $idol->type === 'group' ? ' ('.__('ui.group_type').')' : '' }}</option>@endforeach</select><small>{{ __('ui.choose_post_idol') }}</small>
+                        <select id="fan-post-idol" class="fan-post-sort-select" name="idol_idx" required data-idol-select @disabled($idolCategory === null || $idols->isEmpty())><option value="" @selected(!$selectedIdolIdx)>{{ __('ui.select_idol') }}</option>@foreach($idols as $idol)<option translate="no" value="{{ $idol->idx }}" @selected((string) $selectedIdolIdx === (string) $idol->idx)>{{ $idol->name }}{{ $idol->type === 'group' ? ' ('.__('ui.group_type').')' : '' }}</option>@endforeach</select><small>{{ __('ui.choose_post_idol') }}</small>
+                        <div class="fan-post-registration-help" data-idol-registration-help>
+                            <button class="fan-post-registration-toggle" type="button" data-registration-toggle aria-expanded="false">{{ __('ui.fan_post_registration_prompt') }}</button>
+                            <section class="fan-post-registration-panel" data-registration-panel hidden>
+                                <h3>{{ __('ui.fan_post_registration_title') }}</h3>
+                                <p>{{ __('ui.fan_post_registration_description') }}</p>
+                                <div class="idol-request-reward-notice fan-post-registration-reward">
+                                    <strong><span class="idol-request-reward-label">{{ __('ui.approval_reward') }}</span><span class="idol-request-reward-amount"><svg class="heart-icon--small" width="16" height="16" viewBox="0 0 24 24" aria-hidden="true"><use href="#icon-heart"/></svg><span>+{{ number_format($approvalRewardAmount) }}</span></span></strong>
+                                    <p>{{ __('ui.reward_after_approval') }}</p>
+                                </div>
+                                <a class="fan-post-registration-link" href="{{ route('idol-registration.create') }}">{{ __('ui.fan_post_registration_button') }}</a>
+                            </section>
+                        </div>
                     @endif
                 </div>
             </div>
+            @unless($editing)
+            <div data-dependent-fields @if(!$idolCategory || !$selectedIdolIdx) hidden @endif>
+            @endunless
             <div class="fan-post-create-field">
                 <label for="fan-post-title">{{ __('ui.title') }} <span>*</span></label>
                 <div><input id="fan-post-title" name="title" maxlength="100" value="{{ old('title', $editingPost['title'] ?? '') }}" placeholder="{{ __('ui.title_placeholder') }}" required><output class="fan-post-counter" for="fan-post-title">{{ mb_strlen(old('title', $editingPost['title'] ?? '')) }}/100</output></div>
@@ -38,12 +63,12 @@
                 <label for="fan-post-language">{{ __('ui.post_language') }} <span>*</span></label>
                 <div>
                     @if($editing)
-                        <select id="fan-post-language" disabled aria-disabled="true">
+                        <select id="fan-post-language" class="fan-post-sort-select" disabled aria-disabled="true">
                             <option selected>{{ $editingPost['language_name'] }}{{ $editingPost['language_code'] !== '' ? ' ('.strtoupper($editingPost['language_code']).')' : '' }}</option>
                         </select>
                         <small>{{ __('ui.fan_post_edit_fields_immutable') }}</small>
                     @else
-                        <select id="fan-post-language" name="language_code" required>
+                        <select id="fan-post-language" class="fan-post-sort-select" name="language_code" required>
                             @foreach($postLanguages as $code => $name)
                                 <option value="{{ $code }}" @selected(old('language_code', ($randomDummyMode ?? false) ? 'ko' : app()->getLocale()) === $code)>{{ $name }} ({{ strtoupper($code) }})</option>
                             @endforeach
@@ -95,10 +120,17 @@
                 </div>
             @endif
             <div class="fan-post-create-actions"><button type="submit">{{ $editing ? __('ui.save_changes') : __('ui.post_fan_post') }}</button><a href="{{ $editing ? route('fan-post.show', ['idx' => $editingPost['idx']]) : route('home') }}">{{ __('ui.cancel') }}</a></div>
+            @unless($editing)
+            </div>
+            @endunless
         </form>
 
         <aside class="fan-post-guidelines" aria-label="{{ __('ui.fan_post_guidelines') }}">
-            <section><h2>{{ __('ui.posting_tips') }}</h2><ul><li>{{ __('ui.share_own_creations') }}</li><li>{{ __('ui.write_honestly') }}</li><li>{{ __('ui.be_respectful_positive') }}</li><li>{{ __('ui.use_relevant_tags') }}</li><li>{{ __('ui.avoid_harmful_content') }}</li></ul></section>
+            <section><h2>{{ __('ui.posting_tips') }}</h2><ul><li>{{ __('ui.be_respectful_positive') }}</li><li>{{ __('ui.use_relevant_tags') }}</li><li>{{ __('ui.avoid_harmful_content') }}</li><li>{{ __('ui.fan_post_representative_image_tip') }}</li></ul>
+                @if(!$editing && $fanPostRewardAmount > 0)
+                    <div class="idol-request-reward-notice fan-post-writing-reward"><p>{{ __('ui.fan_post_reward_tip_before') }}<span class="fan-post-writing-reward-amount"><svg width="14" height="14" viewBox="0 0 24 24" aria-hidden="true"><use href="#icon-heart"/></svg>+{{ number_format($fanPostRewardAmount) }}</span>{{ __('ui.fan_post_reward_tip_after') }}@if($fanPostRewardDailyLimit > 0){{ ' ' }}<span>{{ __('ui.fan_post_reward_daily_limit', ['limit' => number_format($fanPostRewardDailyLimit)]) }}</span>@endif</p></div>
+                @endif
+            </section>
             @unless($editing)<section><h2>{{ __('ui.media_guidelines') }}</h2><h3>{{ __('ui.image') }}</h3><ul><li>JPG, PNG or GIF</li><li>{{ __('ui.maximum_5mb') }}</li><li>{{ __('ui.one_image') }}</li><li>{{ __('ui.images_editable') }}</li></ul><h3>{{ __('ui.youtube_video') }}</h3><ul><li>{{ __('ui.youtube_url_help') }}</li><li>{{ __('ui.one_youtube_video') }}</li><li>{{ __('ui.youtube_embedded') }}</li></ul></section>@endunless
             <section><h2>{{ __('ui.community_guidelines') }}</h2><ul><li>{{ __('ui.no_hate_speech') }}</li><li>{{ __('ui.no_illegal_content') }}</li><li>{{ __('ui.friendly_community') }}</li></ul></section>
         </aside>
@@ -115,4 +147,20 @@
     </form>
 </dialog>
 @endunless
+@if(!$editing && $errors->any())
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const form = document.querySelector('[data-fan-post-create]');
+            const errors = @json($errors->all());
+            const firstErrorKey = @json($errors->keys()[0] ?? null);
+            window.alert([@json(__('ui.fan_post_validation_alert')), '', ...errors.map((message) => `- ${message}`)].join('\n'));
+            const field = firstErrorKey ? form?.elements.namedItem(firstErrorKey) : null;
+            const target = field instanceof RadioNodeList ? field[0] : field;
+            if (target instanceof HTMLElement && !target.disabled) {
+                target.focus({ preventScroll: true });
+                target.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            }
+        });
+    </script>
+@endif
 @endsection

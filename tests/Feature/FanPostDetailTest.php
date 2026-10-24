@@ -84,7 +84,7 @@ class FanPostDetailTest extends TestCase
             ['idx' => 3, 'member_code' => 'dummyCode03', 'email' => 'dummy@example.test', 'nickname' => 'Dummy', 'country_code' => 'KR', 'profile_image_path' => null, 'heart_balance' => 5, 'member_level' => 1, 'is_dummy' => 1, 'status' => 'active', 'deleted_at' => null],
         ]);
         $payload = [
-            'request_key' => str_repeat('a', 64), 'idol_idx' => 1, 'title' => 'Random mode post',
+            'request_key' => str_repeat('a', 64), 'idol_category' => 'boy', 'idol_idx' => 1, 'title' => 'Random mode post',
             'content' => 'A media post created in random mode.', 'language_code' => 'en', 'media_type' => 'image',
             'image' => UploadedFile::fake()->image('post.png'), 'tags' => 'test',
         ];
@@ -373,7 +373,7 @@ class FanPostDetailTest extends TestCase
         $this->database();
 
         $response = $this->withSession(['member_idx' => 1])->post('/fan-post', [
-            'idol_idx' => 1,
+            'idol_category' => 'boy', 'idol_idx' => 1,
             'title' => 'A new fan post',
             'content' => 'A thoughtful post for this idol.',
             'media_type' => 'youtube',
@@ -433,7 +433,7 @@ class FanPostDetailTest extends TestCase
             BEGIN SELECT RAISE(ABORT, 'simulated fan post reward failure'); END");
 
         $this->withSession(['member_idx' => 1])->post('/fan-post', [
-            'idol_idx' => 1, 'title' => 'Saved without optional reward', 'content' => 'The post must remain available.',
+            'idol_category' => 'boy', 'idol_idx' => 1, 'title' => 'Saved without optional reward', 'content' => 'The post must remain available.',
             'media_type' => 'youtube', 'youtube_url' => 'https://youtu.be/dQw4w9WgXcQ', 'tags' => 'saved',
         ])->assertRedirect();
 
@@ -753,7 +753,7 @@ class FanPostDetailTest extends TestCase
         ])->assertRedirect(route('home'));
 
         $response = $this->post('/fan-post', [
-            'idol_idx' => 1, 'title' => 'Delegated post', 'content' => 'Posted as a dummy member.',
+            'idol_category' => 'boy', 'idol_idx' => 1, 'title' => 'Delegated post', 'content' => 'Posted as a dummy member.',
             'media_type' => 'youtube', 'youtube_url' => 'https://youtu.be/dQw4w9WgXcQ', 'tags' => '',
         ])->assertRedirect();
         $post = DB::table('fan_posts')->where('title', 'Delegated post')->first();
@@ -795,7 +795,7 @@ class FanPostDetailTest extends TestCase
         $this->assertSame(1, DB::table('heart_histories')->where('reason', 'comment_reward')->count());
 
         $this->withSession(['member_idx' => 3])->post('/fan-post', [
-            'idol_idx' => 1, 'title' => 'Direct dummy post', 'content' => 'Posted while signed in directly.',
+            'idol_category' => 'boy', 'idol_idx' => 1, 'title' => 'Direct dummy post', 'content' => 'Posted while signed in directly.',
             'media_type' => 'youtube', 'youtube_url' => 'https://youtu.be/dQw4w9WgXcQ', 'tags' => '',
         ])->assertRedirect();
         $directPost = DB::table('fan_posts')->where('title', 'Direct dummy post')->first();
@@ -806,7 +806,7 @@ class FanPostDetailTest extends TestCase
         ]);
 
         $this->withSession(['member_idx' => 2])->post('/fan-post', [
-            'idol_idx' => 1, 'title' => 'Direct admin post', 'content' => 'Posted by the administrator account.',
+            'idol_category' => 'boy', 'idol_idx' => 1, 'title' => 'Direct admin post', 'content' => 'Posted by the administrator account.',
             'media_type' => 'youtube', 'youtube_url' => 'https://youtu.be/dQw4w9WgXcQ', 'tags' => '',
         ])->assertRedirect();
         $adminPost = DB::table('fan_posts')->where('title', 'Direct admin post')->first();
@@ -818,7 +818,7 @@ class FanPostDetailTest extends TestCase
 
         $this->post(route('admin.acting-dummy-mode'), ['enabled' => '0'])->assertRedirect();
         $this->post('/fan-post', [
-            'idol_idx' => 1, 'title' => 'Direct admin account post', 'content' => 'Posted by the administrator account.',
+            'idol_category' => 'boy', 'idol_idx' => 1, 'title' => 'Direct admin account post', 'content' => 'Posted by the administrator account.',
             'media_type' => 'youtube', 'youtube_url' => 'https://youtu.be/dQw4w9WgXcQ', 'tags' => '',
         ])->assertRedirect();
         $adminPost = DB::table('fan_posts')->where('title', 'Direct admin account post')->first();
@@ -840,7 +840,7 @@ class FanPostDetailTest extends TestCase
         $this->withSession(['member_idx' => 2])->post(route('admin.acting-dummy-member'), ['dummy_member_idx' => 3])
             ->assertRedirect(route('home'));
         $this->post('/fan-post', [
-            'idol_idx' => 1, 'title' => 'Queued as selected dummy', 'content' => 'The admin queued this post.',
+            'idol_category' => 'boy', 'idol_idx' => 1, 'title' => 'Queued as selected dummy', 'content' => 'The admin queued this post.',
             'media_type' => 'youtube', 'youtube_url' => 'https://youtu.be/dQw4w9WgXcQ', 'tags' => '',
             'auto_distribute' => '1',
         ])->assertRedirect(route('admin.fan-post-distribution.index'));
@@ -863,13 +863,13 @@ class FanPostDetailTest extends TestCase
             ->update(['heart_amount' => 45, 'daily_limit' => 1]);
 
         $this->withSession(['member_idx' => 1])->post('/fan-post', [
-            'idol_idx' => 1, 'title' => 'Text post', 'content' => 'No eligible media.',
+            'idol_category' => 'boy', 'idol_idx' => 1, 'title' => 'Text post', 'content' => 'No eligible media.',
             'media_type' => 'text', 'tags' => '',
         ])->assertRedirect()->assertSessionMissing('global_notification');
 
         foreach (['First video', 'Second video'] as $title) {
             $this->withSession(['member_idx' => 1])->post('/fan-post', [
-                'idol_idx' => 1, 'title' => $title, 'content' => 'Eligible video post.',
+                'idol_category' => 'boy', 'idol_idx' => 1, 'title' => $title, 'content' => 'Eligible video post.',
                 'media_type' => 'youtube',
                 'youtube_url' => 'https://www.youtube.com/watch?v=dQw4w9WgXcQ', 'tags' => '',
             ])->assertRedirect();
@@ -1333,8 +1333,11 @@ class FanPostDetailTest extends TestCase
         }
 
         $response = $this->get('/fan-post/50')->assertOk()
-            ->assertSee('class="fan-detail-comment-reward">+7 Heart</span>', false)
-            ->assertSee('class="fan-detail-comment-reward">+0 Heart</span>', false);
+            ->assertSee('class="fan-detail-comment-reward"', false)
+            ->assertSee('>+7</span>', false)
+            ->assertSee('>+0</span>', false)
+            ->assertDontSee('+7 Heart')
+            ->assertDontSee('+0 Heart');
         preg_match('~<li data-comment-idx="'.$unrewardedIdx.'">(.*?)</li>~s', $response->getContent(), $unrewardedMarkup);
         $this->assertNotEmpty($unrewardedMarkup);
         $this->assertStringNotContainsString('fan-detail-comment-reward', $unrewardedMarkup[1]);

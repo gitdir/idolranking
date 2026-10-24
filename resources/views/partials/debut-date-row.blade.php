@@ -3,6 +3,7 @@
     <x-country-select
         id="{{ $idPrefix }}-{{ $index }}"
         name="{{ $namePrefix }}[{{ $index }}][country_code]"
+        trigger-class="{{ ($admin ?? false) ? '' : 'fan-post-sort-select' }}"
         :selected="$debutDate['country_code'] ?? ''"
         :placeholder="$admin ? '국가 선택' : __('ui.select_debut_country')"
         :search-label="$admin ? '국가 검색' : __('ui.search_country')"

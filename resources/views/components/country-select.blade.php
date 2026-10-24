@@ -1,7 +1,7 @@
 @props([
     'id', 'selected' => null, 'placeholder' => null, 'name' => 'country_code', 'disabled' => false,
     'requiredSelection' => true,
-    'searchLabel' => null, 'listLabel' => null, 'emptyLabel' => null, 'options' => null,
+    'searchLabel' => null, 'listLabel' => null, 'emptyLabel' => null, 'options' => null, 'triggerClass' => '',
 ])
 @php
     $countries = $options ?? \App\Support\Countries::records();
@@ -11,7 +11,7 @@
 @endphp
 
 <div class="country-picker" data-country-picker data-country-required="{{ $requiredSelection ? 'true' : 'false' }}">
-    <button id="{{ $id }}" class="country-picker-trigger" type="button" data-country-trigger @disabled($disabled)
+    <button id="{{ $id }}" class="country-picker-trigger {{ $triggerClass }}" type="button" data-country-trigger @disabled($disabled)
         aria-haspopup="listbox" aria-expanded="false" aria-controls="{{ $panelId }}">
         <span data-country-label @class(['country-picker-placeholder' => $selectedName === ''])>{{ $selectedName ?: ($placeholder ?: __('ui.select_country')) }}</span>
         <svg class="country-picker-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg>

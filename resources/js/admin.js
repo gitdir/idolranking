@@ -418,6 +418,115 @@ document.querySelectorAll('.admin-dialog').forEach((dialog) => {
 
 const sidebarGroups = Array.from(document.querySelectorAll('[data-sidebar-group]'));
 
+const adminAccount = document.querySelector('[data-admin-account]');
+
+if (adminAccount) {
+    const accountTrigger = adminAccount.querySelector('.admin-account-trigger');
+    const accountMenu = adminAccount.querySelector('.admin-account-menu');
+
+    if (accountTrigger && accountMenu) {
+        const closeAccountMenu = (returnFocus = false) => {
+            accountMenu.hidden = true;
+            accountTrigger.setAttribute('aria-expanded', 'false');
+            if (returnFocus) accountTrigger.focus();
+        };
+
+        accountTrigger.addEventListener('click', () => {
+            const shouldOpen = accountMenu.hidden;
+            accountMenu.hidden = !shouldOpen;
+            accountTrigger.setAttribute('aria-expanded', String(shouldOpen));
+            if (shouldOpen) accountMenu.querySelector('[data-admin-account-item]')?.focus();
+        });
+
+        accountMenu.addEventListener('click', (event) => {
+            if (event.target.closest('[data-admin-account-item]')) closeAccountMenu();
+        });
+
+        adminAccount.addEventListener('focusout', (event) => {
+            if (!adminAccount.contains(event.relatedTarget)) closeAccountMenu();
+        });
+
+        document.addEventListener('pointerdown', (event) => {
+            if (!adminAccount.contains(event.target)) closeAccountMenu();
+        });
+
+        document.addEventListener('keydown', (event) => {
+            if (event.key === 'Escape' && !accountMenu.hidden) {
+                event.preventDefault();
+                closeAccountMenu(true);
+            }
+        });
+    }
+}
+
+const adminNavToggle = document.querySelector('[data-admin-nav-open]');
+const adminSidebar = document.querySelector('#admin-sidebar');
+const adminNavOverlay = document.querySelector('.admin-nav-overlay');
+const adminNavCloseButtons = document.querySelectorAll('[data-admin-nav-close]');
+const adminMobileNav = window.matchMedia('(max-width: 767px)');
+
+if (adminNavToggle && adminSidebar && adminNavOverlay) {
+    const closeAdminNav = (returnFocus = true) => {
+        adminSidebar.classList.remove('is-open');
+        adminSidebar.setAttribute('aria-hidden', 'true');
+        adminSidebar.inert = true;
+        adminNavToggle.setAttribute('aria-expanded', 'false');
+        adminNavOverlay.hidden = true;
+        document.documentElement.classList.remove('admin-nav-open');
+        if (returnFocus && adminMobileNav.matches) adminNavToggle.focus();
+    };
+
+    const openAdminNav = () => {
+        if (!adminMobileNav.matches) return;
+        adminSidebar.classList.add('is-open');
+        adminSidebar.setAttribute('aria-hidden', 'false');
+        adminSidebar.inert = false;
+        adminNavToggle.setAttribute('aria-expanded', 'true');
+        adminNavOverlay.hidden = false;
+        document.documentElement.classList.add('admin-nav-open');
+        adminSidebar.querySelector('nav a, nav button')?.focus();
+    };
+
+    adminNavToggle.addEventListener('click', openAdminNav);
+    adminNavCloseButtons.forEach((button) => button.addEventListener('click', () => closeAdminNav()));
+    adminSidebar.querySelector('nav')?.addEventListener('click', (event) => {
+        if (event.target.closest('a')) closeAdminNav(false);
+    });
+    document.addEventListener('keydown', (event) => {
+        if (!adminMobileNav.matches || !adminSidebar.classList.contains('is-open')) return;
+        if (event.key === 'Escape') {
+            event.preventDefault();
+            closeAdminNav();
+            return;
+        }
+        if (event.key === 'Tab') {
+            const focusable = [...adminSidebar.querySelectorAll('a[href], button:not([disabled])')];
+            const first = focusable[0];
+            const last = focusable[focusable.length - 1];
+            if (!first || !last) return;
+            if (event.shiftKey && document.activeElement === first) {
+                event.preventDefault();
+                last.focus();
+            } else if (!event.shiftKey && document.activeElement === last) {
+                event.preventDefault();
+                first.focus();
+            }
+        }
+    });
+    adminMobileNav.addEventListener('change', (event) => {
+        closeAdminNav(false);
+        if (!event.matches) {
+            adminSidebar.removeAttribute('aria-hidden');
+            adminSidebar.inert = false;
+        }
+    });
+    closeAdminNav(false);
+    if (!adminMobileNav.matches) {
+        adminSidebar.removeAttribute('aria-hidden');
+        adminSidebar.inert = false;
+    }
+}
+
 sidebarGroups.forEach((group) => {
     const toggle = group.querySelector('[data-sidebar-group-toggle]');
     const submenu = group.querySelector('.admin-sidebar-submenu');

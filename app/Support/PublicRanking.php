@@ -23,6 +23,43 @@ final class PublicRanking
         return $this->ranking($type, $gender, now('UTC')->startOfMonth());
     }
 
+    public function memberFanPostLikesPercentile(int $memberIdx): ?int
+    {
+        $likesByMember = DB::table('fan_posts as p')
+            ->join('members as author', 'author.idx', '=', 'p.member_idx')
+            ->join('idols as i', 'i.idx', '=', 'p.idol_idx')
+            ->leftJoin('fan_post_likes as l', 'l.fan_post_idx', '=', 'p.idx')
+            ->where('p.status', 'published')->whereNull('p.deleted_at')
+            ->where('author.member_level', '>', 0)->where('author.status', 'active')->whereNull('author.deleted_at')
+            ->where('i.status', 'active')
+            ->groupBy('p.member_idx')
+            ->select('p.member_idx')
+            ->selectRaw('COUNT(l.fan_post_idx) AS received_likes');
+        $eligibleMemberLikes = DB::table('members as eligible')
+            ->leftJoinSub($likesByMember, 'post_likes', 'post_likes.member_idx', '=', 'eligible.idx')
+            ->where('eligible.member_level', '>', 0)->where('eligible.status', 'active')->whereNull('eligible.deleted_at')
+            ->select('eligible.idx as member_idx')
+            ->selectRaw('COALESCE(post_likes.received_likes, 0) AS received_likes');
+        $memberLikes = DB::query()->fromSub(clone $eligibleMemberLikes, 'member_likes')
+            ->where('member_idx', $memberIdx)->value('received_likes');
+
+        if ($memberLikes === null) {
+            return null;
+        }
+
+        $ranking = DB::query()->fromSub(clone $eligibleMemberLikes, 'member_likes')
+            ->selectRaw('COUNT(*) AS eligible_count, SUM(CASE WHEN received_likes > ? THEN 1 ELSE 0 END) AS members_ahead', [(int) $memberLikes])
+            ->first();
+
+        if ((int) $ranking->eligible_count === 0) {
+            return null;
+        }
+
+        $rank = (int) $ranking->members_ahead + 1;
+
+        return max(1, (int) ceil($rank * 100 / (int) $ranking->eligible_count));
+    }
+
     public function ranking(string $type, ?string $gender, CarbonInterface $month): array
     {
         $monthStart = $month->copy()->setTimezone('UTC')->startOfMonth();

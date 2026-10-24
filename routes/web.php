@@ -103,6 +103,8 @@ Route::get('/fan-post/{idx}/comments/{commentIdx}/translation', [FanPostControll
     ->whereNumber('idx')->whereNumber('commentIdx')->middleware('throttle:public-translations')->name('fan-post.comments.translation');
 Route::get('/fan-post/create', [FanPostController::class, 'create'])
     ->middleware(RequireMember::class)->name('fan-post.create');
+Route::get('/fan-post/create/idols', [FanPostController::class, 'idolsForCategory'])
+    ->middleware(RequireMember::class)->name('fan-post.create.idols');
 Route::get('/fan-post', fn () => redirect()->route('fan-posts.index'));
 Route::post('/fan-post', [FanPostController::class, 'store'])
     ->middleware(RequireMember::class)->name('fan-post.store');
