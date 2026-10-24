@@ -62,7 +62,7 @@ class IdolRegistrationRequestTest extends TestCase
         Mail::fake();
 
         $this->withSession(['member_idx' => 7])->get('/idol-registration/request')
-            ->assertOk()->assertSee('Idol Registration Request')->assertSee('Register Idol')
+            ->assertOk()->assertSee('Request Idol Registration')->assertSee('Register Idol')
             ->assertSee('Approval Reward: 4,321 Hearts')->assertSee('Hearts are awarded after your request is approved.');
 
         $this->withSession(['member_idx' => 7, 'idol_registration_request_key' => str_repeat('a', 64)]);

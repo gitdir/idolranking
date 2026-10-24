@@ -117,7 +117,7 @@ return [
     'vote_target' => '투표 대상', 'select_vote_amount' => '투표할 하트 수 선택', 'enter_vote_amount' => '또는 수량 입력',
     'vote_amount_help' => '1부터 :amount까지 입력할 수 있습니다. 보유한 하트만큼 사용할 수 있습니다.', 'change_password_dialog_close' => '비밀번호 변경 창 닫기',
     'current_password' => '현재 비밀번호', 'change_password_help' => '영문자, 숫자, 특수문자를 포함해 8자 이상 입력하세요.', 'close_crop_image' => '이미지 자르기 창 닫기',
-    'idol_request_title' => '아이돌 등록 요청', 'idol_request_description' => '새로운 아이돌이나 그룹을 IdolRanking 커뮤니티에 소개해 주세요.',
+    'idol_request_title' => '아이돌 등록 신청', 'idol_request_description' => '아이돌 또는 그룹의 신규 등록을 신청할 수 있습니다.',
     'request_type' => '유형', 'boy' => '남자 아이돌', 'girl' => '여자 아이돌', 'name_korean' => '한글 이름 (선택)', 'enter_korean_name' => '한글 이름 입력 (선택)',
     'enter_genre' => '그룹 장르 입력 (선택)', 'enter_leader' => '리더 이름 입력 (선택)',
     'group_search_label' => '기존 그룹 검색', 'group_search_placeholder' => '그룹 이름 입력',

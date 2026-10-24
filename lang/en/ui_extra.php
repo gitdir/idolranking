@@ -103,7 +103,7 @@ return [
     'vote_amount_help' => 'Enter a number from 1 to :amount. You can use up to your current hearts.', 'change_password_dialog_close' => 'Close change password dialog',
     'current_password' => 'Current Password', 'change_password_help' => 'Use at least 8 characters with letters, numbers, and symbols.',
     'close_crop_image' => 'Close crop image',
-    'idol_request_title' => 'Idol Registration Request', 'idol_request_description' => 'Share a new idol or group with the IdolRanking community.',
+    'idol_request_title' => 'Request Idol Registration', 'idol_request_description' => 'Submit a request to add a new idol or group to IdolRanking.',
     'request_type' => 'Type', 'boy' => 'Boy', 'girl' => 'Girl', 'name_korean' => 'Korean Name (optional)', 'enter_korean_name' => 'Enter Korean name (optional)',
     'enter_genre' => 'Enter group genre (optional)', 'enter_leader' => 'Enter leader name (optional)',
     'group_search_label' => 'Search for an existing group', 'group_search_placeholder' => 'Type a group name',

@@ -8,7 +8,7 @@
         $points = [];
         foreach ($days as $index => $day) {
             $points[] = [
-                'x' => 58 + $index * 498 / max(1, count($days) - 1),
+                'x' => 38 + $index * 518 / max(1, count($days) - 1),
                 'y' => 202 - $day['votes'] / $ceiling * 164,
                 'date' => (new DateTimeImmutable($day['date']))->format('Y-m-d'),
                 'votes' => (int) $day['votes'],
@@ -23,11 +23,11 @@
 @else
 <div class="voting-trend-chart-wrap" data-voting-trend data-heart-label="{{ __('ui.hearts') }}">
 <svg class="voting-trend-chart" viewBox="0 0 576 260" role="group" aria-label="{{ __('ui.daily_votes_chart_aria') }}">
-    <text x="58" y="18" class="trend-axis-label">{{ __('ui.daily_votes') }}</text>
+    <text x="38" y="18" class="trend-axis-label">{{ __('ui.daily_votes') }}</text>
     @for ($tick = 0; $tick <= 3; $tick++)
         @php($y = 202 - $tick * 164 / 3)
-        <line class="trend-grid-line" x1="58" x2="556" y1="{{ $y }}" y2="{{ $y }}"/>
-        <text class="trend-axis-label" x="50" y="{{ $y + 4 }}" text-anchor="end">{{ number_format($ceiling * $tick / 3) }}</text>
+        <line class="trend-grid-line" x1="38" x2="556" y1="{{ $y }}" y2="{{ $y }}"/>
+        <text class="trend-axis-label" x="30" y="{{ $y + 4 }}" text-anchor="end">{{ number_format($ceiling * $tick / 3) }}</text>
     @endfor
     <polyline class="trend-line" points="{{ $line }}"/>
     @foreach ($points as $point)

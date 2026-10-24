@@ -29,6 +29,9 @@ export function initSquareImageCrop({
     let offsetX = 0;
     let offsetY = 0;
     let pinchDistance = null;
+    let stageWidth = 0;
+    let stageHeight = 0;
+    let workspaceReady = false;
 
     const clampScale = (value) => {
         const numericValue = Number(value);
@@ -44,6 +47,7 @@ export function initSquareImageCrop({
 
     const draw = () => {
         const rect = stage.getBoundingClientRect();
+        if (!rect.width || !rect.height || !originalImage.naturalWidth || !originalImage.naturalHeight) return;
         const ratio = window.devicePixelRatio || 1;
         canvas.width = Math.round(rect.width * ratio);
         canvas.height = Math.round(rect.height * ratio);
@@ -53,8 +57,12 @@ export function initSquareImageCrop({
         context.fillRect(0, 0, canvas.width, canvas.height);
         context.drawImage(originalImage, (canvas.width - width) / 2 + offsetX * ratio, (canvas.height - height) / 2 + offsetY * ratio, width, height);
     };
-    const configureZoom = () => {
+    const configureZoom = (view = null) => {
         const rect = stage.getBoundingClientRect();
+        if (!rect.width || !rect.height || !originalImage.naturalWidth || !originalImage.naturalHeight) return false;
+        const zoomRatio = view?.zoomRatio ?? appliedCropState?.zoomRatio;
+        const offsetXRatio = view?.offsetXRatio ?? appliedCropState?.offsetXRatio;
+        const offsetYRatio = view?.offsetYRatio ?? appliedCropState?.offsetYRatio;
         const cropSize = Math.min(rect.width, rect.height) * .76;
         // Contain scale fits the complete source inside the visible square crop box.
         minScale = Math.min(cropSize / originalImage.naturalWidth, cropSize / originalImage.naturalHeight);
@@ -66,16 +74,36 @@ export function initSquareImageCrop({
         zoomInput.min = String(minScale);
         zoomInput.max = String(maxScale);
         zoomInput.step = String(Math.max((maxScale - minScale) / 200, .0001));
-        setZoomValue(appliedCropState?.scale ?? initialScale);
-        offsetX = appliedCropState?.offsetX ?? 0;
-        offsetY = appliedCropState?.offsetY ?? 0;
+        setZoomValue(Number.isFinite(zoomRatio) ? minScale + zoomRatio * (maxScale - minScale) : initialScale);
+        offsetX = Number.isFinite(offsetXRatio) ? offsetXRatio * rect.width : 0;
+        offsetY = Number.isFinite(offsetYRatio) ? offsetYRatio * rect.height : 0;
+        stageWidth = rect.width;
+        stageHeight = rect.height;
+        return true;
     };
+    const resizeWorkspace = () => {
+        if (!workspaceReady || !dialog.open || !originalImage.naturalWidth) return;
+        const rect = stage.getBoundingClientRect();
+        if (!rect.width || !rect.height || (Math.abs(rect.width - stageWidth) < .5 && Math.abs(rect.height - stageHeight) < .5)) return;
+        const view = {
+            zoomRatio: maxScale > minScale ? (scale - minScale) / (maxScale - minScale) : 0,
+            offsetXRatio: stageWidth ? offsetX / stageWidth : 0,
+            offsetYRatio: stageHeight ? offsetY / stageHeight : 0,
+        };
+        if (configureZoom(view)) draw();
+    };
+    if ('ResizeObserver' in window) {
+        new ResizeObserver(resizeWorkspace).observe(stage);
+    } else {
+        window.addEventListener('resize', resizeWorkspace);
+    }
     const showDialog = () => {
         dialog.showModal();
         document.documentElement.classList.add('fan-post-crop-open');
         requestAnimationFrame(() => {
-            configureZoom();
-            draw();
+            if (!dialog.open) return;
+            workspaceReady = configureZoom();
+            if (workspaceReady) draw();
         });
     };
     const open = () => {
@@ -129,6 +157,7 @@ export function initSquareImageCrop({
         button.addEventListener('click', () => dialog.close('cancel'));
     });
     dialog.addEventListener('close', () => {
+        workspaceReady = false;
         document.documentElement.classList.remove('fan-post-crop-open');
         originalImage.removeAttribute('src');
     });
@@ -180,7 +209,11 @@ export function initSquareImageCrop({
             const transfer = new DataTransfer();
             transfer.items.add(croppedFile);
             imageInput.files = transfer.files;
-            appliedCropState = { scale, offsetX, offsetY };
+            appliedCropState = {
+                zoomRatio: maxScale > minScale ? (scale - minScale) / (maxScale - minScale) : 0,
+                offsetXRatio: stageWidth ? offsetX / stageWidth : 0,
+                offsetYRatio: stageHeight ? offsetY / stageHeight : 0,
+            };
             if (previewUrl) URL.revokeObjectURL(previewUrl);
             previewUrl = URL.createObjectURL(blob);
             preview.src = previewUrl;

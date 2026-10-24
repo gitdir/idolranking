@@ -32,11 +32,11 @@
                     @endif
                 </nav>
                 @if ($footerIsAdmin)
-                    <p class="footer-visitor-stats" aria-label="{{ __('ui.footer_visitor_statistics') }}">
-                        {{ __('ui.footer_yesterday_uv', ['count' => number_format($footerVisitorStats['yesterdayUv'])]) }}
-                        · {{ __('ui.footer_yesterday_pv', ['count' => number_format($footerVisitorStats['yesterdayPv'])]) }}
-                        · {{ __('ui.footer_today_uv', ['count' => number_format($footerVisitorStats['todayUv'])]) }}
-                        · {{ __('ui.footer_today_pv', ['count' => number_format($footerVisitorStats['todayPv'])]) }}
+                    <p class="footer-visitor-stats" translate="no" aria-label="방문 통계">
+                        어제 UV : {{ number_format($footerVisitorStats['yesterdayUv']) }}
+                        · 어제 PV : {{ number_format($footerVisitorStats['yesterdayPv']) }}
+                        · 오늘 UV : {{ number_format($footerVisitorStats['todayUv']) }}
+                        · 오늘 PV : {{ number_format($footerVisitorStats['todayPv']) }}
                     </p>
                 @endif
             </div>
