@@ -4,22 +4,62 @@ const requestForm = document.querySelector('[data-idol-request-form]');
 
 if (requestForm) {
     const typeInputs = [...requestForm.querySelectorAll('[name="request_type"]')];
-    const groupSearch = requestForm.querySelector('[data-group-search]');
-    const groupId = requestForm.querySelector('[data-group-id]');
-    const groupResults = requestForm.querySelector('[data-group-results]');
+    const groupSelects = requestForm.querySelector('[data-group-selects]');
+    const groupType = requestForm.querySelector('[data-group-type]');
+    const groupName = requestForm.querySelector('[data-group-name]');
     const groupStatus = requestForm.querySelector('[data-group-status]');
-    const noGroupButton = requestForm.querySelector('[data-group-none]');
-    const groupAutocomplete = requestForm.querySelector('[data-group-autocomplete]');
     const individualFields = [...requestForm.querySelectorAll('[data-individual-only]')];
     const groupOnlyFields = [...requestForm.querySelectorAll('[data-group-only]')];
-    const updateTypeFields = () => {
-        clearTimeout(groupSearchTimer);
+    let groupSearchController = null;
+    const selectedGroupId = groupSelects.dataset.selectedGroup;
+    let restoreSelectedGroup = Boolean(selectedGroupId);
+    const groupPlaceholder = groupName.options[0].textContent;
+
+    const loadGroups = async (type) => {
         if (groupSearchController) groupSearchController.abort();
-        groupResults.replaceChildren();
-        closeGroupResults();
+        groupName.replaceChildren(new Option(groupPlaceholder, ''));
+        groupName.disabled = !type;
+        groupStatus.textContent = '';
+        if (!type) return;
+
+        const controller = new AbortController();
+        groupSearchController = controller;
+        groupStatus.textContent = groupSelects.dataset.loading;
+        groupName.disabled = true;
+        try {
+            const params = new URLSearchParams({ request_type: type });
+            const response = await fetch(`${groupSelects.dataset.searchUrl}?${params}`, {
+                headers: { Accept: 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
+                credentials: 'same-origin', signal: controller.signal,
+            });
+            const result = await response.json();
+            if (!response.ok || !result.success || !Array.isArray(result.groups)) throw new Error('group_search_failed');
+            result.groups.forEach((group) => {
+                const english = group.localized_english_name || group.english_name || group.name;
+                const korean = group.localized_korean_name || group.name;
+                const label = korean && korean.toLocaleLowerCase() !== english.toLocaleLowerCase()
+                    ? `${english} · ${korean}`
+                    : english;
+                groupName.add(new Option(label, String(group.idx)));
+            });
+            if (restoreSelectedGroup && selectedGroupId && [...groupName.options].some((option) => option.value === selectedGroupId)) {
+                groupName.value = selectedGroupId;
+            }
+            restoreSelectedGroup = false;
+            groupStatus.textContent = result.groups.length ? '' : groupSelects.dataset.empty;
+        } catch (error) {
+            if (error.name !== 'AbortError') groupStatus.textContent = groupSelects.dataset.error;
+        } finally {
+            if (groupSearchController === controller) {
+                groupName.disabled = false;
+                groupSearchController = null;
+            }
+        }
+    };
+
+    const updateTypeFields = () => {
         const type = typeInputs.find((input) => input.checked)?.value || 'boy';
         const isIndividual = type === 'boy' || type === 'girl';
-        const gender = type.startsWith('boy') ? 'male' : 'female';
         requestForm.classList.toggle('is-group-type', !isIndividual);
         individualFields.forEach((field) => {
             field.hidden = !isIndividual;
@@ -35,158 +75,33 @@ if (requestForm) {
                 if (isIndividual) control.value = '';
             });
         });
-        groupSearch.dataset.requestType = type;
-        if (groupId.value && groupSearch.dataset.selectedGender && groupSearch.dataset.selectedGender !== gender) {
-            clearGroupSelection();
+        const groupTypeValue = isIndividual ? type : '';
+        if (groupType.value !== groupTypeValue) groupType.value = groupTypeValue;
+        groupName.replaceChildren(new Option(groupPlaceholder, ''));
+        groupStatus.textContent = '';
+        if (isIndividual) loadGroups(groupTypeValue);
+    };
+
+    typeInputs.forEach((input) => input.addEventListener('change', () => {
+        restoreSelectedGroup = false;
+        updateTypeFields();
+    }));
+    groupType.addEventListener('change', () => {
+        restoreSelectedGroup = false;
+        const selectedType = groupType.value;
+        const requestType = typeInputs.find((input) => input.checked)?.value;
+        if (selectedType && selectedType !== requestType) {
+            const matchingType = typeInputs.find((input) => input.value === selectedType);
+            if (matchingType) {
+                matchingType.checked = true;
+                matchingType.dispatchEvent(new Event('change', { bubbles: true }));
+                return;
+            }
         }
-    };
-    typeInputs.forEach((input) => input.addEventListener('change', updateTypeFields));
-
-    let groupSearchTimer = null;
-    let groupSearchController = null;
-    let groupActiveIndex = -1;
-
-    const closeGroupResults = () => {
-        groupResults.hidden = true;
-        groupSearch.setAttribute('aria-expanded', 'false');
-        groupSearch.removeAttribute('aria-activedescendant');
-        groupActiveIndex = -1;
-    };
-
-    const clearGroupSelection = (clearText = true) => {
-        groupId.value = '';
-        groupSearch.dataset.selectedGender = '';
-        groupAutocomplete.classList.remove('is-no-group-selected');
-        if (clearText) groupSearch.value = '';
-        closeGroupResults();
-    };
+        loadGroups(selectedType);
+    });
 
     updateTypeFields();
-
-    const displayGroupName = (group) => {
-        const english = (group.english_name || group.name || '').trim();
-        const korean = (group.name || '').trim();
-        return korean && korean.toLocaleLowerCase() !== english.toLocaleLowerCase()
-            ? `${english} · ${korean}`
-            : english || korean;
-    };
-
-    const chooseGroup = (group) => {
-        groupId.value = String(group.idx);
-        groupSearch.dataset.selectedGender = group.gender;
-        groupAutocomplete.classList.remove('is-no-group-selected');
-        groupSearch.value = displayGroupName(group);
-        groupResults.replaceChildren();
-        groupStatus.textContent = window.idolRankingT('group_selected', { name: groupSearch.value });
-        closeGroupResults();
-    };
-
-    const renderGroupResults = (groups) => {
-        const fragment = document.createDocumentFragment();
-        groups.forEach((group) => {
-            const option = document.createElement('button');
-            option.type = 'button';
-            option.className = 'idol-group-result';
-            option.setAttribute('role', 'option');
-            option.setAttribute('aria-selected', 'false');
-            option.id = `idol-group-option-${group.idx}`;
-            option.dataset.groupId = group.idx;
-            option.dataset.groupGender = group.gender;
-            const english = document.createElement('strong');
-            english.textContent = group.english_name || group.name;
-            english.setAttribute('translate', 'no');
-            option.append(english);
-            if (group.name && group.name.toLocaleLowerCase() !== (group.english_name || group.name).toLocaleLowerCase()) {
-                const korean = document.createElement('span');
-                korean.textContent = group.name;
-                korean.setAttribute('translate', 'no');
-                option.append(korean);
-            }
-            option.addEventListener('click', () => chooseGroup(group));
-            fragment.append(option);
-        });
-        groupResults.replaceChildren(fragment);
-        groupResults.hidden = groups.length === 0;
-        groupSearch.setAttribute('aria-expanded', groups.length ? 'true' : 'false');
-        groupStatus.textContent = groups.length ? '' : window.idolRankingT('group_search_empty');
-    };
-
-    const searchGroups = async (term) => {
-        if (groupSearchController) groupSearchController.abort();
-        const controller = new AbortController();
-        groupSearchController = controller;
-        groupStatus.textContent = window.idolRankingT('group_search_loading');
-        groupResults.hidden = true;
-        groupSearch.setAttribute('aria-busy', 'true');
-        try {
-            const params = new URLSearchParams({ request_type: groupSearch.dataset.requestType, q: term });
-            const response = await fetch(`${groupAutocomplete.dataset.searchUrl}?${params}`, {
-                headers: { Accept: 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
-                credentials: 'same-origin', signal: controller.signal,
-            });
-            const result = await response.json();
-            if (!response.ok || !result.success || !Array.isArray(result.groups)) throw new Error('group_search_failed');
-            renderGroupResults(result.groups);
-        } catch (error) {
-            if (error.name !== 'AbortError') {
-                groupResults.replaceChildren();
-                closeGroupResults();
-                groupStatus.textContent = window.idolRankingT('group_search_error');
-            }
-        } finally {
-            if (groupSearchController === controller) groupSearch.removeAttribute('aria-busy');
-        }
-    };
-
-    groupSearch.addEventListener('input', () => {
-        clearTimeout(groupSearchTimer);
-        if (groupSearchController) groupSearchController.abort();
-        clearGroupSelection(false);
-        groupStatus.textContent = '';
-        groupResults.replaceChildren();
-        const term = groupSearch.value.trim();
-        if (!term) return;
-        clearTimeout(groupSearchTimer);
-        groupSearchTimer = setTimeout(() => searchGroups(term), 275);
-    });
-
-    groupSearch.addEventListener('keydown', (event) => {
-        const options = [...groupResults.querySelectorAll('[role="option"]')];
-        if (event.key === 'Escape') {
-            closeGroupResults();
-            return;
-        }
-        if (!options.length || groupResults.hidden) return;
-        if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
-            event.preventDefault();
-            groupActiveIndex = groupActiveIndex < 0
-                ? (event.key === 'ArrowDown' ? 0 : options.length - 1)
-                : (groupActiveIndex + (event.key === 'ArrowDown' ? 1 : -1) + options.length) % options.length;
-            options.forEach((option, index) => option.setAttribute('aria-selected', String(index === groupActiveIndex)));
-            groupSearch.setAttribute('aria-activedescendant', options[groupActiveIndex].id);
-            options[groupActiveIndex].scrollIntoView({ block: 'nearest' });
-        } else if (event.key === 'Enter' && groupActiveIndex >= 0) {
-            event.preventDefault();
-            options[groupActiveIndex].click();
-        }
-    });
-
-    noGroupButton.addEventListener('click', () => {
-        clearTimeout(groupSearchTimer);
-        if (groupSearchController) groupSearchController.abort();
-        groupId.value = '';
-        groupSearch.dataset.selectedGender = '';
-        groupSearch.value = noGroupButton.textContent;
-        groupAutocomplete.classList.add('is-no-group-selected');
-        groupResults.replaceChildren();
-        groupStatus.textContent = '';
-        closeGroupResults();
-    });
-
-    document.addEventListener('pointerdown', (event) => {
-        if (!groupAutocomplete.contains(event.target)) closeGroupResults();
-    });
-
     const intro = requestForm.querySelector('[name="content"]');
     const counter = requestForm.querySelector('[data-intro-count]');
     intro.addEventListener('input', () => { counter.textContent = `${intro.value.length}/1000`; });

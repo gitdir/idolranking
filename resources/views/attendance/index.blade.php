@@ -21,7 +21,7 @@
             <div class="attendance-complete" data-attendance-completed role="status">
                 <strong>{{ __('ui.attendance_complete_today') }}</strong>
                 @if ($todayCheckIn->reward_awarded)
-                    <span>+{{ number_format((int) $todayCheckIn->awarded_hearts) }} Heart</span>
+                    <span><svg class="heart-icon--small" aria-hidden="true"><use href="#icon-heart"/></svg>+{{ number_format((int) $todayCheckIn->awarded_hearts) }}</span>
                 @endif
                 <p class="attendance-complete-message">{{ $todayCheckIn->content }}</p>
             </div>

@@ -47,7 +47,7 @@ $translations = [
     'footer_visitor_statistics' => '방문 통계', 'footer_yesterday_uv' => '어제 UV : :count', 'footer_yesterday_pv' => '어제 PV : :count',
     'footer_today_uv' => '오늘 UV : :count', 'footer_today_pv' => '오늘 PV : :count',
     'today' => '오늘', 'rank' => '순위', 'votes' => '투표', 'vote' => '투표', 'top_voters' => '상위 투표자',
-    'current_month_rank' => '이번 달 순위', 'monthly_votes' => '이번 달 누적 투표', 'total_fan_posts' => '전체 팬 포스트',
+    'current_month_rank' => '월 순위', 'monthly_votes' => '월 누적 투표', 'total_fan_posts' => '팬 포스트',
     'popular_fan_post' => ':name 인기 팬 포스트', 'no_fan_post_images' => '공개된 팬 포스트 이미지가 없습니다.', 'this_month' => '이번 달',
     'recommend' => '추천하기', 'recommendation' => '추천', 'comment' => '댓글', 'write_comment' => '댓글을 입력하세요...',
     'post_comment' => '댓글 등록', 'report' => '신고', 'edit' => '수정', 'delete' => '삭제', 'share' => '공유',

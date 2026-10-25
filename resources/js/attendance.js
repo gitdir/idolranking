@@ -127,7 +127,13 @@ if (checkInForm) {
 
                 if (data.reward_awarded === true && Number.isInteger(Number(data.amount))) {
                     const reward = document.createElement('span');
-                    reward.textContent = `+${new Intl.NumberFormat().format(Number(data.amount))} Heart`;
+                    const heartIcon = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+                    heartIcon.setAttribute('class', 'heart-icon--small');
+                    heartIcon.setAttribute('aria-hidden', 'true');
+                    const heartUse = document.createElementNS('http://www.w3.org/2000/svg', 'use');
+                    heartUse.setAttribute('href', '#icon-heart');
+                    heartIcon.appendChild(heartUse);
+                    reward.append(heartIcon, document.createTextNode(`+${new Intl.NumberFormat().format(Number(data.amount))}`));
                     completedPanel.appendChild(reward);
                 }
 

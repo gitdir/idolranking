@@ -26,10 +26,7 @@
                 </div>
             </div>
 
-            @php($selectedGroupLabel = $selectedGroup ? ($selectedGroup->english_name ?: $selectedGroup->name) : '')
-            @if ($selectedGroup && $selectedGroup->name && mb_strtolower($selectedGroup->name) !== mb_strtolower($selectedGroupLabel))
-                @php($selectedGroupLabel .= ' · '.$selectedGroup->name)
-            @endif
+            @php($selectedGroupType = old('group_type', in_array(old('request_type', 'boy'), ['boy', 'girl'], true) ? old('request_type', 'boy') : ''))
             <div class="idol-request-fields-grid idol-request-check-fields-grid">
             <div class="fan-post-create-field idol-request-name-field idol-request-field-full"><label for="idol-request-english-name">{{ __('ui.english_name') }} <span>*</span></label><div><input id="idol-request-english-name" name="english_name" value="{{ old('english_name') }}" maxlength="200" required placeholder="{{ __('ui.enter_english_name') }}"><div class="idol-duplicate-search-controls"><button type="button" data-duplicate-search-url="{{ route('idol-registration.duplicates') }}" data-duplicate-search>{{ __('ui.idol_duplicate_search') }}</button><span>{{ __('ui.idol_duplicate_search_hint') }}</span></div></div></div>
             <section class="idol-duplicate-panel idol-request-field-full is-neutral" data-duplicate-panel data-state="neutral" aria-live="polite">
@@ -65,15 +62,24 @@
             </div>
             <div class="fan-post-create-field idol-request-name-field idol-request-field-full"><label for="idol-request-name">{{ __('ui.name_korean') }}</label><div><input id="idol-request-name" name="name" value="{{ old('name') }}" maxlength="200" placeholder="{{ __('ui.enter_korean_name') }}"></div></div>
             <div class="fan-post-create-field idol-request-field-full" data-individual-only data-group-field>
-                <label for="idol-request-group-search">{{ __('ui.group') }}</label>
-                <div class="idol-group-autocomplete" data-group-autocomplete data-search-url="{{ route('idol-registration.groups') }}">
-                    <input id="idol-request-group-search" type="search" value="{{ $selectedGroupLabel }}" maxlength="200" autocomplete="off" placeholder="{{ __('ui.group_search_placeholder') }}" role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="idol-group-results" aria-describedby="idol-group-help" aria-label="{{ __('ui.group_search_label') }}" data-selected-gender="{{ $selectedGroup->gender ?? '' }}" data-group-search translate="no">
-                    <input type="hidden" name="group_idx" value="{{ $selectedGroup->idx ?? '' }}" data-group-id>
-                    <button type="button" class="idol-group-no-group" data-group-none>{{ __('ui.no_group_option') }}</button>
-                    <div class="idol-group-results" id="idol-group-results" role="listbox" hidden data-group-results></div>
-                    <small id="idol-group-help">{{ __('ui.group_search_help') }}</small>
-                    <p class="idol-group-search-status" aria-live="polite" data-group-status></p>
+                <div class="idol-request-group-selects" data-group-selects data-search-url="{{ route('idol-registration.groups') }}" data-selected-group="{{ $selectedGroup->idx ?? '' }}" data-loading="{{ __('ui.group_search_loading') }}" data-empty="{{ __('ui.group_search_empty') }}" data-error="{{ __('ui.group_search_error') }}">
+                    <label for="idol-request-group-type">{{ __('ui.idol_group_type_label') }}
+                        <select id="idol-request-group-type" class="fan-post-sort-select" name="group_type" data-group-type>
+                            <option value="" @selected($selectedGroupType === '')>{{ __('ui.select_idol_group_type') }}</option>
+                            <option value="boy" @selected($selectedGroupType === 'boy')>{{ __('ui.boy_group') }}</option>
+                            <option value="girl" @selected($selectedGroupType === 'girl')>{{ __('ui.girl_group') }}</option>
+                        </select>
+                    </label>
+                    <label for="idol-request-group-name">{{ __('ui.idol_group_name_label') }}
+                        <select id="idol-request-group-name" class="fan-post-sort-select" name="group_idx" data-group-name disabled>
+                            <option value="">{{ __('ui.select_idol_group') }}</option>
+                            @if ($selectedGroup)
+                                <option value="{{ $selectedGroup->idx }}" selected>{{ $selectedGroup->english_name ?: $selectedGroup->name }}@if($selectedGroup->name && mb_strtolower($selectedGroup->name) !== mb_strtolower($selectedGroup->english_name ?: $selectedGroup->name)) · {{ $selectedGroup->name }}@endif</option>
+                            @endif
+                        </select>
+                    </label>
                 </div>
+                <small class="idol-group-search-status" aria-live="polite" data-group-status></small>
             </div>
             <div class="fan-post-create-field" data-individual-only><label for="idol-request-birth-date">{{ __('ui.profile_label_date_of_birth') }}</label><div>@include('partials.localized-date-input', ['id' => 'idol-request-birth-date', 'name' => 'birth_date', 'value' => old('birth_date', ''), 'max' => now()->toDateString(), 'locale' => app()->getLocale(), 'ariaLabel' => __('ui.profile_label_date_of_birth')])</div></div>
             <div class="fan-post-create-field" data-individual-only><label for="idol-request-height">{{ __('ui.height_cm') }}</label><div><input id="idol-request-height" type="number" name="height_cm" value="{{ old('height_cm') }}" min="50" max="300" step="0.1" placeholder="e.g. 178"></div></div>

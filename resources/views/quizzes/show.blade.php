@@ -184,7 +184,7 @@
                     <div class="post-statistics quiz-list-card-statistics">
                         @if($showQuizStatistics)
                             <span class="post-stat post-stat--views" aria-label="{{ __('ui.views_aria', ['amount' => number_format($quizViewCount)]) }}" title="{{ __('ui.views_aria', ['amount' => number_format($quizViewCount)]) }}"><svg aria-hidden="true"><use href="#icon-eye"/></svg><span>{{ number_format($quizViewCount) }}</span></span>
-                            <span class="post-stat post-stat--comments" aria-label="{{ __('quiz.participants_count_aria', ['count' => number_format($quizParticipantCount)]) }}" title="{{ __('quiz.participants_count_aria', ['count' => number_format($quizParticipantCount)]) }}"><svg aria-hidden="true"><use href="#icon-users"/></svg><span>{{ number_format($quizParticipantCount) }}</span></span>
+                            <span class="post-stat post-stat--comments" aria-label="{{ __('quiz.participants_count_aria', ['count' => number_format($quizParticipantCount)]) }}" title="{{ __('quiz.participants_count_aria', ['count' => number_format($quizParticipantCount)]) }}"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="7" r="4"/><path d="M4 21a8 8 0 0 1 16 0Z"/></svg><span>{{ number_format($quizParticipantCount) }}</span></span>
                         @endif
                         <span class="post-stat post-stat--recommendations" aria-label="{{ __('ui.recommendations_aria', ['amount' => number_format($quizLikeCount)]) }}" title="{{ __('ui.recommendations_aria', ['amount' => number_format($quizLikeCount)]) }}"><svg aria-hidden="true"><use href="#icon-recommend"/></svg><span>{{ number_format($quizLikeCount) }}</span></span>
                     </div>

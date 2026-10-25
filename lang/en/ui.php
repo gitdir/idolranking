@@ -47,7 +47,7 @@ $translations = [
     'footer_visitor_statistics' => 'Visitor statistics', 'footer_yesterday_uv' => 'Yesterday UV : :count', 'footer_yesterday_pv' => 'Yesterday PV : :count',
     'footer_today_uv' => 'Today UV : :count', 'footer_today_pv' => 'Today PV : :count',
     'today' => 'Today', 'rank' => 'Rank', 'votes' => 'Votes', 'vote' => 'Vote', 'top_voters' => 'Top Voters',
-    'current_month_rank' => 'Current Monthly Rank', 'monthly_votes' => 'Monthly Cumulative Votes', 'total_fan_posts' => 'Total Fan Posts',
+    'current_month_rank' => 'Monthly Rank', 'monthly_votes' => 'Monthly Votes', 'total_fan_posts' => 'Fan Posts',
     'popular_fan_post' => 'Popular Fan Post for :name', 'no_fan_post_images' => 'No public Fan Post images yet.', 'this_month' => 'This Month',
     'recommend' => 'Recommend', 'recommendation' => 'Recommendation', 'comment' => 'Comment', 'write_comment' => 'Write a comment...',
     'post_comment' => 'Post Comment', 'report' => 'Report', 'edit' => 'Edit', 'delete' => 'Delete', 'share' => 'Share',

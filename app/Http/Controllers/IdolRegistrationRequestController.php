@@ -32,9 +32,10 @@ class IdolRegistrationRequestController extends Controller
     public function create(Request $request, HeartRewardManager $heartRewards)
     {
         $requestType = (string) old('request_type', 'boy');
+        $selectedGroupType = (string) old('group_type', in_array($requestType, ['boy', 'girl'], true) ? $requestType : '');
         $selectedGroup = null;
-        if (in_array($requestType, ['boy', 'girl'], true) && ctype_digit((string) old('group_idx'))) {
-            $gender = $requestType === 'boy' ? 'male' : 'female';
+        if (in_array($selectedGroupType, ['boy', 'girl'], true) && ctype_digit((string) old('group_idx'))) {
+            $gender = $selectedGroupType === 'boy' ? 'male' : 'female';
             $selectedGroup = DB::table('idols')->where('idx', old('group_idx'))
                 ->where('type', 'group')->where('gender', $gender)->where('status', 'active')
                 ->first(['idx', 'name', 'english_name', 'gender']);
@@ -50,22 +51,24 @@ class IdolRegistrationRequestController extends Controller
     {
         $validated = $request->validate([
             'request_type' => ['required', Rule::in(['boy', 'girl'])],
-            'q' => ['required', 'string', 'min:1', 'max:200'],
+            'q' => ['nullable', 'string', 'max:200'],
         ]);
 
         $gender = $validated['request_type'] === 'boy' ? 'male' : 'female';
-        $term = trim($validated['q']);
-        $like = '%'.str_replace(['\\', '%', '_'], ['\\\\', '\\%', '\\_'], mb_strtolower($term)).'%';
-        $nameLike = '%'.str_replace(['\\', '%', '_'], ['\\\\', '\\%', '\\_'], $term).'%';
-        $groups = DB::table('idols')
+        $term = trim((string) ($validated['q'] ?? ''));
+        $query = DB::table('idols')
             ->leftJoin('idol_localizations as group_en', function ($join): void {
                 $join->on('group_en.idol_idx', '=', 'idols.idx')->where('group_en.language_code', '=', 'en');
             })
             ->leftJoin('idol_localizations as group_ko', function ($join): void {
                 $join->on('group_ko.idol_idx', '=', 'idols.idx')->where('group_ko.language_code', '=', 'ko');
             })
-            ->where('type', 'group')->where('gender', $gender)->where('status', 'active')
-            ->where(function ($query) use ($like, $nameLike): void {
+            ->where('idols.type', 'group')->where('idols.gender', $gender)->where('idols.status', 'active');
+
+        if ($term !== '') {
+            $like = '%'.str_replace(['\\', '%', '_'], ['\\\\', '\\%', '\\_'], mb_strtolower($term)).'%';
+            $nameLike = '%'.str_replace(['\\', '%', '_'], ['\\\\', '\\%', '\\_'], $term).'%';
+            $query->where(function ($query) use ($like, $nameLike): void {
                 $query->whereRaw('LOWER(idols.english_name) LIKE ?', [$like])
                     ->orWhere('idols.name', 'like', $nameLike)
                     ->orWhereRaw('LOWER(group_en.localized_name) LIKE ?', [$like])
@@ -73,10 +76,12 @@ class IdolRegistrationRequestController extends Controller
                     ->orWhereExists(fn ($aliases) => $aliases->selectRaw('1')->from('idol_name_aliases as group_alias')
                         ->whereColumn('group_alias.idol_idx', 'idols.idx')
                         ->whereRaw('LOWER(group_alias.alias_name) LIKE ?', [$like]));
-            })
-            ->orderByRaw('CASE WHEN LOWER(idols.english_name) = ? OR LOWER(idols.name) = ? OR LOWER(group_en.localized_name) = ? OR LOWER(group_ko.localized_name) = ? THEN 0 ELSE 1 END', [mb_strtolower($term), mb_strtolower($term), mb_strtolower($term), mb_strtolower($term)])
-            ->orderBy('idols.english_name')->orderBy('idols.name')->orderBy('idols.idx')
-            ->limit(10)->get([
+            });
+            $query->orderByRaw('CASE WHEN LOWER(idols.english_name) = ? OR LOWER(idols.name) = ? OR LOWER(group_en.localized_name) = ? OR LOWER(group_ko.localized_name) = ? THEN 0 ELSE 1 END', [mb_strtolower($term), mb_strtolower($term), mb_strtolower($term), mb_strtolower($term)])
+                ->limit(10);
+        }
+
+        $groups = $query->orderBy('idols.english_name')->orderBy('idols.name')->orderBy('idols.idx')->get([
                 'idols.idx', 'idols.name', 'idols.english_name', 'idols.gender',
                 'group_en.localized_name as localized_english_name', 'group_ko.localized_name as localized_korean_name',
             ]);
@@ -150,6 +155,7 @@ class IdolRegistrationRequestController extends Controller
         if ($isGroup) {
             $request->merge([
                 'group_idx' => null,
+                'group_type' => null,
                 'birth_date' => null,
                 'height_cm' => null,
                 'weight_kg' => null,
@@ -167,6 +173,7 @@ class IdolRegistrationRequestController extends Controller
             'name' => ['nullable', 'string', 'max:200'],
             'english_name' => ['required', 'string', 'min:2', 'max:200', IdolDuplicateMatcher::englishNameRule()],
             'group_idx' => ['nullable', 'integer'],
+            'group_type' => ['nullable', Rule::in(['boy', 'girl'])],
             'birth_date' => ['nullable', 'date', 'before_or_equal:today'],
             'height_cm' => ['nullable', 'numeric', 'between:50,300'],
             'weight_kg' => ['nullable', 'numeric', 'between:10,500'],
@@ -211,6 +218,10 @@ class IdolRegistrationRequestController extends Controller
 
         $gender = str_starts_with($requestType, 'boy') ? 'male' : 'female';
         if (!$isGroup && !empty($validated['group_idx'])) {
+            $selectedGender = ($validated['group_type'] ?? null) === 'boy' ? 'male' : 'female';
+            if (isset($validated['group_type']) && (!in_array($validated['group_type'], ['boy', 'girl'], true) || $selectedGender !== $gender)) {
+                return back()->withInput()->withErrors(['group_idx' => __('messages.idol_group_type_mismatch')]);
+            }
             $validGroup = DB::table('idols')->where('idx', $validated['group_idx'])
                 ->where('type', 'group')->where('gender', $gender)->where('status', 'active')->exists();
             if (!$validGroup) {

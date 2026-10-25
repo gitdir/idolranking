@@ -154,6 +154,7 @@ class IdolRegistrationRequestTest extends TestCase
         $this->withSession(['member_idx' => 7, 'idol_registration_request_key' => $key])
             ->post('/idol-registration/request', [
                 'request_key' => $key, 'request_type' => 'girl', 'english_name' => 'Fallback Idol', 'source_language_code' => 'en',
+                'group_type' => 'girl',
                 'duplicate_search_token' => $this->duplicateSearchToken('girl', 'Fallback Idol'),
                 'content' => 'Introduction', 'profile_image' => UploadedFile::fake()->image('profile.png'),
             ])->assertRedirect(route('idol-registration.create'));
@@ -161,6 +162,7 @@ class IdolRegistrationRequestTest extends TestCase
         $saved = DB::table('idol_registration_requests')->first();
         $this->assertSame('Fallback Idol', $saved->name);
         $this->assertSame('Fallback Idol', $saved->english_name);
+        $this->assertNull($saved->group_idx);
         $this->assertSame(0, DB::table('idol_registration_request_debuts')->count());
         $this->assertDatabaseHas('idol_registration_request_localizations', [
             'request_idx' => $saved->idx, 'language_code' => 'en', 'text_role' => 'submitted', 'description' => 'Introduction',
@@ -280,7 +282,7 @@ class IdolRegistrationRequestTest extends TestCase
                 'data-duplicate-panel',
                 'name="source_language_code"',
                 'name="name"',
-                'data-group-autocomplete',
+                'data-group-selects',
             ], false)
             ->assertSee('data-duplicate-other-section', false)
             ->assertSee('value="ko" selected', false)
@@ -956,7 +958,7 @@ class IdolRegistrationRequestTest extends TestCase
             ->assertOk()->assertJsonCount(10, 'groups');
     }
 
-    public function test_group_search_rejects_group_categories_and_requires_a_search_term(): void
+    public function test_group_search_rejects_group_categories_and_lists_active_groups_without_a_term(): void
     {
         $this->database();
 
@@ -964,8 +966,8 @@ class IdolRegistrationRequestTest extends TestCase
             'request_type' => 'girl_group', 'q' => 'demo',
         ]))->assertUnprocessable()->assertJsonValidationErrors('request_type');
 
-        $this->getJson(route('idol-registration.groups', ['request_type' => 'girl', 'q' => '']))
-            ->assertUnprocessable()->assertJsonValidationErrors('q');
+        $this->getJson(route('idol-registration.groups', ['request_type' => 'girl']))
+            ->assertOk()->assertJsonCount(1, 'groups')->assertJsonPath('groups.0.idx', 5);
     }
 
     public function test_inactive_or_non_group_selection_is_rejected(): void
@@ -984,6 +986,24 @@ class IdolRegistrationRequestTest extends TestCase
         $this->assertSame(0, DB::table('idol_registration_requests')->count());
     }
 
+    public function test_selected_group_type_must_match_the_individual_registration_type(): void
+    {
+        $this->database();
+        Storage::fake('public');
+        $key = str_repeat('5', 64);
+        $image = UploadedFile::fake()->createWithContent('profile.png', file_get_contents(base_path('tests/Fixtures/quiz-image.png')));
+
+        $this->from('/idol-registration/request')->withSession([
+            'member_idx' => 7, 'idol_registration_request_key' => $key,
+        ])->post('/idol-registration/request', [
+            'request_key' => $key, 'request_type' => 'girl', 'group_type' => 'boy', 'group_idx' => 5,
+            'english_name' => 'Mismatched Group Type Test', 'content' => 'Introduction',
+            'source_language_code' => 'en', 'profile_image' => $image,
+        ])->assertSessionHasErrors('group_idx');
+
+        $this->assertSame(0, DB::table('idol_registration_requests')->count());
+    }
+
     public function test_selected_group_is_restored_after_validation_errors(): void
     {
         $this->database();
@@ -997,8 +1017,9 @@ class IdolRegistrationRequestTest extends TestCase
         ])->assertSessionHasErrors('content');
 
         $this->get('/idol-registration/request')->assertOk()
-            ->assertSee('value="Demo Group"', false)
-            ->assertSee('name="group_idx" value="5"', false);
+            ->assertSee('<option value="5" selected>Demo Group</option>', false)
+            ->assertSee('name="group_type"', false)
+            ->assertSee('name="group_idx"', false);
     }
 
     public function test_submission_rejects_an_exact_active_duplicate(): void

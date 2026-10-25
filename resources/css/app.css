@@ -1940,7 +1940,8 @@ select.fan-post-sort-select, .country-picker-trigger.fan-post-sort-select { padd
 .attendance-guest-prompt p, .attendance-composer-message { margin: 0; color: #65799f; font-size: 14px; line-height: 1.5; }
 .attendance-complete { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 5px 12px; padding: 13px 15px; border-radius: 8px; background: #f1fbf6; color: #2b7651; }
 .attendance-complete strong { font-size: 14px; }
-.attendance-complete span { color: #e03e8b; font-size: 16px; font-weight: 800; }
+.attendance-complete span { display: inline-flex; align-items: center; justify-self: end; align-self: center; gap: 4px; color: #e03e8b; font-size: 16px; font-weight: 800; white-space: nowrap; }
+.attendance-complete span .heart-icon--small { width: 16px; height: 16px; flex-basis: 16px; }
 .attendance-complete-message { grid-column: 1 / -1; margin: 0; color: #536f63; font-size: 13px; line-height: 1.45; overflow-wrap: anywhere; white-space: pre-wrap; }
 .attendance-feed .attendance-section-heading { margin-bottom: 14px; }
 .attendance-grid { column-count: 4; column-width: 245px; column-gap: 14px; column-fill: balance; }
@@ -2086,18 +2087,9 @@ html.invite-friends-open { overflow: hidden; }
 .idol-request-source-language-field select { max-width: 260px; }
 .idol-request-introduction-field { grid-template-columns: minmax(0, 1fr); gap: 7px; }
 .idol-request-introduction-field > label { padding-top: 0; }
-.idol-group-autocomplete { position: relative; display: grid; justify-items: start; gap: 8px; min-width: 0; }
-.idol-group-autocomplete > [data-group-search] { padding-right: 104px; }
-.idol-group-autocomplete.is-no-group-selected > [data-group-search] { padding-right: 36px; }
-.idol-group-no-group { position: absolute; top: 4px; right: 4px; min-height: 36px; padding: 6px 10px; border: 1px solid #d8e0f2; border-radius: 7px; background: #fff; color: #53678e; font: inherit; font-size: 12px; font-weight: 700; cursor: pointer; }
-.idol-group-autocomplete.is-no-group-selected > [data-group-none] { display: none; }
-.idol-group-no-group:hover, .idol-group-no-group:focus-visible { border-color: #ff91bf; background: #fff5fa; color: #d92578; }
-.idol-group-results { position: absolute; z-index: 12; top: 52px; right: 0; left: 0; max-height: 260px; overflow-y: auto; border: 1px solid #d8e0f2; border-radius: 8px; background: #fff; box-shadow: 0 8px 24px rgba(20, 43, 91, .14); }
-.idol-group-result { display: grid; gap: 2px; width: 100%; padding: 10px 12px; border: 0; border-bottom: 1px solid #edf0f6; background: #fff; color: #17346f; font: inherit; text-align: left; cursor: pointer; }
-.idol-group-result:last-child { border-bottom: 0; }
-.idol-group-result:hover, .idol-group-result:focus-visible, .idol-group-result[aria-selected="true"] { outline: 0; background: #fff4f9; }
-.idol-group-result strong { font-size: 13px; }
-.idol-group-result span { color: #7185ad; font-size: 12px; }
+.idol-request-group-selects { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 2fr); align-items: start; gap: 14px; min-width: 0; }
+.idol-request-group-selects > label { display: grid; gap: 7px; min-width: 0; color: #385487; font-size: 13px; font-weight: 700; }
+.idol-request-group-selects select { width: 100%; min-width: 0; min-height: 42px; }
 .idol-group-search-status { margin: 0; color: #6278a7; font-size: 12px; }
 .idol-group-search-status:empty { display: none; }
 .idol-request-field-full, [data-idol-request-form].is-group-type [data-group-full] { grid-column: 1 / -1; }
@@ -2136,6 +2128,7 @@ html.invite-friends-open { overflow: hidden; }
     .drawer-invite-chevron { width: 14px; height: 14px; fill: none; stroke: #17366e; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
     .idol-request-type-options { grid-template-columns: repeat(2, minmax(0, 1fr)); }
     .idol-request-fields-grid { grid-template-columns: minmax(0, 1fr); gap: 16px; }
+    .idol-request-group-selects { grid-template-columns: minmax(0, 1fr); gap: 12px; }
     .idol-debut-date-row { grid-template-columns: minmax(0, 1fr) 32px; }
     .idol-debut-date-row .country-picker { grid-column: 1 / -1; }
     .idol-duplicate-card-list { grid-template-columns: minmax(0, 1fr); }
