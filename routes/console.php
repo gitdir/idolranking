@@ -20,3 +20,6 @@ Schedule::call(function (): void {
 })->dailyAt('03:20')->name('member-access-log-retention')->withoutOverlapping();
 
 Schedule::command('fan-posts:publish-queued')->everyMinute()->name('fan-post-distribution')->withoutOverlapping();
+
+Schedule::command('quizzes:settle-weekly-ranking')->mondays()->at('00:05')
+    ->timezone('Asia/Seoul')->name('quiz-weekly-ranking-settlement')->withoutOverlapping();

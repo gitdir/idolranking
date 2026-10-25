@@ -41,7 +41,7 @@
         <div class="get-hearts-list">
             @foreach($activities as $activity)
                 @php($complete = $activity->daily_limit > 0 && $activity->progress !== null && $activity->progress >= $activity->daily_limit)
-                <article class="get-hearts-activity{{ !$activity->is_enabled ? ' is-disabled' : '' }}" @if($activity->code === 'daily_attendance') data-daily-check-in-card @endif>
+                <article class="get-hearts-activity{{ !$activity->is_enabled ? ' is-disabled' : '' }}{{ $activity->code === 'quiz_weekly_rank_rewards' ? ' get-hearts-activity--weekly-quiz-reward' : '' }}" @if($activity->code === 'daily_attendance') data-daily-check-in-card @endif>
                     <div class="get-hearts-activity-main">
                         <span class="get-hearts-activity-icon get-hearts-activity-icon--{{ $activity->icon }}" aria-hidden="true">
                             @switch($activity->icon)
@@ -58,8 +58,8 @@
                         <span><strong>{{ $activity->name }}</strong><small>{{ $activity->description }}</small></span>
                     </div>
                     <div class="get-hearts-reward">
-                        <strong><svg class="heart-icon--large" aria-hidden="true"><use href="#icon-heart"/></svg>@if($activity->code === 'comment_create' && $activity->min_heart_amount !== $activity->max_heart_amount)+{{ number_format($activity->min_heart_amount) }}~{{ number_format($activity->max_heart_amount) }}@elseif($activity->code === 'daily_attendance' && $activity->min_heart_amount !== $activity->max_heart_amount)+{{ number_format($activity->min_heart_amount) }}~{{ number_format($activity->max_heart_amount) }}@else+{{ number_format($activity->heart_amount) }}@endif</strong>
-                        <small>@if(!$activity->is_enabled){{ __('ui.unavailable') }} @elseif($activity->daily_limit > 0){{ __('ui.per_day', ['limit' => number_format($activity->daily_limit)]) }} @else {{ __('ui.no_daily_limit') }} @endif</small>
+                        <strong><svg class="heart-icon--large" aria-hidden="true"><use href="#icon-heart"/></svg>@if(in_array($activity->code, ['quiz_creator_reward', 'quiz_weekly_rank_rewards'], true)){{ $activity->reward_amount_label }}@elseif(in_array($activity->code, ['comment_create', 'daily_attendance', 'quiz_perfect'], true) && $activity->min_heart_amount !== $activity->max_heart_amount)+{{ number_format($activity->min_heart_amount) }}~{{ number_format($activity->max_heart_amount) }}@else+{{ number_format($activity->heart_amount) }}@endif</strong>
+                        <small>@if(!$activity->is_enabled){{ __('ui.unavailable') }} @elseif($activity->code === 'quiz_weekly_rank_rewards'){{ __('quiz.weekly_creator_rewards_frequency') }} @elseif($activity->code === 'quiz_perfect'){{ __('ui.quiz_perfect_reward_scope') }} @elseif($activity->code === 'quiz_creator_reward'){{ __('ui.quiz_creator_reward_scope') }} @elseif($activity->daily_limit > 0){{ __('ui.per_day', ['limit' => number_format($activity->daily_limit)]) }} @else {{ __('ui.no_daily_limit') }} @endif</small>
                     </div>
                     @if($activity->daily_limit > 0)
                         <div class="get-hearts-progress">
@@ -74,11 +74,15 @@
                                 @endif
                             @endif
                         </div>
+                    @elseif($activity->code === 'quiz_perfect')
+                        <p class="get-hearts-activity-note">{{ __('ui.quiz_perfect_daily_rule') }}</p>
+                    @elseif($activity->code === 'quiz_creator_reward')
+                        <p class="get-hearts-activity-note">{{ __('ui.quiz_creator_reward_rule') }}</p>
                     @elseif($activity->code === 'invite_friend')
                         <p class="get-hearts-activity-note">@if($activity->is_enabled){{ __('ui.invite_reward_description', ['amount' => number_format($activity->heart_amount)]) }}@else {{ __('ui.activity_unavailable') }}@endif</p>
                     @elseif($activity->code === 'idol_registration_approved')
-                        <p class="get-hearts-activity-note">@if($activity->is_enabled)When your idol or group registration is approved, you will receive {{ number_format($activity->heart_amount) }} Hearts.@else This activity is currently unavailable.@endif</p>
-                    @else
+                        <p class="get-hearts-activity-note">@if($activity->is_enabled){{ __('ui.idol_registration_reward_description', ['amount' => number_format($activity->heart_amount)]) }}@else {{ __('ui.activity_unavailable') }}@endif</p>
+                    @elseif($activity->code !== 'quiz_weekly_rank_rewards')
                         <div class="get-hearts-progress">
                             <span class="get-hearts-unlimited">@if($activity->is_enabled)??<small>{{ __('ui.no_daily_limit') }}</small>@else<small>{{ __('ui.unavailable') }}</small>@endif</span>
                         </div>
@@ -88,6 +92,12 @@
                             data-signed-in="{{ $member ? 'true' : 'false' }}"
                             @unless($member) data-sign-in-open aria-controls="sign-in-modal" @else aria-controls="invite-friends-dialog" @endunless
                             aria-haspopup="dialog">{{ $member ? __('ui.share_invitation') : __('ui.sign_in') }}</button>
+                    @elseif($activity->code === 'quiz_perfect')
+                        <a class="get-hearts-action" href="{{ route('quizzes.index') }}">{{ __('ui.solve_quizzes') }}</a>
+                    @elseif($activity->code === 'quiz_creator_reward')
+                        <a class="get-hearts-action" href="{{ route('quizzes.create') }}">{{ __('ui.create_quiz') }}</a>
+                    @elseif($activity->code === 'quiz_weekly_rank_rewards')
+                        <a class="get-hearts-action" href="{{ route('quizzes.index') }}">{{ __('quiz.weekly_creator_rewards_action') }}</a>
                     @elseif($activity->code === 'watch_ads')
                         @if(!$activity->is_enabled)
                             <span class="get-hearts-status get-hearts-status--muted">{{ __('ui.unavailable') }}</span>

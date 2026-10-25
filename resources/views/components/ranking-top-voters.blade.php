@@ -8,9 +8,9 @@
             <li class="ranking-voter">
                 <x-ranking-badge :rank="$loop->iteration" />
                 @if (! empty($voter['member_code']))
-                    <a class="ranking-voter-avatar-link" href="{{ route('member.fan-posts', ['member_code' => $voter['member_code']]) }}" aria-label="{{ __('ui.member_fan_posts_label', ['name' => $voter['nickname']]) }}">
+                    <x-member-link :member-code="$voter['member_code']" :label="__('ui.member_fan_posts_label', ['name' => $voter['nickname']])" class="ranking-voter-avatar-link">
                         <img class="ranking-voter-avatar" src="{{ \App\Support\ManagedImageStorage::publicUrl($voter['image_url'] ?? null) }}" width="56" height="56" alt="" loading="lazy">
-                    </a>
+                    </x-member-link>
                 @else
                     <img class="ranking-voter-avatar" src="{{ \App\Support\ManagedImageStorage::publicUrl($voter['image_url'] ?? null) }}" width="56" height="56" alt="" loading="lazy">
                 @endif
@@ -19,7 +19,7 @@
                         <h3 translate="no">
                             <x-country-flag :code="$voter['country_code'] ?? null" />
                             @if (! empty($voter['member_code']))
-                                <a class="ranking-voter-name-link" href="{{ route('member.fan-posts', ['member_code' => $voter['member_code']]) }}">{{ $voter['nickname'] }}</a>
+                                <x-member-link :member-code="$voter['member_code']" class="ranking-voter-name-link">{{ $voter['nickname'] }}</x-member-link>
                             @else
                                 <span class="ranking-voter-name-link">{{ $voter['nickname'] }}</span>
                             @endif

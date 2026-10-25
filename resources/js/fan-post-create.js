@@ -1,5 +1,17 @@
 import { initSquareImageCrop } from './square-image-crop';
 
+document.addEventListener('click', (event) => {
+    const toggle = event.target.closest('[data-registration-toggle]');
+    if (!toggle) return;
+
+    const registrationHelp = toggle.closest('[data-idol-registration-help]');
+    const panel = registrationHelp?.querySelector('[data-registration-panel]');
+    if (!panel) return;
+
+    panel.hidden = !panel.hidden;
+    toggle.setAttribute('aria-expanded', String(!panel.hidden));
+});
+
 const form = document.querySelector('[data-fan-post-create]');
 
 if (form) {
@@ -8,8 +20,6 @@ if (form) {
         const categoryInputs = [...categoryOptions.querySelectorAll('[name="idol_category"]')];
         const idolSelect = form.querySelector('[data-idol-select]');
         const dependentFields = form.querySelector('[data-dependent-fields]');
-        const registrationToggle = form.querySelector('[data-registration-toggle]');
-        const registrationPanel = form.querySelector('[data-registration-panel]');
         const setDependentFields = (visible) => {
             dependentFields.hidden = !visible;
             dependentFields.querySelectorAll('input, select, textarea, button').forEach((control) => {
@@ -62,11 +72,6 @@ if (form) {
             const hasSelection = Boolean(idolSelect.value);
             setDependentFields(hasSelection);
         });
-        registrationToggle.addEventListener('click', () => {
-            registrationPanel.hidden = !registrationPanel.hidden;
-            registrationToggle.setAttribute('aria-expanded', String(!registrationPanel.hidden));
-        });
-
         const selectedCategory = categoryInputs.find((input) => input.checked)?.value;
         const hasSelection = Boolean(selectedCategory && idolSelect.value);
         setDependentFields(Boolean(selectedCategory && hasSelection));

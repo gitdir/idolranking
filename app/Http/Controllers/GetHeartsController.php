@@ -23,6 +23,13 @@ class GetHeartsController extends Controller
             'watch_ads' => ['name' => __('ui.activity_watch_ads'), 'description' => __('ui.activity_watch_ads_desc'), 'icon' => 'play'],
             'fan_post_create' => ['name' => __('ui.activity_fan_post'), 'description' => __('ui.activity_fan_post_desc'), 'icon' => 'post'],
             'comment_create' => ['name' => __('ui.activity_comment'), 'description' => __('ui.activity_comment_desc'), 'icon' => 'comment'],
+            'quiz_creator_reward_1' => ['name' => __('ui.activity_quiz_creator_reward_1'), 'description' => __('ui.activity_quiz_creator_reward_1_desc'), 'icon' => 'post'],
+            'quiz_creator_reward_2' => ['name' => __('ui.activity_quiz_creator_reward_2'), 'description' => __('ui.activity_quiz_creator_reward_2_desc'), 'icon' => 'post'],
+            'quiz_creator_reward_3' => ['name' => __('ui.activity_quiz_creator_reward_3'), 'description' => __('ui.activity_quiz_creator_reward_3_desc'), 'icon' => 'post'],
+            'quiz_perfect' => ['name' => __('ui.activity_quiz_perfect'), 'description' => __('ui.activity_quiz_perfect_desc'), 'icon' => 'play'],
+            'quiz_weekly_rank_1' => ['name' => __('quiz.weekly_reward_activity_1'), 'description' => __('quiz.weekly_reward_activity_desc'), 'icon' => 'play'],
+            'quiz_weekly_rank_2' => ['name' => __('quiz.weekly_reward_activity_2'), 'description' => __('quiz.weekly_reward_activity_desc'), 'icon' => 'play'],
+            'quiz_weekly_rank_3' => ['name' => __('quiz.weekly_reward_activity_3'), 'description' => __('quiz.weekly_reward_activity_desc'), 'icon' => 'play'],
             'fan_post_recommend_received' => ['name' => __('ui.activity_recommend'), 'description' => __('ui.activity_recommend_desc'), 'icon' => 'recommend'],
             'invite_friend' => ['name' => __('ui.activity_invite'), 'description' => __('ui.activity_invite_desc'), 'icon' => 'invite'],
             'idol_registration_approved' => ['name' => __('ui.activity_idol_registration'), 'description' => __('ui.activity_idol_registration_desc'), 'icon' => 'crown'],
@@ -54,7 +61,8 @@ class GetHeartsController extends Controller
         $activities = collect($definitions)->map(function (array $display, string $code) use ($settings, $todayCounts, $member) {
             $definition = HeartRewardManager::ACTIONS[$code];
             $setting = $settings->get($code);
-            $limit = $code === 'daily_attendance' ? 1 : max(0, (int) ($setting?->daily_limit ?? 0));
+            $limit = $code === 'daily_attendance' ? 1
+                : ($definition['limit_type'] === 'daily' ? max(0, (int) ($setting?->daily_limit ?? 0)) : 0);
             $progress = $member === null ? null : (int) $todayCounts->get($definition['reason'], 0);
 
             return (object) ($display + [
@@ -68,6 +76,73 @@ class GetHeartsController extends Controller
                 'progress_percent' => $limit > 0 && $progress !== null ? min(100, $progress / $limit * 100) : 0,
             ]);
         })->values();
+
+        $creatorRewardActivities = $activities->filter(
+            fn (object $activity) => str_starts_with($activity->code, 'quiz_creator_reward_')
+        );
+        if ($creatorRewardActivities->isNotEmpty()) {
+            $rewardLabels = $creatorRewardActivities->map(fn (object $activity) => $activity->is_enabled
+                ? '+'.number_format($activity->heart_amount)
+                : __('ui.unavailable'))->all();
+            $activities = $activities->reject(
+                fn (object $activity) => str_starts_with($activity->code, 'quiz_creator_reward_')
+            )->push((object) [
+                'code' => 'quiz_creator_reward',
+                'name' => __('ui.activity_quiz_creator_reward'),
+                'description' => __('ui.activity_quiz_creator_reward_desc'),
+                'icon' => 'post',
+                'heart_amount' => 0,
+                'min_heart_amount' => 0,
+                'max_heart_amount' => 0,
+                'reward_amount_label' => implode(' / ', $rewardLabels),
+                'daily_limit' => 0,
+                'is_enabled' => $creatorRewardActivities->contains(fn (object $activity) => $activity->is_enabled),
+                'progress' => null,
+                'progress_percent' => 0,
+            ])->values();
+        }
+
+        $weeklyQuizRewardActivities = $activities->filter(
+            fn (object $activity) => in_array($activity->code, ['quiz_weekly_rank_1', 'quiz_weekly_rank_2', 'quiz_weekly_rank_3'], true)
+        );
+        if ($weeklyQuizRewardActivities->isNotEmpty()) {
+            $weeklyQuizRewardActivities = collect([1, 2, 3])->map(
+                fn (int $rank) => $weeklyQuizRewardActivities->firstWhere('code', 'quiz_weekly_rank_'.$rank)
+            );
+            $weeklyRewardLabels = $weeklyQuizRewardActivities->map(fn (?object $activity) => '+'.number_format((int) ($activity?->heart_amount ?? 0)))->all();
+            $activities = $activities->reject(
+                fn (object $activity) => in_array($activity->code, ['quiz_weekly_rank_1', 'quiz_weekly_rank_2', 'quiz_weekly_rank_3'], true)
+            )->push((object) [
+                'code' => 'quiz_weekly_rank_rewards',
+                'name' => __('quiz.weekly_creator_rewards_title'),
+                'description' => __('quiz.weekly_creator_rewards_description'),
+                'icon' => 'play',
+                'heart_amount' => 0,
+                'min_heart_amount' => 0,
+                'max_heart_amount' => 0,
+                'reward_amount_label' => implode(' / ', $weeklyRewardLabels),
+                'daily_limit' => 0,
+                'is_enabled' => $weeklyQuizRewardActivities->contains(fn (?object $activity) => $activity !== null && $activity->is_enabled),
+                'progress' => null,
+                'progress_percent' => 0,
+            ])->values();
+        }
+
+        $displayOrder = array_flip([
+            'daily_attendance',
+            'watch_ads',
+            'fan_post_create',
+            'comment_create',
+            'fan_post_recommend_received',
+            'idol_registration_approved',
+            'quiz_creator_reward',
+            'quiz_weekly_rank_rewards',
+            'quiz_perfect',
+            'invite_friend',
+        ]);
+        $activities = $activities->sortBy(
+            fn (object $activity, int $index) => $displayOrder[$activity->code] ?? (count($displayOrder) + $index)
+        )->values();
 
         $now = now('UTC');
         $partnerBanners = DB::table('partner_banners')
@@ -237,6 +312,7 @@ class GetHeartsController extends Controller
         if ($savedCheckIn !== null) {
             $cardHtml = view('components.attendance-card', ['checkIn' => [
                 'idx' => (int) $savedCheckIn->idx,
+                'member_code' => $savedCheckIn->member_code,
                 'nickname' => $savedCheckIn->nickname,
                 'member_url' => route('member.fan-posts', ['member_code' => $savedCheckIn->member_code]),
                 'profile_image_url' => ManagedImageStorage::publicUrl($savedCheckIn->profile_image_path),

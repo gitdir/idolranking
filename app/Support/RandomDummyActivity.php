@@ -41,23 +41,34 @@ final class RandomDummyActivity
     }
 
     /** Persist the actor/action/request identity before the activity transaction starts. */
-    public function reserve(Request $request, string $action, string $requestKey, array $payload, bool $adminDummyVoteMode = false): ?object
+    public function reserve(
+        Request $request,
+        string $action,
+        string $requestKey,
+        array $payload,
+        bool $adminDummyVoteMode = false,
+        ?callable $dummySelector = null,
+        bool $allowExistingReservation = false,
+    ): ?object
     {
         $actor = $request->attributes->get('currentMember');
         $isAdmin = (int) ($actor?->member_level ?? 0) === 10 && (int) ($actor?->is_dummy ?? 1) === 0;
+        $quizDummyMode = in_array($action, ['quiz_create', 'quiz_participation'], true)
+            && (bool) $request->attributes->get('activityDummyMode', false);
         $modeEnabled = $this->enabled($request)
-            || ($action === 'heart_vote' && $isAdmin && $adminDummyVoteMode);
+            || ($action === 'heart_vote' && $isAdmin && $adminDummyVoteMode)
+            || ($isAdmin && $quizDummyMode);
         $reuseVoteReservation = $action === 'heart_vote' && $isAdmin;
 
         // Admin vote retries must find an existing reservation even if the checkbox was toggled off.
-        if (! $modeEnabled && ! $reuseVoteReservation) {
+        if (! $modeEnabled && ! $reuseVoteReservation && ! $allowExistingReservation) {
             return null;
         }
 
         abort_unless($isAdmin, 403);
         $payloadHash = hash('sha256', json_encode($payload, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_THROW_ON_ERROR));
 
-        return DB::transaction(function () use ($actor, $action, $requestKey, $payloadHash, $modeEnabled): ?object {
+        return DB::transaction(function () use ($actor, $action, $requestKey, $payloadHash, $modeEnabled, $dummySelector): ?object {
             // Serialize reservation creation for this administrator in a short transaction.
             $lockedAdmin = DB::table('members')->where('idx', $actor->idx)->where('member_level', 10)
                 ->where('is_dummy', 0)
@@ -77,9 +88,11 @@ final class RandomDummyActivity
                 return null;
             }
 
-            $dummy = DB::table('members')->where('member_level', 1)->where('is_dummy', 1)
-                ->where('status', 'active')->whereNull('deleted_at')->inRandomOrder()->lockForUpdate()
-                ->first(['idx']);
+            $dummy = $dummySelector !== null
+                ? $dummySelector()
+                : DB::table('members')->where('member_level', 1)->where('is_dummy', 1)
+                    ->where('status', 'active')->whereNull('deleted_at')->inRandomOrder()->lockForUpdate()
+                    ->first(['idx']);
             if ($dummy === null) {
                 throw ValidationException::withMessages(['random_dummy' => '사용할 수 있는 활성 더미 회원이 없습니다.']);
             }
@@ -105,6 +118,45 @@ final class RandomDummyActivity
                 'replay' => false,
             ];
         });
+    }
+
+    /** Find a reservation without changing its selected member, validating the request payload. */
+    public function find(Request $request, string $action, string $requestKey, array $payload): ?object
+    {
+        $actor = $request->attributes->get('currentMember');
+        if ((int) ($actor?->member_level ?? 0) !== 10 || (int) ($actor?->is_dummy ?? 1) !== 0) return null;
+
+        $row = DB::table('admin_dummy_activity_requests')->where('actor_member_idx', $actor->idx)
+            ->where('action_code', $action)->where('request_key', $requestKey)->first();
+        if ($row === null) return null;
+
+        $payloadHash = hash('sha256', json_encode($payload, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_THROW_ON_ERROR));
+        abort_if(! hash_equals($row->payload_hash, $payloadHash), 409, __('quiz.random_dummy_request_conflict'));
+
+        return $this->reservation($row);
+    }
+
+    /** Link a pending multi-request activity reservation to a created quiz or attempt. */
+    public function attachResult(object $reservation, string $resultType, int $resultIdx): void
+    {
+        if ($reservation->replay) return;
+        if (DB::transactionLevel() < 1) {
+            throw new \LogicException('A random dummy reservation must be attached inside the activity transaction.');
+        }
+
+        $updated = DB::table('admin_dummy_activity_requests')->where('idx', $reservation->idx)
+            ->where('actor_member_idx', $reservation->actor_member_idx)->whereNull('completed_at')
+            ->where(function ($query) use ($resultType, $resultIdx): void {
+                $query->whereNull('result_idx')->orWhere(function ($same) use ($resultType, $resultIdx): void {
+                    $same->where('result_type', $resultType)->where('result_idx', $resultIdx);
+                });
+            })->update(['result_type' => $resultType, 'result_idx' => $resultIdx, 'updated_at' => now()]);
+        if ($updated !== 1) {
+            $sameResult = DB::table('admin_dummy_activity_requests')->where('idx', $reservation->idx)
+                ->where('actor_member_idx', $reservation->actor_member_idx)->where('result_type', $resultType)
+                ->where('result_idx', $resultIdx)->whereNull('completed_at')->exists();
+            if (! $sameResult) throw new \LogicException('Random dummy reservation is already linked to a different result.');
+        }
     }
 
     /** Re-read under a row lock so concurrent retries observe the committed result. */
@@ -182,10 +234,29 @@ final class RandomDummyActivity
     public function permitsDummyReward(int $reservationIdx, int $recipientIdx, int $actorIdx, string $rewardAction): bool
     {
         $reservation = DB::table('admin_dummy_activity_requests')->where('idx', $reservationIdx)
-            ->where('actor_member_idx', $actorIdx)->where('member_idx', $recipientIdx)->whereNotNull('completed_at')->first();
+            ->where('actor_member_idx', $actorIdx)->whereNotNull('completed_at')->first();
         if ($reservation === null || ! $this->adminActor($actorIdx)) {
             return false;
         }
+
+        if ($reservation->action_code === 'quiz_participation' && $reservation->result_type === 'quiz_attempt'
+            && (int) $reservation->result_idx > 0) {
+            if ($rewardAction === 'quiz_perfect') {
+                return DB::table('quiz_attempts')->where('idx', $reservation->result_idx)
+                    ->where('member_idx', $recipientIdx)->where('actor_member_idx', $actorIdx)
+                    ->where('member_idx', $reservation->member_idx)
+                    ->where('status', 'completed')->where('is_test_only', 0)->exists();
+            }
+            if (str_starts_with($rewardAction, 'quiz_creator_reward_')) {
+                return DB::table('quiz_attempts as attempt')->join('quizzes as quiz', 'quiz.idx', '=', 'attempt.quiz_idx')
+                    ->where('attempt.idx', $reservation->result_idx)->where('attempt.member_idx', $reservation->member_idx)
+                    ->where('attempt.actor_member_idx', $actorIdx)->where('attempt.status', 'completed')
+                    ->where('attempt.is_test_only', 0)->whereColumn('attempt.member_idx', '<>', 'quiz.member_idx')
+                    ->where('quiz.member_idx', $recipientIdx)->exists();
+            }
+        }
+
+        if ((int) $reservation->member_idx !== $recipientIdx) return false;
 
         $resultTable = match ([$rewardAction, $reservation->action_code, $reservation->result_type]) {
             ['fan_post_create', 'fan_post_create', 'fan_post'] => ['fan_posts', 'idx'],
@@ -220,7 +291,7 @@ final class RandomDummyActivity
 
     private function adminActor(int $actorIdx): bool
     {
-        return DB::table('members')->where('idx', $actorIdx)->where('member_level', 10)
+        return DB::table('members')->where('idx', $actorIdx)->where('member_level', 10)->where('is_dummy', 0)
             ->where('status', 'active')->whereNull('deleted_at')->exists();
     }
 }

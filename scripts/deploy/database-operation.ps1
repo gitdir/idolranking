@@ -32,6 +32,7 @@ param(
     [string]$KnownHostsPath = (Join-Path $env:USERPROFILE '.ssh\known_hosts'),
 
     [switch]$Approved,
+    [switch]$UseSshTunnel,
     [string]$DatabaseConfirmation,
     [string]$ConfirmSha256,
     [int]$ExpectedTableCount = 0,
@@ -174,6 +175,8 @@ else {
 if ($DatabaseConfirmation -cne $approvalPhrase) {
     throw 'DatabaseConfirmation must exactly match the requested target, file, checksum, and mode.'
 }
+if ($UseSshTunnel -and $Mode -ne 'Patch') { throw '-UseSshTunnel is supported only for forward SQL patches.' }
+if ($UseSshTunnel -and $DatabaseHost -ne '127.0.0.1') { throw 'Tunnel mode requires the deployment helper DB_HOST to remain exactly 127.0.0.1.' }
 $runId = [guid]::NewGuid().ToString('N')
 $stageRoot = "$RemoteHome/.idolranking-sql-staging-$runId"
 $stageFile = "$stageRoot/input.sql"
@@ -218,6 +221,193 @@ if ($LASTEXITCODE -ne 0) { throw "SQL staging failed; partial data, if any, rema
 $encodedScript = [Convert]::ToBase64String([System.Text.Encoding]::UTF8.GetBytes((Get-Content -LiteralPath $RemoteScript -Raw)))
 $dbArgs = @($Mode.ToLowerInvariant(), $TargetDatabase, $DatabaseUser, $DatabaseHost, "$DatabasePort", $stageFile, $expectedSha, "$expectedTables", $backupReferenceValue, $BaseUrlText) -join ' '
 $remoteCommand = "printf '%s' '$encodedScript' | base64 -d | bash -s -- $dbArgs"
+
+if ($UseSshTunnel) {
+    $mysqlExe = (Get-Command mysql.exe -ErrorAction Stop).Source
+    $phpCode = '<?php require "/home/u624668418/domains/orchid-oryx-674671.hostingersite.com/idolranking/vendor/autoload.php"; $app=require "/home/u624668418/domains/orchid-oryx-674671.hostingersite.com/idolranking/bootstrap/app.php"; $app->make(Illuminate\Contracts\Console\Kernel::class)->bootstrap(); $c=config("database.connections.".config("database.default")); echo json_encode(["host"=>$c["host"],"port"=>(int)$c["port"],"database"=>$c["database"],"username"=>$c["username"]]);'
+    $encodedPhp = [Convert]::ToBase64String([System.Text.Encoding]::UTF8.GetBytes($phpCode))
+    $endpointPhpPath = "$RemoteHome/.idolranking-db-endpoint-$runId.php"
+    $endpointCommand = "umask 077; printf '%s' '$encodedPhp' | base64 -d > '$endpointPhpPath' && /opt/alt/php84/usr/bin/php '$endpointPhpPath'; endpoint_status=`$?; rm -f -- '$endpointPhpPath'; exit `$endpoint_status"
+    $endpointLines = @(& $SshExe @commonSshOptions $Target $endpointCommand 2>$null)
+    if ($LASTEXITCODE -ne 0 -or $endpointLines.Count -ne 1) { throw 'Could not read the production Laravel database endpoint through the pinned SSH connection.' }
+    try { $endpoint = ($endpointLines[0] | ConvertFrom-Json -ErrorAction Stop) }
+    catch { throw 'Production Laravel returned an invalid database endpoint response.' }
+    if ($endpoint.host -notmatch '^(?=.{1,253}$)([A-Za-z0-9](?:[A-Za-z0-9-]{0,61}[A-Za-z0-9])?)(\.([A-Za-z0-9](?:[A-Za-z0-9-]{0,61}[A-Za-z0-9])?))*$' -or
+        [int]$endpoint.port -lt 1 -or [int]$endpoint.port -gt 65535 -or
+        $endpoint.database -cne $TargetDatabase -or $endpoint.username -cne $DatabaseUser) {
+        throw 'The Laravel database endpoint did not match the approved database/user or contains an unsupported host.'
+    }
+    if ([int]$endpoint.port -ne $DatabasePort) { throw 'DatabasePort does not match the port configured by production Laravel.' }
+
+    $listener = [System.Net.Sockets.TcpListener]::new([System.Net.IPAddress]::Loopback, 0)
+    $listener.Start()
+    $localPort = ([System.Net.IPEndPoint]$listener.LocalEndpoint).Port
+    $listener.Stop()
+    $tunnelProcess = $null
+    $credentialFile = Join-Path ([System.IO.Path]::GetTempPath()) ("idolranking-db-" + [guid]::NewGuid().ToString('N') + '.cnf')
+    $credentialCreated = $false
+    $helperLaunched = $false
+    $applyStarted = $false
+    $passwordSecure = $null
+    $passwordPlain = $null
+    $escapedPassword = $null
+
+    function Send-TunnelStatus {
+        param([Parameter(Mandatory = $true)][ValidateSet('PREFLIGHT_OK','PREFLIGHT_FAILED','APPLY_OK','APPLY_FAILED')][string]$Value)
+        $statusCommand = "printf '%s' '$Value' > '$stageRoot/client.status'"
+        & $SshExe @commonSshOptions $Target $statusCommand
+        if ($LASTEXITCODE -ne 0) { throw 'Could not signal the locked remote patch runner.' }
+    }
+
+    function Get-TunnelServerStatus {
+        $statusCommand = "if [ -f '$stageRoot/server.status' ]; then cat '$stageRoot/server.status'; fi"
+        $lines = @(& $SshExe @commonSshOptions $Target $statusCommand 2>$null)
+        if ($LASTEXITCODE -ne 0) { throw 'Could not read the remote patch runner state.' }
+        return (($lines -join '').Trim())
+    }
+
+    function Invoke-TunnelMySql {
+        param([Parameter(Mandatory = $true)][AllowEmptyString()][string]$Sql, [switch]$SourceFile)
+        $mysqlArgs = @("--defaults-extra-file=$credentialFile", '--protocol=TCP', '--host=127.0.0.1', "--port=$localPort", "--user=$DatabaseUser", '--default-character-set=utf8mb4', '--batch', '--skip-column-names', "--database=$TargetDatabase")
+        if (-not $SourceFile) { $mysqlArgs += "--execute=$Sql" }
+        $quotedArgs = ($mysqlArgs | ForEach-Object {
+            if ($_ -match '[\s"]') { '"' + $_.Replace('\', '\\').Replace('"', '\"') + '"' } else { $_ }
+        }) -join ' '
+        $processInfo = [System.Diagnostics.ProcessStartInfo]::new()
+        $processInfo.FileName = $mysqlExe
+        $processInfo.Arguments = $quotedArgs
+        $processInfo.UseShellExecute = $false
+        $processInfo.CreateNoWindow = $true
+        $processInfo.RedirectStandardInput = [bool]$SourceFile
+        $processInfo.RedirectStandardOutput = $true
+        $processInfo.RedirectStandardError = $true
+        $process = [System.Diagnostics.Process]::Start($processInfo)
+        try {
+            if ($SourceFile) {
+                $sqlBody = [System.IO.File]::ReadAllText($resolvedFile, [System.Text.Encoding]::UTF8)
+                $sqlBytes = [System.Text.UTF8Encoding]::new($false).GetBytes($sqlBody)
+                $process.StandardInput.BaseStream.Write($sqlBytes, 0, $sqlBytes.Length)
+                $process.StandardInput.BaseStream.Flush()
+                $process.StandardInput.Close()
+            }
+            $stdout = $process.StandardOutput.ReadToEnd()
+            $stderr = $process.StandardError.ReadToEnd()
+            $process.WaitForExit()
+            $exitCode = $process.ExitCode
+            if ($exitCode -ne 0) { throw "Local MySQL operation failed through the SSH tunnel: $($stderr.Trim())" }
+            return $stdout.Trim()
+        }
+        finally {
+            if (-not $process.HasExited) {
+                try { $process.Kill(); $process.WaitForExit() } catch { }
+            }
+            $process.Dispose()
+        }
+    }
+
+    try {
+        $passwordSecure = Read-Host 'Production database password (entered locally; not passed as a process argument)' -AsSecureString
+        $passwordPtr = [Runtime.InteropServices.Marshal]::SecureStringToBSTR($passwordSecure)
+        try { $passwordPlain = [Runtime.InteropServices.Marshal]::PtrToStringBSTR($passwordPtr) }
+        finally { [Runtime.InteropServices.Marshal]::ZeroFreeBSTR($passwordPtr) }
+        if ($passwordPlain -match '[\r\n\x00]') { throw 'Database password contains unsupported control characters.' }
+        $escapedPassword = $passwordPlain.Replace('\', '\\').Replace('"', '\"')
+        $credentialHandle = [System.IO.File]::Open($credentialFile, [System.IO.FileMode]::CreateNew, [System.IO.FileAccess]::Write, [System.IO.FileShare]::None)
+        $credentialHandle.Dispose()
+        $credentialCreated = $true
+        $credentialAcl = Get-Acl -LiteralPath $credentialFile
+        $credentialAcl.SetAccessRuleProtection($true, $false)
+        foreach ($rule in @($credentialAcl.Access)) { [void]$credentialAcl.RemoveAccessRule($rule) }
+        $credentialAcl.AddAccessRule([System.Security.AccessControl.FileSystemAccessRule]::new($account, 'FullControl', 'Allow'))
+        Set-Acl -LiteralPath $credentialFile -AclObject $credentialAcl
+        [System.IO.File]::WriteAllText($credentialFile, "[client]`r`nhost=127.0.0.1`r`nuser=$DatabaseUser`r`npassword=`"$escapedPassword`"`r`n", [System.Text.UTF8Encoding]::new($false))
+        $passwordPlain = $null; $escapedPassword = $null
+
+        $tunnelArguments = @($commonSshOptions) + @('-N', '-o', 'ExitOnForwardFailure=yes', '-L', "127.0.0.1:$localPort`:$($endpoint.host):$($endpoint.port)", $Target)
+        $quotedTunnelArguments = ($tunnelArguments | ForEach-Object { '"' + $_.Replace('"', '\"') + '"' }) -join ' '
+        $tunnelProcess = Start-Process -FilePath $SshExe -ArgumentList $quotedTunnelArguments -PassThru -WindowStyle Hidden
+        $tunnelReady = $false
+        for ($attempt = 0; $attempt -lt 30; $attempt++) {
+            if ($tunnelProcess.HasExited) { throw 'The SSH local tunnel exited before becoming ready.' }
+            try {
+                $probe = [System.Net.Sockets.TcpClient]::new()
+                $probe.Connect('127.0.0.1', $localPort)
+                $probe.Dispose(); $tunnelReady = $true; break
+            }
+            catch { Start-Sleep -Milliseconds 500 }
+        }
+        if (-not $tunnelReady) { throw 'The SSH local tunnel did not open its loopback listener.' }
+
+        $tunnelArgs = @('patch-tunnel', $TargetDatabase, $DatabaseUser, '127.0.0.1', "$DatabasePort", $stageFile, $expectedSha, '0', $backupReferenceValue, $BaseUrlText) -join ' '
+        $helperPath = "$stageRoot/remote-database-operation.sh"
+        $launchCommand = "printf '%s' '$encodedScript' | base64 -d > '$helperPath' && chmod 700 '$helperPath' || exit `$?; printf 'STARTING' > '$stageRoot/server.status'; nohup bash '$helperPath' $tunnelArgs > '$stageRoot/tunnel-runner.log' 2>&1 < /dev/null & echo `$!"
+        & $SshExe @commonSshOptions $Target $launchCommand
+        if ($LASTEXITCODE -ne 0) { throw 'Could not start the locked remote tunnel patch runner.' }
+        $helperLaunched = $true
+        $state = ''
+        for ($attempt = 0; $attempt -lt 60; $attempt++) {
+            $state = Get-TunnelServerStatus
+            if ($state -eq 'READY') { break }
+            if ($state -eq 'FAILED') { throw 'The remote patch runner rejected the operation before database preflight.' }
+            Start-Sleep -Seconds 2
+        }
+        if ($state -ne 'READY') { throw 'The remote patch runner did not acquire its lock and become ready.' }
+
+        $historyExists = Invoke-TunnelMySql -Sql "SELECT COUNT(*) FROM information_schema.tables WHERE table_schema = DATABASE() AND table_name = 'schema_patch_history' AND table_type = 'BASE TABLE';"
+        if ($fileName -eq '20261013_001_create_schema_patch_history.sql') {
+            if ($historyExists -ne '0') { throw 'Bootstrap patch applies only when schema_patch_history is absent.' }
+        }
+        else {
+            if ($historyExists -ne '1') { throw 'schema_patch_history is absent; apply the approved bootstrap patch first.' }
+            $alreadyApplied = Invoke-TunnelMySql -Sql "SELECT COUNT(*) FROM schema_patch_history WHERE patch_name = '$fileName';"
+            if ($alreadyApplied -ne '0') { throw 'Patch is already recorded; inspect schema before retrying.' }
+        }
+        if ($fileName -eq '20261018_001_drop_unused_fan_post_monthly_views.sql') {
+            $tableCount = Invoke-TunnelMySql -Sql "SELECT COUNT(*) FROM information_schema.tables WHERE table_schema = DATABASE() AND table_name = 'fan_post_monthly_views' AND table_type = 'BASE TABLE';"
+            if ($tableCount -ne '1') { throw 'Expected fan_post_monthly_views is missing; destructive patch was stopped.' }
+            $rowCount = Invoke-TunnelMySql -Sql 'SELECT COUNT(*) FROM fan_post_monthly_views;'
+            if ($rowCount -ne '0') { throw 'fan_post_monthly_views is not empty; destructive patch was stopped.' }
+        }
+        Send-TunnelStatus 'PREFLIGHT_OK'
+
+        for ($attempt = 0; $attempt -lt 120; $attempt++) {
+            $state = Get-TunnelServerStatus
+            if ($state -eq 'APPLY') { $applyStarted = $true; break }
+            if ($state -eq 'FAILED') { throw 'Remote patch runner failed before SQL import.' }
+            Start-Sleep -Seconds 2
+        }
+        if (-not $applyStarted) { throw 'Remote patch runner did not enter the guarded apply phase.' }
+        [void](Invoke-TunnelMySql -SourceFile -Sql '')
+        [void](Invoke-TunnelMySql -Sql "INSERT INTO schema_patch_history (patch_name, applied_by, notes) VALUES ('$fileName', 'codex-deploy', 'Reviewed single-patch deployment through SSH tunnel');")
+        Send-TunnelStatus 'APPLY_OK'
+
+        for ($attempt = 0; $attempt -lt 180; $attempt++) {
+            $state = Get-TunnelServerStatus
+            if ($state -eq 'DONE') { break }
+            if ($state -eq 'FAILED') { throw 'SQL and ledger were applied, but cache refresh or post-patch smoke checks failed; inspect production before retrying.' }
+            Start-Sleep -Seconds 2
+        }
+        if ($state -ne 'DONE') { throw 'Remote cache refresh and smoke checks did not complete in time.' }
+        Write-Host 'The selected patch completed under the existing remote lock, checksum, ledger, maintenance, cache, and smoke-test controls through a loopback-only SSH tunnel.'
+    }
+    catch {
+        if ($helperLaunched) {
+            $failureState = if ($applyStarted) { 'APPLY_FAILED' } else { 'PREFLIGHT_FAILED' }
+            try { Send-TunnelStatus $failureState } catch { }
+        }
+        throw
+    }
+    finally {
+        if ($null -ne $tunnelProcess -and -not $tunnelProcess.HasExited) {
+            Stop-Process -Id $tunnelProcess.Id -Force -ErrorAction SilentlyContinue
+        }
+        if ($credentialCreated -and (Test-Path -LiteralPath $credentialFile)) { Remove-Item -LiteralPath $credentialFile -Force -ErrorAction SilentlyContinue }
+        if ($null -ne $passwordSecure) { $passwordSecure.Dispose() }
+        $passwordPlain = $null; $escapedPassword = $null
+    }
+    return
+}
+
 & $SshExe @sshOptions $Target $remoteCommand
 if ($LASTEXITCODE -ne 0) {
     throw 'Remote database operation failed or was cancelled. Inspect the database before retrying; SQL DDL may be non-transactional.'

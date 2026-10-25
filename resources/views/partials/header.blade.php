@@ -51,6 +51,7 @@
                     request()->routeIs('ranking.idol') || in_array($detailCategory, ['boy', 'girl'], true) => 'idol',
                     request()->routeIs('ranking.group') || in_array($detailCategory, ['boy-group', 'girl-group'], true) => 'group',
                     request()->routeIs('fan-posts.index', 'fan-post.*') => 'fan-posts',
+                    request()->routeIs('quizzes.*') => 'quizzes',
                     request()->routeIs('get-hearts', 'get-hearts.*') => 'get-hearts',
                     request()->routeIs('attendance', 'attendance.*') => 'attendance',
                     default => null,
@@ -78,6 +79,11 @@
                 <a class="drawer-category-link header-fan-posts" href="{{ route('fan-posts.index') }}" @if ($activeMainMenu === 'fan-posts') aria-current="page" @endif>
                     <svg class="drawer-category-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 3h14v18H5Z"/><path d="M8 8h8M8 12h8M8 16h5"/></svg>
                     <span translate="no">{{ __('ui.fan_posts') }}</span>
+                    <svg class="drawer-category-chevron" viewBox="0 0 16 16" aria-hidden="true"><path d="m6 3 5 5-5 5"/></svg>
+                </a>
+                <a class="drawer-category-link header-quizzes" href="{{ route('quizzes.index') }}" @if ($activeMainMenu === 'quizzes') aria-current="page" @endif>
+                    <svg class="drawer-category-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 4.5A2.5 2.5 0 0 1 7.5 2H20v17H7.5A2.5 2.5 0 0 0 5 21.5Z"/><path d="M5 4.5v17M9 7h7m-7 4h7"/></svg>
+                    <span translate="no">{{ __('quiz.nav_label') }}</span>
                     <svg class="drawer-category-chevron" viewBox="0 0 16 16" aria-hidden="true"><path d="m6 3 5 5-5 5"/></svg>
                 </a>
                 <a class="drawer-category-link header-get-hearts" href="{{ route('get-hearts') }}" @if ($activeMainMenu === 'get-hearts') aria-current="page" @endif>

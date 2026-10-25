@@ -10,11 +10,11 @@
     data-attendance-translation data-endpoint="{{ route('attendance.translation', ['idx' => $checkIn['idx']]) }}"
     data-target-language="{{ app()->getLocale() }}" @endif>
     <header class="attendance-card-author">
-        <a class="attendance-card-avatar-link" href="{{ $checkIn['member_url'] }}" aria-label="{{ __('ui.member_view_posts_label', ['name' => $checkIn['nickname']]) }}">
+        <x-member-link :member-code="$checkIn['member_code'] ?? null" :label="__('ui.member_view_posts_label', ['name' => $checkIn['nickname']])" class="attendance-card-avatar-link">
             <img src="{{ $checkIn['profile_image_url'] }}" width="40" height="40" loading="lazy" alt="">
-        </a>
+        </x-member-link>
         <div class="attendance-card-author-details">
-            <a class="attendance-card-nickname" translate="no" href="{{ $checkIn['member_url'] }}"><x-country-flag :code="$checkIn['country_code'] ?? null" />{{ $checkIn['nickname'] }}</a>
+            <x-member-link :member-code="$checkIn['member_code'] ?? null" class="attendance-card-nickname"><x-country-flag :code="$checkIn['country_code'] ?? null" />{{ $checkIn['nickname'] }}</x-member-link>
         </div>
         @if ($sourceLanguage)
             <span class="attendance-card-language" title="{{ $badgeLanguage }}" aria-label="{{ $badgeLanguage }}">{{ $badgeLanguage }}</span>
@@ -28,7 +28,7 @@
     <footer class="attendance-card-footer">
         <time datetime="{{ $createdAt->toIso8601String() }}">{{ $createdAt->locale(app()->getLocale())->diffForHumans() }}</time>
         @if ($checkIn['reward_awarded'])
-            <strong class="attendance-card-reward"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="#icon-heart"/></svg>+{{ number_format($checkIn['awarded_hearts']) }} Heart</strong>
+            <strong class="attendance-card-reward"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="#icon-heart"/></svg>+{{ number_format($checkIn['awarded_hearts']) }}</strong>
         @endif
     </footer>
 </article>

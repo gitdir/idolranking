@@ -216,6 +216,19 @@ UPDATE heart_reward_settings
 SET min_heart_amount = heart_amount, max_heart_amount = heart_amount
 WHERE action_code = 'daily_attendance';
 
+INSERT INTO heart_reward_settings (action_code, action_name, heart_amount, daily_limit, is_enabled) VALUES
+('quiz_creator_reward_1', '퀴즈 제작자 보상 (1문항)', 3, 0, 1),
+('quiz_creator_reward_2', '퀴즈 제작자 보상 (2문항)', 5, 0, 1),
+('quiz_creator_reward_3', '퀴즈 제작자 보상 (3문항)', 10, 0, 1);
+
+INSERT INTO heart_reward_settings (action_code, action_name, heart_amount, min_heart_amount, max_heart_amount, daily_limit, is_enabled) VALUES
+('quiz_perfect', '퀴즈 만점 참여자 보상', 20, 10, 30, 0, 1);
+
+INSERT INTO heart_reward_settings (action_code, action_name, heart_amount, daily_limit, is_enabled) VALUES
+('quiz_weekly_rank_1', '주간 퀴즈 참여 순위 1위', 1000, 0, 1),
+('quiz_weekly_rank_2', '주간 퀴즈 참여 순위 2위', 500, 0, 1),
+('quiz_weekly_rank_3', '주간 퀴즈 참여 순위 3위', 100, 0, 1);
+
 CREATE TABLE fan_posts (
     idx BIGINT UNSIGNED NOT NULL AUTO_INCREMENT COMMENT '팬포스트 ID',
     idol_idx BIGINT UNSIGNED NOT NULL COMMENT '대상 개인 또는 그룹',

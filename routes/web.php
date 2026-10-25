@@ -17,6 +17,7 @@ use App\Http\Controllers\PublicFanPostController;
 use App\Http\Controllers\SearchController;
 use App\Http\Controllers\GetHeartsController;
 use App\Http\Controllers\AttendanceController;
+use App\Http\Controllers\QuizController;
 use App\Http\Controllers\IdolProfileImageReportController;
 use App\Http\Middleware\RequireMember;
 use App\Http\Middleware\RequireAdmin;
@@ -88,6 +89,16 @@ Route::get('/search', SearchController::class)->name('search');
 Route::get('/get-hearts', GetHeartsController::class)->name('get-hearts');
 Route::get('/fan-garden', fn () => abort(404))->name('fan-garden.index');
 Route::get('/attendance', [AttendanceController::class, 'index'])->name('attendance');
+Route::get('/quizzes', [QuizController::class, 'index'])->name('quizzes.index');
+Route::get('/quizzes/create', [QuizController::class, 'create'])->middleware(RequireMember::class)->name('quizzes.create');
+Route::post('/quizzes', [QuizController::class, 'store'])->middleware(RequireMember::class)->name('quizzes.store');
+Route::get('/quizzes/{idx}/edit', [QuizController::class, 'edit'])->middleware(RequireMember::class)->whereNumber('idx')->name('quizzes.edit');
+Route::put('/quizzes/{idx}', [QuizController::class, 'update'])->middleware(RequireMember::class)->whereNumber('idx')->name('quizzes.update');
+Route::delete('/quizzes/{idx}', [QuizController::class, 'destroy'])->middleware(RequireMember::class)->whereNumber('idx')->name('quizzes.destroy');
+Route::post('/quizzes/{idx}/like', [QuizController::class, 'toggleLike'])->middleware(RequireMember::class)->whereNumber('idx')->name('quizzes.like');
+Route::get('/quizzes/{idx}', [QuizController::class, 'show'])->whereNumber('idx')->name('quizzes.show');
+Route::post('/quizzes/{idx}/answer', [QuizController::class, 'answer'])->middleware(RequireMember::class)
+    ->whereNumber('idx')->name('quizzes.answer');
 Route::get('/attendance/{idx}/translation', [AttendanceController::class, 'translation'])
     ->whereNumber('idx')->middleware('throttle:public-translations')->name('attendance.translation');
 Route::get('/partner-banners/{idx}/click', [GetHeartsController::class, 'clickPartnerBanner'])

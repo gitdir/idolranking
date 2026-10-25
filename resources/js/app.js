@@ -22,3 +22,5 @@ import './social-links';
 import './get-hearts';
 import './attendance';
 import './voting-trend';
+import './quizzes';
+import '../css/quizzes.css';

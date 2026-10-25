@@ -253,6 +253,9 @@ class MyPageController extends Controller
             'invite_friend_reward' => [__('ui.activity_invite'), 'people'],
             HeartRewardManager::PARTNER_BANNER_REASON => [__('ui.partner_banners'), 'heart'],
             'idol_registration_approved' => [__('ui.activity_idol_registration'), 'heart'],
+            'quiz_weekly_rank_1' => [__('quiz.weekly_rank_history', ['rank' => 1]), 'heart'],
+            'quiz_weekly_rank_2' => [__('quiz.weekly_rank_history', ['rank' => 2]), 'heart'],
+            'quiz_weekly_rank_3' => [__('quiz.weekly_rank_history', ['rank' => 3]), 'heart'],
             'vote' => [match ($history->voted_idol_type) {
                 'group' => __('ui.vote_for_group'),
                 'individual' => __('ui.vote_for_idol_generic'),

@@ -57,6 +57,7 @@ class AttendanceController extends Controller
 
                 return [
                     'idx' => (int) $checkIn->idx,
+                    'member_code' => $checkIn->member_code,
                     'nickname' => $checkIn->nickname,
                     'member_url' => route('member.fan-posts', ['member_code' => $checkIn->member_code]),
                     'profile_image_url' => ManagedImageStorage::publicUrl($checkIn->profile_image_path),

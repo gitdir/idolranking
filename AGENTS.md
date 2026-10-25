@@ -46,7 +46,7 @@ Verified production layout (recheck before acting; these values are configuratio
 - Apache document root: `/home/u624668418/domains/orchid-oryx-674671.hostingersite.com/public_html`.
 - `APP_PUBLIC_PATH` points to `public_html`; `public_html/index.php` bootstraps the separate checkout. Preserve that file and server-specific `.htaccess`.
 - PHP 8.4 executable: `/opt/alt/php84/usr/bin/php`; Composer: `/usr/local/bin/composer`. Node/npm are not installed on production; build Vite assets locally.
-- SSH uses Windows OpenSSH on port `65002`, with a per-user key and a pinned `known_hosts` entry. Never copy a private key into this repository or accept an unknown host key.
+- SSH uses Windows OpenSSH on port `65002`. Existing scripts currently use a dedicated key and pinned `known_hosts`. For server administration, prefer SSH username/password **only if the server supports it**; do not break the existing working key-based deployment path. Always verify the server host key and never store credentials in Git.
 
 The current production commit and whether the integrated initial database/media release completed are **not verified by repository state**. Do not claim success until read-only server checks confirm it.
 
@@ -652,7 +652,9 @@ unless explicitly requested.
 
 Do not automatically create commits unless explicitly requested.
 
-Codex may show the commands the user should run, but should not silently push code.
+An explicit user request to deploy authorizes the necessary reviewed commit and push for that deployment only. For ordinary coding tasks, Codex must not silently commit or push.
+
+Codex may show the commands the user should run, but should not silently push code outside an authorized deployment.
 
 Before completing major work, summarize:
 
@@ -1004,3 +1006,37 @@ Avoid:
 Build one feature at a time.
 
 Preserve a stable working project after each feature.
+
+---
+
+## 32. Production Deployment and Authentication Policy (Authoritative)
+
+This section defines the approved deployment workflow. Apply it in new Codex sessions and on replacement PCs. It takes precedence over older deployment/authentication descriptions in this file when they conflict. Preserve existing working scripts and security controls unless a specific change is necessary.
+
+### 32.1 Authentication: three separate connections
+
+1. **GitHub / Git:** Use the user's existing registered Git SSH key wherever the configured remote supports it. Do not ask for GitHub account credentials for routine Git operations. Verify the actual local and production `git remote -v` separately: they may use different transport methods. If a remote currently uses HTTPS and works, do not break it merely to standardize authentication; report the difference and use the working configuration. Never create or replace keys without need.
+2. **Production database:** Use the existing MySQL/MariaDB username and password for authorized backups, SQL patches, and data changes. Direct remote DB access is allowed when already available and securely configured. Otherwise use the existing verified SSH tunnel or approved DB connection path. Do not disable host restrictions or open database firewall access to force direct connections. Never print credentials or put passwords into Git, logs, or command-line arguments visible to other users.
+3. **Production server administration via SSH:** Prefer SSH username/password login for server condition checks, deployment, and authorized configuration/service changes **when supported by the server**. The currently documented deployment script uses a dedicated SSH key; preserve this working path until password authentication has been confirmed and any minimal script adjustment is tested. Do not weaken SSH host-key verification, alter server authentication settings without authorization, or confuse the GitHub key with server SSH credentials.
+
+### 32.2 Standard one-pass deployment
+
+When the user explicitly requests a full production deployment, the necessary reviewed Git commit/push, production DB operations, and server deployment are authorized for that request. Execute the established workflow without repeated planning or unnecessary approval loops. Do not assume a generic coding request authorizes deployment.
+
+1. Read `AGENTS.md`, `scripts/deploy/README.md`, and `sql/README.md`, then inspect current Git status, tracked/untracked changes, existing scripts, and the production revision. Use already verified findings rather than repeating investigations.
+2. Review the exact files to release, including SQL patches, and exclude secrets, temporary files, incomplete work, and the entire `/docs/` directory. Keep local docs intact. If removing previously tracked `/docs` files, Git may remove those tracked files from the production checkout as specifically authorized; do not delete unrelated production data or untracked files.
+3. Before modifying the production DB, create a fresh consistent backup in the restricted local directory `D:\backup\idolranking` using the existing DB credentials and supported secure connection. A standard SQL dump is acceptable under the user's approved simple workflow; no DPAPI or new encryption/key-management system is required. Keep the dump out of Git and public directories, and verify successful completion and basic integrity. Do not claim a full restore test was performed unless it actually was.
+4. Apply only missing, reviewed SQL patches in the correct dependency order using the existing patch runner and its lock, checksum, and patch-history protections. Preserve existing users, Heart balances, votes, histories, and uploads. Never apply the full schema over an existing production DB. Confirm MySQL 8.4-to-MariaDB production compatibility for affected SQL.
+5. Run `npm.cmd run build` locally when frontend sources or required assets changed, or when the previous build is stale. Production has no Node/npm; deploy the matching Vite `public/build` assets and `manifest.json` through the established process. Do not repeat a successful unchanged build.
+6. Commit all reviewed release changes with a **Korean commit message** and push to `origin/main` using the existing Git authentication. For this explicit deployment request, commit and push are permitted. Do not force-push or discard unrelated changes.
+7. Use the existing deployment scripts to deploy the **exact pushed commit SHA**. Keep the production `.env`, server-specific `public_html/index.php` and `.htaccess`, uploads, and other production-only files intact. Maintain strict SSH host-key checking and use the existing working server login method unless a verified password-based method has been safely adopted.
+8. Refresh the necessary Laravel caches and perform one set of essential checks: deployed SHA, application availability, affected pages/functions, and latest CSS/JS assets. Avoid repeated test suites, browser automation, or redundant checks unless a failure warrants them.
+9. Report briefly in Korean: backup result/path, SQL patch results, build result, Git SHA, deployment status, and actual remaining blockers.
+
+### 32.3 Safety and portability
+
+- Stop for actual authentication failure, invalid/incomplete backup, unexpected destructive SQL, patch checksum mismatch, data-loss risk, or failed deployment; explain the exact blocker once. Do not bypass safeguards to make deployment appear successful.
+- Do not add new SSH keys, authentication systems, DPAPI, encryption infrastructure, or backup services unless genuinely required. Keep backup access restricted; an unencrypted SQL dump contains sensitive production data and must not be shared or committed.
+- Keep the deployment reproducible on a new Windows PC: derive user-profile-dependent paths from environment variables; document necessary tools, SSH/Git setup, DB access, backup path, and scripts without storing credentials.
+- `/docs/` is Git-ignored. Store critical portable deployment/recovery instructions in Git-tracked `AGENTS.md` and/or `scripts/deploy/README.md`, not exclusively under `/docs`.
+- Existing deployment scripts and documentation remain the source of executable commands. This policy does not imply that unsupported SSH password login or unrestricted direct DB connectivity already works.

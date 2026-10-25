@@ -47,8 +47,8 @@ class HeartController extends Controller
             return (object) ($definition + [
                 'action_code' => $code, 'idx' => $setting?->idx,
                 'heart_amount' => (int) ($setting?->heart_amount ?? $definition['amount']),
-                'min_heart_amount' => (int) ($setting?->min_heart_amount ?? $setting?->heart_amount ?? $definition['amount']),
-                'max_heart_amount' => (int) ($setting?->max_heart_amount ?? $setting?->heart_amount ?? $definition['amount']),
+                'min_heart_amount' => (int) ($setting?->min_heart_amount ?? $definition['min_amount'] ?? $setting?->heart_amount ?? $definition['amount']),
+                'max_heart_amount' => (int) ($setting?->max_heart_amount ?? $definition['max_amount'] ?? $setting?->heart_amount ?? $definition['amount']),
                 'daily_limit' => (int) ($setting?->daily_limit ?? $definition['daily_limit']),
                 'is_enabled' => (bool) ($setting?->is_enabled ?? true),
             ]);
@@ -60,9 +60,10 @@ class HeartController extends Controller
     {
         $definition = HeartRewardManager::ACTIONS[$actionCode] ?? null;
         abort_if($definition === null, 404);
-        $isRangeAction = in_array($actionCode, ['daily_attendance', 'comment_create'], true);
+        $isRangeAction = $definition['reward_type'] === 'range';
+        $minimumAmount = (int) ($definition['minimum_amount'] ?? 0);
         $validated = $request->validate([
-            'heart_amount' => ['required', 'integer', 'min:0'],
+            'heart_amount' => ['required', 'integer', 'min:0', 'max:2147483647'],
             'daily_limit' => [Rule::requiredIf($definition['limit_type'] === 'daily'), 'nullable', 'integer', 'min:0'],
             'is_enabled' => ['nullable', 'boolean'],
         ], [
@@ -75,8 +76,8 @@ class HeartController extends Controller
         ]);
         if ($isRangeAction) {
             $range = $request->validate([
-                'min_heart_amount' => ['required', 'integer', 'min:0', 'max:2147483647'],
-                'max_heart_amount' => ['required', 'integer', 'min:0', 'max:2147483647'],
+                'min_heart_amount' => ['required', 'integer', 'min:'.$minimumAmount, 'max:2147483647'],
+                'max_heart_amount' => ['required', 'integer', 'min:'.$minimumAmount, 'max:2147483647'],
             ], [
                 'min_heart_amount.required' => '최소 하트를 입력해 주세요.',
                 'min_heart_amount.integer' => '최소 하트는 0 이상의 정수여야 합니다.',
@@ -88,7 +89,7 @@ class HeartController extends Controller
                 'max_heart_amount.max' => '하트 범위가 너무 큽니다.',
             ]);
             if ((int) $range['min_heart_amount'] > (int) $range['max_heart_amount']) {
-                return back()->withErrors(['max_heart_amount' => __('messages.daily_range_invalid', [], 'ko')])->withInput();
+                return back()->withErrors(['max_heart_amount' => '최대 Heart는 최소 Heart보다 크거나 같아야 합니다.'])->withInput();
             }
             $validated = array_merge($validated, $range);
         }

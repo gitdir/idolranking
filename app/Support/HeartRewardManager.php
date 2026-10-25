@@ -9,15 +9,22 @@ use Illuminate\Database\QueryException;
 final class HeartRewardManager
 {
     public const ACTIONS = [
-        'watch_ads' => ['name' => 'Watch Ads', 'amount' => 50, 'daily_limit' => 10, 'limit_type' => 'daily', 'reason' => 'ad_reward', 'description' => 'Rewarded ad completion'],
-        'invite_friend' => ['name' => '친구 초대 성공', 'amount' => 1000, 'daily_limit' => 0, 'limit_type' => 'daily', 'reason' => 'invite_friend_reward', 'description' => 'Invited friend registration completion'],
-        'signup' => ['name' => '가입 완료', 'amount' => 1000, 'daily_limit' => 0, 'limit_type' => 'account', 'reason' => 'signup_reward', 'description' => '회원 가입 완료 시 최초 1회'],
-        'profile_complete' => ['name' => '프로필 완성', 'amount' => 100, 'daily_limit' => 0, 'limit_type' => 'account', 'reason' => 'profile_complete', 'description' => '프로필 최초 완성 시 1회'],
-        'daily_attendance' => ['name' => '일일 출석', 'amount' => 100, 'daily_limit' => 1, 'limit_type' => 'daily', 'reason' => 'daily_attendance', 'description' => '1일 1회 지급'],
-        'fan_post_create' => ['name' => '팬포스트 작성', 'amount' => 30, 'daily_limit' => 20, 'limit_type' => 'daily', 'reason' => 'fan_post_reward', 'description' => '사진 또는 YouTube 영상 포함 시 지급'],
-        'comment_create' => ['name' => '댓글 작성', 'amount' => 10, 'daily_limit' => 20, 'limit_type' => 'daily', 'reason' => 'comment_reward', 'description' => '댓글 작성 시 지급'],
-        'fan_post_recommend_received' => ['name' => '팬포스트 추천 받음', 'amount' => 1, 'daily_limit' => 100, 'limit_type' => 'daily', 'reason' => 'fan_post_recommend_received', 'description' => '작성자가 추천을 받을 때 지급'],
-        'idol_registration_approved' => ['name' => '아이돌/그룹 등록 승인', 'amount' => 3000, 'daily_limit' => 0, 'limit_type' => 'request', 'reason' => 'idol_registration_approved', 'description' => '관리자가 등록 신청을 승인한 경우 지급'],
+        'watch_ads' => ['name' => '광고 시청', 'amount' => 50, 'daily_limit' => 10, 'limit_type' => 'daily', 'reward_type' => 'fixed', 'reason' => 'ad_reward', 'description' => '광고 시청 완료에 지급합니다.'],
+        'invite_friend' => ['name' => '친구 초대 성공', 'amount' => 1000, 'daily_limit' => 0, 'limit_type' => 'daily', 'reward_type' => 'fixed', 'reason' => 'invite_friend_reward', 'description' => '초대한 친구의 가입이 완료되면 초대한 회원에게 1회 지급합니다.'],
+        'signup' => ['name' => '회원 가입 완료', 'amount' => 1000, 'daily_limit' => 0, 'limit_type' => 'account', 'reward_type' => 'fixed', 'reason' => 'signup_reward', 'description' => '회원 가입 완료 후 해당 회원에게 1회 지급합니다.'],
+        'profile_complete' => ['name' => '프로필 완성', 'amount' => 100, 'daily_limit' => 0, 'limit_type' => 'account', 'reward_type' => 'fixed', 'reason' => 'profile_complete', 'description' => '회원이 프로필을 처음 완성하면 1회 지급합니다.'],
+        'daily_attendance' => ['name' => '일일 출석', 'amount' => 100, 'daily_limit' => 1, 'limit_type' => 'daily', 'reward_type' => 'range', 'reason' => 'daily_attendance', 'description' => '출석 글을 작성하면 설정한 범위에서 하루 1회 지급합니다.'],
+        'fan_post_create' => ['name' => '팬포스트 작성', 'amount' => 30, 'daily_limit' => 20, 'limit_type' => 'daily', 'reward_type' => 'fixed', 'reason' => 'fan_post_reward', 'description' => '사진 또는 YouTube 영상이 포함된 팬포스트 작성에 지급합니다.'],
+        'comment_create' => ['name' => '댓글 작성', 'amount' => 10, 'daily_limit' => 20, 'limit_type' => 'daily', 'reward_type' => 'range', 'reason' => 'comment_reward', 'description' => '보상 기준에 맞는 댓글 작성에 설정한 범위에서 지급합니다.'],
+        'quiz_creator_reward_1' => ['name' => '퀴즈 제작자 보상 (1문항)', 'amount' => 3, 'daily_limit' => 0, 'limit_type' => 'request', 'reward_type' => 'fixed', 'reason' => 'quiz_creator_reward_1', 'description' => '다른 회원이 1문항 퀴즈 전체를 처음 완료하면 정답과 관계없이 제작자에게 1회 지급합니다.'],
+        'quiz_creator_reward_2' => ['name' => '퀴즈 제작자 보상 (2문항)', 'amount' => 5, 'daily_limit' => 0, 'limit_type' => 'request', 'reward_type' => 'fixed', 'reason' => 'quiz_creator_reward_2', 'description' => '다른 회원이 2문항 퀴즈 전체를 처음 완료하면 정답과 관계없이 제작자에게 1회 지급합니다.'],
+        'quiz_creator_reward_3' => ['name' => '퀴즈 제작자 보상 (3문항)', 'amount' => 10, 'daily_limit' => 0, 'limit_type' => 'request', 'reward_type' => 'fixed', 'reason' => 'quiz_creator_reward_3', 'description' => '다른 회원이 3문항 퀴즈 전체를 처음 완료하면 정답과 관계없이 제작자에게 1회 지급합니다.'],
+        'quiz_perfect' => ['name' => '퀴즈 만점 참여자 보상', 'amount' => 20, 'min_amount' => 10, 'max_amount' => 30, 'daily_limit' => 0, 'limit_type' => 'request', 'reward_type' => 'range', 'minimum_amount' => 0, 'reason' => 'quiz_perfect', 'description' => '다른 회원이 퀴즈를 만점으로 완료하면 참여자에게 설정한 범위에서 지급합니다.'],
+        'quiz_weekly_rank_1' => ['name' => '주간 인기 퀴즈 제작자 보상 (1위)', 'amount' => 1000, 'daily_limit' => 0, 'limit_type' => 'none', 'reward_type' => 'fixed', 'reason' => 'quiz_weekly_rank_1', 'description' => '주간 인기 퀴즈 1위의 제작자에게 월요일 정산 시 지급합니다.'],
+        'quiz_weekly_rank_2' => ['name' => '주간 인기 퀴즈 제작자 보상 (2위)', 'amount' => 500, 'daily_limit' => 0, 'limit_type' => 'none', 'reward_type' => 'fixed', 'reason' => 'quiz_weekly_rank_2', 'description' => '주간 인기 퀴즈 2위의 제작자에게 월요일 정산 시 지급합니다.'],
+        'quiz_weekly_rank_3' => ['name' => '주간 인기 퀴즈 제작자 보상 (3위)', 'amount' => 100, 'daily_limit' => 0, 'limit_type' => 'none', 'reward_type' => 'fixed', 'reason' => 'quiz_weekly_rank_3', 'description' => '주간 인기 퀴즈 3위의 제작자에게 월요일 정산 시 지급합니다.'],
+        'fan_post_recommend_received' => ['name' => '팬포스트 추천 받음', 'amount' => 1, 'daily_limit' => 100, 'limit_type' => 'daily', 'reward_type' => 'fixed', 'reason' => 'fan_post_recommend_received', 'description' => '내 팬포스트가 추천을 받을 때 작성자에게 지급합니다.'],
+        'idol_registration_approved' => ['name' => '아이돌/그룹 등록 승인', 'amount' => 3000, 'daily_limit' => 0, 'limit_type' => 'request', 'reward_type' => 'fixed', 'reason' => 'idol_registration_approved', 'description' => '관리자가 아이돌 또는 그룹 등록 요청을 승인하면 신청자에게 지급합니다.'],
     ];
 
     public const REFERRAL_SESSION_KEY = 'referral_member_code';
@@ -81,6 +88,7 @@ final class HeartRewardManager
 
         $setting = DB::table('heart_reward_settings')
             ->where('action_code', $actionCode)
+            ->lockForUpdate()
             ->first(['heart_amount', 'is_enabled']);
 
         if ($setting === null || ! (bool) $setting->is_enabled) {
@@ -99,20 +107,21 @@ final class HeartRewardManager
         if ($definition === null) return 0;
         if ($amountOverride !== null && $actionCode !== 'daily_attendance') return 0;
         if ($actionCode === 'daily_attendance' && $amountOverride === null) return 0;
-        $setting = DB::table('heart_reward_settings')->where('action_code', $actionCode)->first();
+        $setting = DB::table('heart_reward_settings')->where('action_code', $actionCode)->lockForUpdate()->first();
         if ($setting === null || ! (bool) $setting->is_enabled) return 0;
-        $hasCommentRange = $actionCode === 'comment_create'
+        $hasRandomRange = ($definition['reward_type'] ?? 'fixed') === 'range'
             && $setting->min_heart_amount !== null && $setting->max_heart_amount !== null;
-        if ($hasCommentRange) {
+        if ($hasRandomRange) {
             $minimum = (int) $setting->min_heart_amount;
             $maximum = (int) $setting->max_heart_amount;
-            if ($minimum < 0 || $maximum < $minimum) return 0;
+            $minimumAllowed = 0;
+            if ($minimum < $minimumAllowed || $maximum < $minimum) return 0;
             $amount = random_int($minimum, $maximum);
         } else {
             $amount = $amountOverride ?? (int) $setting->heart_amount;
         }
-        // Check-in and explicitly configured comment ranges may award zero; legacy fixed rewards remain positive-only.
-        if ($amount < 0 || ($amount === 0 && $actionCode !== 'daily_attendance' && ! $hasCommentRange)) return 0;
+        // Configured ranges may award zero; fixed rewards remain positive-only except Daily Check-in.
+        if ($amount < 0 || ($amount === 0 && $actionCode !== 'daily_attendance' && ! $hasRandomRange)) return 0;
 
         // Selected-member mode is authorized by ResolveActivityMember; legacy random mode uses its reservation proof.
         $actorIdx = (int) ($references['actor_member_idx'] ?? 0);

@@ -1,0 +1,22 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 352" fill="none">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="640" y2="352" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#F5F1FF"/>
+      <stop offset="1" stop-color="#FCEFFC"/>
+    </linearGradient>
+    <linearGradient id="card" x1="232" y1="65" x2="410" y2="281" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#B38AF3"/>
+      <stop offset="1" stop-color="#8061DF"/>
+    </linearGradient>
+  </defs>
+  <rect width="640" height="352" rx="24" fill="url(#bg)"/>
+  <circle cx="95" cy="293" r="114" fill="#E8DFFF" fill-opacity=".7"/>
+  <circle cx="551" cy="53" r="112" fill="#F8DFF2" fill-opacity=".65"/>
+  <path d="M280 58h89a29 29 0 0 1 29 29v176a20 20 0 0 1-20 20H262a20 20 0 0 1-20-20V96a38 38 0 0 1 38-38Z" fill="url(#card)" fill-opacity=".16" stroke="#9A7AE4" stroke-width="10"/>
+  <path d="M300 112c2-22 18-34 39-34 24 0 41 15 41 37 0 18-10 27-25 39-13 10-18 17-18 30" stroke="#7958CB" stroke-width="15" stroke-linecap="round"/>
+  <circle cx="337" cy="217" r="9" fill="#7958CB"/>
+  <path d="M199 118c-18-26-58-8-48 22 6 18 48 43 48 43s42-25 48-43c10-30-30-48-48-22Z" fill="#F5A9D0" fill-opacity=".8"/>
+  <path d="M449 204c-14-20-45-6-37 17 5 14 37 33 37 33s32-19 37-33c8-23-23-37-37-17Z" fill="#C7AEFA"/>
+  <circle cx="120" cy="85" r="8" fill="#B79AF1"/>
+  <circle cx="510" cy="283" r="7" fill="#ECA3D1"/>
+</svg>

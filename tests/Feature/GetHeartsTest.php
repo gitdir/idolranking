@@ -11,6 +11,9 @@ class GetHeartsTest extends TestCase
     private function database(): void
     {
         DB::statement('CREATE TABLE members (idx INTEGER PRIMARY KEY, member_code TEXT, email TEXT, nickname TEXT, country_code TEXT, profile_image_path TEXT, heart_balance INTEGER DEFAULT 0, member_level INTEGER DEFAULT 1, is_dummy INTEGER DEFAULT 0, status TEXT DEFAULT \'active\', deleted_at TEXT, updated_at TEXT)');
+        DB::statement('CREATE TABLE idols (idx INTEGER PRIMARY KEY, status TEXT DEFAULT \'active\')');
+        DB::statement('CREATE TABLE fan_posts (idx INTEGER PRIMARY KEY, member_idx INTEGER, idol_idx INTEGER, status TEXT, deleted_at TEXT)');
+        DB::statement('CREATE TABLE fan_post_likes (fan_post_idx INTEGER, member_idx INTEGER)');
         DB::statement('CREATE TABLE heart_reward_settings (idx INTEGER PRIMARY KEY AUTOINCREMENT, action_code TEXT UNIQUE, heart_amount INTEGER, min_heart_amount INTEGER NULL, max_heart_amount INTEGER NULL, daily_limit INTEGER DEFAULT 0, is_enabled INTEGER DEFAULT 1, created_at TEXT, updated_at TEXT)');
         DB::statement('CREATE TABLE heart_histories (idx INTEGER PRIMARY KEY AUTOINCREMENT, member_idx INTEGER, amount INTEGER, balance_after INTEGER, reason TEXT, vote_idx INTEGER, comment_idx INTEGER, reversal_of_history_idx INTEGER, operation_key TEXT, actor_member_idx INTEGER, memo TEXT, created_at TEXT, UNIQUE (member_idx, operation_key))');
         DB::statement('CREATE TABLE daily_check_ins (idx INTEGER PRIMARY KEY AUTOINCREMENT, member_idx INTEGER NOT NULL, actor_member_idx INTEGER NOT NULL, language_code TEXT, content TEXT NOT NULL, awarded_hearts INTEGER NOT NULL, check_in_date TEXT NOT NULL, created_at TEXT, updated_at TEXT, UNIQUE (member_idx, check_in_date))');
@@ -30,6 +33,148 @@ class GetHeartsTest extends TestCase
                 'daily_limit' => $limit, 'is_enabled' => 1,
             ]);
         }
+        DB::table('heart_reward_settings')->insert([
+            'action_code' => 'quiz_create', 'heart_amount' => 100,
+            'min_heart_amount' => null, 'max_heart_amount' => null, 'daily_limit' => 20, 'is_enabled' => 1,
+        ]);
+        foreach ([1 => 3, 2 => 5, 3 => 10] as $count => $amount) {
+            DB::table('heart_reward_settings')->insert([
+                'action_code' => 'quiz_creator_reward_'.$count, 'heart_amount' => $amount,
+                'min_heart_amount' => null, 'max_heart_amount' => null, 'daily_limit' => 0, 'is_enabled' => 1,
+            ]);
+        }
+        DB::table('heart_reward_settings')->insert([
+            'action_code' => 'quiz_perfect', 'heart_amount' => 20,
+            'min_heart_amount' => 10, 'max_heart_amount' => 30, 'daily_limit' => 0, 'is_enabled' => 1,
+        ]);
+        foreach ([1 => 1000, 2 => 500, 3 => 100] as $rank => $amount) {
+            DB::table('heart_reward_settings')->insert([
+                'action_code' => 'quiz_weekly_rank_'.$rank, 'heart_amount' => $amount,
+                'min_heart_amount' => null, 'max_heart_amount' => null, 'daily_limit' => 0, 'is_enabled' => 1,
+            ]);
+        }
+    }
+
+    public function test_quiz_reward_cards_use_separate_settings_history_and_routes(): void
+    {
+        $this->database();
+        DB::table('members')->insert([
+            'idx' => 7, 'member_code' => 'QuizHeartMember', 'email' => 'quiz-heart@example.test',
+            'nickname' => 'quiz_heart', 'heart_balance' => 500, 'member_level' => 1,
+            'is_dummy' => 0, 'status' => 'active',
+        ]);
+        DB::table('heart_reward_settings')->where('action_code', 'quiz_creator_reward_2')->update(['heart_amount' => 7]);
+        DB::table('heart_reward_settings')->where('action_code', 'quiz_perfect')->update([
+            'min_heart_amount' => 12, 'max_heart_amount' => 42, 'daily_limit' => 7,
+        ]);
+        DB::table('heart_reward_settings')->where('action_code', 'quiz_weekly_rank_2')->update(['heart_amount' => 725]);
+        DB::table('heart_histories')->insert([
+            ['member_idx' => 7, 'amount' => 150, 'reason' => 'quiz_create_reward', 'operation_key' => 'quiz_create:101', 'created_at' => now('UTC')],
+            ['member_idx' => 7, 'amount' => 12, 'reason' => 'quiz_perfect', 'operation_key' => 'quiz_perfect:201', 'created_at' => now('UTC')],
+            ['member_idx' => 7, 'amount' => 42, 'reason' => 'quiz_perfect', 'operation_key' => 'quiz_perfect:202', 'created_at' => now('UTC')],
+        ]);
+
+        $response = $this->withSession(['member_idx' => 7])->get('/get-hearts')->assertOk()
+            ->assertSee('Quiz Creator Reward')->assertSee('Solve Quizzes')
+            ->assertSee('+3 / +7 / +10')->assertSee('+12~42')
+            ->assertSee(__('quiz.weekly_creator_rewards_title'))
+            ->assertSee(__('quiz.weekly_creator_rewards_frequency'))
+            ->assertSee(__('quiz.weekly_creator_rewards_description'))
+            ->assertSee('+1,000 / +725 / +100')
+            ->assertSee(__('quiz.weekly_creator_rewards_action'))
+            ->assertDontSee(__('quiz.weekly_reward_activity_desc'))
+            ->assertSee('Rewarded once per perfect quiz')
+            ->assertSee('href="'.route('quizzes.create').'"', false)
+            ->assertSee('href="'.route('quizzes.index').'"', false)
+            ->assertSee('Once per quiz and participating member')
+            ->assertSee('Each quiz can be attempted once per day; incorrect attempts count.')
+            ->assertDontSee('Publish a quiz and earn Hearts!');
+
+        $document = new \DOMDocument();
+        $previousErrorMode = libxml_use_internal_errors(true);
+        $document->loadHTML($response->getContent());
+        libxml_clear_errors();
+        libxml_use_internal_errors($previousErrorMode);
+
+        $xpath = new \DOMXPath($document);
+        $creatorCards = $xpath->query('//article[.//strong[contains(., "Quiz Creator Reward") and not(contains(., "Weekly"))]]');
+        $this->assertSame(1, $creatorCards->length);
+        $weeklyCards = $xpath->query('//article[.//strong[contains(., "Weekly Popular Quiz Creator Reward")]]');
+        $this->assertSame(1, $weeklyCards->length);
+        $this->assertSame(0, $xpath->query('//article[.//strong[contains(., "Weekly Popular Quiz Creator Reward — 2nd Place")]]')->length);
+        $this->assertSame(1, DB::table('heart_histories')->where('member_idx', 7)
+            ->where('operation_key', 'quiz_create:101')->count());
+        $this->assertSame(150, (int) DB::table('heart_histories')->where('member_idx', 7)
+            ->where('operation_key', 'quiz_create:101')->value('amount'));
+    }
+
+    public function test_get_hearts_cards_follow_the_requested_display_order(): void
+    {
+        $this->database();
+
+        $response = $this->get('/get-hearts')->assertOk();
+        $document = new \DOMDocument();
+        $previousErrorMode = libxml_use_internal_errors(true);
+        $document->loadHTML($response->getContent());
+        libxml_clear_errors();
+        libxml_use_internal_errors($previousErrorMode);
+
+        $names = (new \DOMXPath($document))->query(
+            '//div[contains(concat(" ", normalize-space(@class), " "), " get-hearts-list ")]/article/div[contains(concat(" ", normalize-space(@class), " "), " get-hearts-activity-main ")]/span[2]/strong'
+        );
+        $actual = [];
+        foreach ($names as $name) {
+            $actual[] = trim($name->textContent);
+        }
+
+        $this->assertSame([
+            __('ui.activity_daily_attendance'),
+            __('ui.activity_watch_ads'),
+            __('ui.activity_fan_post'),
+            __('ui.activity_comment'),
+            __('ui.activity_recommend'),
+            __('ui.activity_idol_registration'),
+            __('ui.activity_quiz_creator_reward'),
+            __('quiz.weekly_creator_rewards_title'),
+            __('ui.activity_quiz_perfect'),
+            __('ui.activity_invite'),
+        ], array_slice($actual, 0, 10));
+    }
+
+    public function test_idol_registration_reward_description_uses_the_selected_locale(): void
+    {
+        $this->database();
+
+        $this->withSession(['locale' => 'ko'])->get('/get-hearts')->assertOk()
+            ->assertSee('아이돌 또는 그룹 등록 신청이 승인되면 지급받습니다.')
+            ->assertSee('+3,000');
+
+        $this->withSession(['locale' => 'en'])->get('/get-hearts')->assertOk()
+            ->assertSee('You will receive the reward when your idol or group registration is approved.')
+            ->assertSee('+3,000');
+    }
+
+    public function test_quiz_reward_cards_reflect_disabled_settings_without_hiding_quiz_links(): void
+    {
+        $this->database();
+        DB::table('heart_reward_settings')->whereIn('action_code', ['quiz_creator_reward_1', 'quiz_creator_reward_2', 'quiz_creator_reward_3', 'quiz_perfect'])
+            ->update(['is_enabled' => 0]);
+
+        $this->get('/get-hearts')->assertOk()
+            ->assertSee('Create Quiz')->assertSee('Solve Quizzes')
+            ->assertSee('href="'.route('quizzes.create').'"', false)
+            ->assertSee('href="'.route('quizzes.index').'"', false)
+            ->assertSee('Unavailable');
+    }
+
+    public function test_missing_quiz_creator_reward_setting_is_unavailable_but_navigation_stays_available(): void
+    {
+        $this->database();
+        DB::table('heart_reward_settings')->where('action_code', 'quiz_creator_reward_1')->delete();
+
+        $this->get('/get-hearts')->assertOk()
+            ->assertSee('Quiz Creator Reward')->assertSee('Unavailable')
+            ->assertSee('href="'.route('quizzes.create').'"', false);
     }
 
     public function test_page_is_public_and_uses_configured_rewards_without_personal_values(): void
@@ -37,9 +182,9 @@ class GetHeartsTest extends TestCase
         $this->database();
 
         $response = $this->get('/get-hearts')->assertOk()
-            ->assertSee('Get Hearts')->assertSee('Hearts are earned, not bought.')
+            ->assertSee('Get Hearts')
             ->assertSee('Watch Ads')->assertSee(__('ui.unavailable'))
-            ->assertSee('Invite Friends')->assertSee('+ 1,000')->assertSee('No daily limit')
+            ->assertSee('Invite Friends')->assertSee('+1,000')->assertSee('No daily limit')
             ->assertSee('Sign in to see your Hearts')->assertDontSee('data-watch-ad-open', false)
             ->assertSee('<link rel="canonical" href="'.route('get-hearts').'">', false);
         foreach (['calendar-check', 'play-circle', 'image-plus', 'message-circle', 'thumbs-up', 'user-plus', 'users'] as $icon) {
@@ -105,7 +250,7 @@ class GetHeartsTest extends TestCase
             ['member_idx' => 7, 'amount' => 999, 'reason' => 'event_reward', 'created_at' => now()->subDay()],
         ]);
         $this->withSession(['member_idx' => 7])->get('/get-hearts')->assertOk()
-            ->assertSee('5,320')->assertSee('+ 171')->assertSee('1 / 1')->assertSee('2 / 20')
+            ->assertSee('5,320')->assertSee('+171')->assertSee('1 / 1')->assertSee('2 / 20')
             ->assertSee('href="'.route('attendance').'"', false)->assertDontSee('data-watch-ad-open', false)
             ->assertSee('No Hearts are granted from this preview.')
             ->assertViewHas('activities', fn ($activities) =>
@@ -293,8 +438,8 @@ class GetHeartsTest extends TestCase
             ->assertSee('name="min_heart_amount" min="0" max="2147483647" value="10"', false)
             ->assertSee('name="max_heart_amount" min="0" max="2147483647" value="10"', false)
             ->assertSee('name="heart_amount"', false);
-        $this->assertSame(2, substr_count($settingsPage->getContent(), 'name="min_heart_amount"'));
-        $this->assertSame(2, substr_count($settingsPage->getContent(), 'name="max_heart_amount"'));
+        $this->assertSame(3, substr_count($settingsPage->getContent(), 'name="min_heart_amount"'));
+        $this->assertSame(3, substr_count($settingsPage->getContent(), 'name="max_heart_amount"'));
 
         $payload = ['heart_amount' => 10, 'daily_limit' => 20, 'min_heart_amount' => 4, 'max_heart_amount' => 8, 'is_enabled' => 1];
         $this->withSession(['member_idx' => 8])->put('/admin/hearts/settings/comment_create', $payload)->assertRedirect();

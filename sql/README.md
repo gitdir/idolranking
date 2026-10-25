@@ -4,7 +4,7 @@ SQL files are the source of truth for database deployment. Laravel migrations an
 
 ## Fresh installation
 
-`deploy/mariadb11_schema.sql` is the authoritative fresh-install schema snapshot and production baseline. It currently contains 36 application tables plus `schema_patch_history` (37 tables total), with 58 named foreign-key constraints and no application records. Run it first, then run `deploy/mariadb11_seed.sql` for essential Heart reward configuration:
+`deploy/mariadb11_schema.sql` is the authoritative fresh-install schema snapshot and production baseline. It currently contains 44 application tables plus `schema_patch_history` (45 tables total), 71 named foreign-key constraints, and no application records. Run it first, then run `deploy/mariadb11_seed.sql` for essential Heart reward configuration:
 
 ```sh
 mariadb --default-character-set=utf8mb4 -u DB_USER -p DB_NAME < sql/deploy/mariadb11_schema.sql
@@ -72,15 +72,39 @@ INSERT INTO schema_patch_history (patch_name, applied_by, notes)
 VALUES ('20261014_001_add_member_status_index.sql', 'deployment-operator', 'Applied during release 2026-10-14');
 ```
 
+Patch `20261025_001_create_member_quizzes.sql` creates the quiz, ordered question/choice, daily attempt, and immutable submitted-answer tables, then adds the `quiz_perfect` range reward setting if missing. Apply it once to an existing database that matches the deployment baseline, after a consistent backup. Inspect all five tables and the reward row, then record the exact patch filename in `schema_patch_history` only after success. Do not run this patch on a fresh database because `deploy/mariadb11_schema.sql` and `deploy/mariadb11_seed.sql` already include the quiz schema and initial 10–30 Heart reward configuration. The unique quiz/member/service-date key enforces one attempt per quiz per member per `app.timezone` date. The existing unique `(member_idx, operation_key)` Heart History key enforces one perfect-score reward per attempt (`quiz_perfect:{attempt_idx}`). No production database changes were executed as part of implementation.
+
+Patch `20261025_002_add_quiz_creation_reward.sql` adds the `quiz_create` row to the existing `heart_reward_settings` table when it is missing (100 Hearts, 20 rewarded creations per UTC day, enabled). Apply it after `20261025_001_create_member_quizzes.sql` on existing installations, then record the exact patch filename in `schema_patch_history`. The patch does not alter existing reward rows; fresh-install schema and seed snapshots include the default row.
+
+Patch `20261025_003_add_quiz_idol_and_cover.sql` adds nullable `quizzes.idol_idx` and `quizzes.cover_image_path` fields, an idol lookup index, and a restrictive foreign key for existing installations. Nullability preserves quizzes already present before the relationship was introduced. New quiz submissions require an active idol/group and validate that its type and gender match the submitted category. Apply after the quiz creation patches on an existing installation, then record the exact patch filename in `schema_patch_history`. Fresh installations include both columns and the foreign key in `deploy/mariadb11_schema.sql`. No existing quiz or uploaded image data is altered.
+
+Patch `20261025_004_add_quiz_question_versions.sql` adds a current version to each quiz, a version to its question rows, and the version captured by each participation attempt. It replaces the question-order unique key with `(quiz_idx, quiz_version, question_order)`, retaining the existing question and choice rows so historical and in-progress attempts keep their original answer keys and result text. Existing records are assigned version `1` by the non-null defaults. Apply after the quiz creation patches on an existing installation and record its filename in `schema_patch_history`; fresh installations include these columns and the versioned unique key in `deploy/mariadb11_schema.sql`. The patch does not delete or rewrite quiz, attempt, answer, or Heart history records.
+
+Patch `20261025_005_allow_quiz_creator_retries.sql` removes the once-per-day unique constraint from quiz attempts and adds a non-unique lookup index, allowing creators to keep test attempts while ordinary-member daily eligibility remains enforced by server-side checks. It preserves all existing attempts. Apply after `20261025_004_add_quiz_question_versions.sql`; fresh installations already use the non-unique index.
+
+Patch `20261025_006_add_quiz_title.sql` adds the required `quizzes.title` field and backfills existing quizzes from the first question prompt in their current version (truncated only if needed to fit 255 characters; question rows are unchanged). Apply once after checking `schema_patch_history`, then record the exact patch filename after success. Fresh installations include the title in `deploy/mariadb11_schema.sql` and `schema/quizzes.sql`.
+
+Patch `20261025_007_update_quiz_creator_reward_policy.sql` disables the obsolete quiz-creation reward setting and adds configurable creator rewards for first completion by another member: 3, 5, or 10 Hearts for quizzes with one, two, or three questions. It does not delete or change existing `quiz_create_reward` history. Apply once after checking `schema_patch_history`, then record the patch filename after success. Fresh installs seed the three creator-reward settings and omit the obsolete creation-reward setting.
+
+Patch `20261025_008_add_quiz_creation_daily_limit.sql` creates persistent quiz-creation history used to enforce a limit of five quizzes per member per Asia/Seoul day. It backfills existing quizzes and recoverable legacy creation-reward records. The history deliberately has no quiz foreign key, so deleting a quiz does not restore its creation quota. Quiz creation writes the quiz and its history row in one transaction; fresh installs include this table in the schema snapshot.
+
+Patch `20261025_009_weekly_quiz_participation_ranking.sql` marks quiz creator-owned attempts as test-only (including existing creator attempts), adds an index for completed-attempt week scans, creates idempotent weekly settlement and occupied-rank audit tables, and seeds the 1,000 / 500 / 100 Heart ranking rewards. Its initial settlement-reward table permits one row per member and rank; patch `20261025_011` then changes this to rank-based audit rows associated with the ranked quiz, allowing one creator to own multiple TOP 3 quizzes. Attempts remain intact. Apply once after checking the patch ledger; fresh installations include the final column, tables, and reward defaults in the schema and seed snapshots. `quizzes:settle-weekly-ranking` settles the previous Asia/Seoul Monday-to-Monday week and is scheduled every Monday at 00:05 Asia/Seoul. The unique week, rank, and operation keys plus a locked settlement header prevent repeated rewards.
+
+Patch `20261025_010_centralize_quiz_heart_reward_settings.sql` removes only the obsolete `quiz_create` configuration row after the replacement creator-completion reward settings have been introduced by patch `20261025_007`. It does not delete Heart history, change member balances, or revoke any prior reward. Apply it in numeric order after patch `20261025_009` and before patch `20261025_011`; fresh installations omit the obsolete setting and must not run this patch separately.
+
+Patch `20261025_011_rank_weekly_quiz_creator_rewards.sql` adds the nullable ranked `quiz_idx`, its index and `ON DELETE SET NULL` foreign key, and removes the per-settlement member uniqueness constraint. Existing settlement rows keep their member, rank, counts, amounts, and Heart history; their new `quiz_idx` remains `NULL`. Apply after `20261025_010_centralize_quiz_heart_reward_settings.sql`; fresh installations already include the final definition.
+
+Patch `20261025_012_add_quiz_soft_deletion.sql` adds `quizzes.deleted_at` and an index for public quiz visibility. Deletion only sets this timestamp; questions, attempts, Likes, Heart histories, and settlement audit rows remain intact. Apply once after checking `schema_patch_history`; fresh installations include the column and index in both Quiz schema snapshots.
+
+Patch `20261025_013_create_quiz_likes.sql` creates the quiz-specific member Like table with one row per `(quiz_idx, member_idx)` and an optional actor reference for Admin Dummy Mode audit. It does not add Heart rewards or ranking inputs. Apply once after checking `schema_patch_history`; fresh installations include the table in both Quiz schema snapshots.
+
 ## Backups
 
-Take a consistent database backup before every production patch or risky database maintenance. Store it in approved encrypted, access-controlled storage outside this repository, and periodically verify restore procedures. Example:
+Before a production patch or risky database maintenance, save a consistent dump in the approved local directory `D:\backup\idolranking`, outside the repository. Use the existing pinned SSH connection and loopback-only tunnel when the production database is reachable only from the production host. The MySQL 8.4 client options used for MariaDB are `--single-transaction --quick --routines --triggers --events --hex-blob --column-statistics=0 --no-tablespaces`. Do not connect the local client directly to a public database host.
 
-```sh
-mariadb-dump --single-transaction --routines --triggers -u DB_USER -p DB_NAME > idolranking-YYYYMMDD-HHMMSS.sql
-```
+Keep the directory ACL restricted to the current Windows account and local Administrators. For this approved deployment, the SQL dump is stored without separate file-level encryption. Keep it in that restricted directory; never copy it into the repository, a public directory, or a log. Store a sidecar manifest with the timestamp, database identifier, file size, and SHA-256 checksum, but no credentials.
 
-Never put a database dump, production data, credentials, or `.env` file in this repository or commit them. Protect backups as production data and follow the applicable retention policy.
+Verify the checksum and restore the dump into a fresh isolated temporary MySQL instance before relying on it. Compare the restored schema/table count and representative row counts, then stop the temporary server and remove only its uniquely named temporary data directory. For production recovery, first preserve the current state and use the existing `scripts/deploy/database-operation.ps1 -Mode Replace` procedure only with a separately approved maintenance/recovery action, exact dump checksum, expected table count, and verified backup reference. Replacement can lose writes made after the backup; it never changes `.env` or uploads. Never put dumps, production data, credentials, or `.env` files in Git.
 
 ## Visitor statistics privacy
 

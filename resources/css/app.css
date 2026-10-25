@@ -306,6 +306,7 @@ a { color: inherit; text-decoration: none; }
     .main-nav .drawer-content > .header-idol,
     .main-nav .drawer-content > .header-group,
     .main-nav .drawer-content > .header-fan-posts,
+    .main-nav .drawer-content > .header-quizzes,
     .main-nav .drawer-content > .header-get-hearts,
     .main-nav .drawer-content > .header-attendance {
         font-size: 15px;
@@ -319,16 +320,18 @@ a { color: inherit; text-decoration: none; }
     .drawer-content > .header-idol { order: 0; }
     .drawer-content > .header-group { order: 1; }
     .drawer-content > .header-fan-posts { order: 2; }
-    .drawer-content > .header-get-hearts { order: 3; }
-    .drawer-content > .header-attendance { order: 4; }
-    .drawer-content > .header-search-trigger { order: 5; padding: 0; }
-    .drawer-content > .header-account, .drawer-content > .guest-account { order: 6; }
-    .drawer-content > .language-selector { order: 7; }
+    .drawer-content > .header-quizzes { order: 3; }
+    .drawer-content > .header-get-hearts { order: 4; }
+    .drawer-content > .header-attendance { order: 5; }
+    .drawer-content > .header-search-trigger { order: 6; padding: 0; }
+    .drawer-content > .header-account, .drawer-content > .guest-account { order: 7; }
+    .drawer-content > .language-selector { order: 8; }
 }
 @media (min-width: 640px) and (max-width: 1100px) {
     .drawer-content > .header-idol,
     .drawer-content > .header-group,
     .drawer-content > .header-fan-posts,
+    .drawer-content > .header-quizzes,
     .drawer-content > .header-get-hearts,
     .drawer-content > .header-attendance { padding-right: 10px; }
 }
@@ -508,7 +511,7 @@ html.drawer-open { overflow: hidden; }
     .ranking-panel .heart-total svg, .ranking-panel .ranking-row-posts svg { width: 17px; height: 17px; }
     .ranking-panel .fan-post-empty { font-size: 14px; }
 }
-.ranking-member h3 { margin: 0 0 5px; font-size: 14px; font-weight: 700; line-height: 1.25; overflow-wrap: anywhere; }
+.ranking-member h3 { margin: 0 0 5px; font-size: 15px; font-weight: 700; line-height: 1.25; overflow-wrap: anywhere; }
 .heart-total svg { color: var(--pink); }
 .heart-vote { width: 36px; height: 36px; display: grid; place-items: center; border: 0; border-radius: 50%; background: white; padding: 8px; color: var(--pink); }
 .heart-vote svg { width: 21px; height: 21px; }
@@ -969,7 +972,7 @@ html.fan-post-report-open { overflow: hidden; }
 .fan-detail-comment-list li:first-child { border-top: 1px solid #edf1f7; }
 .fan-detail-comment-list li > div { min-width: 0; overflow-wrap: anywhere; }
 .fan-detail-comment-content { flex: 1; }
-.fan-detail-comment-reward { display: inline-flex; align-items: center; gap: 3px; margin-top: 5px; color: #e03e8b; font-size: 11px; font-weight: 750; }
+.fan-detail-comment-reward { display: inline-flex; align-items: center; gap: 3px; margin-top: 5px; color: #e03e8b; font-size: 12px; font-weight: 750; }
 .fan-detail-comment-reward svg { display: block; width: 14px; height: 14px; flex: 0 0 14px; }
 .fan-post-comment-translation { margin: 0; }
 .fan-post-comment-body { margin: 0; white-space: pre-wrap; font-size: 14px; line-height: 1.6; color: #5971a6; }
@@ -1778,11 +1781,18 @@ body:has(.password-page--forgot), body:has(.register-page #register-title) { bac
 .get-hearts-guest-summary span { margin-top: 3px; color: #6f84b6; font-size: 13px; }
 .get-hearts-guest-summary button, .get-hearts-action { min-width: 104px; min-height: 40px; padding: 8px 17px; border: 0; border-radius: 7px; background: #ff2d91; color: #fff; font: inherit; font-size: 13px; font-weight: 700; white-space: nowrap; cursor: pointer; }
 .get-hearts-activity > a.get-hearts-action { display: inline-grid; place-items: center; text-decoration: none; }
+.get-hearts-activity--quiz-create > .get-hearts-quiz-create-left { display: grid; grid-column: 1; min-width: 0; align-content: center; gap: 10px; }
+.get-hearts-quiz-create-left > .get-hearts-action { display: grid; width: 100%; box-sizing: border-box; place-items: center; text-decoration: none; }
+.get-hearts-activity--quiz-create > .get-hearts-reward { grid-column: 2; grid-row: 1; align-self: center; }
+.get-hearts-activity--quiz-create > .get-hearts-progress--quiz-create { grid-column: 3; grid-row: 1; min-width: 0; }
 .get-hearts-activities { margin-top: 26px; }
 .get-hearts-activities > header h2 { margin: 0; color: #102563; font-size: 29px; line-height: 1.25; }
 .get-hearts-activities > header p { margin: 3px 0 14px; color: #627bb8; font-size: 14px; }
 .get-hearts-list { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); align-items: stretch; gap: 8px 12px; }
 .get-hearts-activity { display: grid; grid-template-columns: minmax(155px, 1.35fr) minmax(105px, .7fr) minmax(90px, .85fr) auto; width: 100%; min-width: 0; min-height: 72px; align-items: center; gap: 10px; padding: 9px 11px; border: 1px solid #e0e6f2; border-radius: 9px; background: #fff; }
+.get-hearts-activity--weekly-quiz-reward > .get-hearts-reward { grid-column: 2 / -1; grid-row: 1; min-width: 0; }
+.get-hearts-activity--weekly-quiz-reward > .get-hearts-reward strong { flex-wrap: wrap; white-space: normal; }
+.get-hearts-activity--weekly-quiz-reward > .get-hearts-action { grid-column: 1 / -1; grid-row: 2; justify-self: start; }
 .get-hearts-activity.is-disabled { opacity: .6; }
 .get-hearts-activity-main { display: grid; grid-template-columns: 48px minmax(0, 1fr); align-items: center; gap: 10px; min-width: 0; }
 .get-hearts-activity-main > span:last-child { min-width: 0; }
@@ -1848,6 +1858,9 @@ html.watch-ad-open { overflow: hidden; }
     .get-hearts-activity { grid-template-columns: minmax(0, 1fr) minmax(100px, .65fr); }
     .get-hearts-progress, .get-hearts-activity-note { grid-column: 1 / -1; }
     .get-hearts-activity > :is(.get-hearts-action, .get-hearts-status) { grid-column: 1 / -1; width: 100%; }
+    .get-hearts-activity--quiz-create > .get-hearts-quiz-create-left { grid-column: 1; }
+    .get-hearts-activity--quiz-create > .get-hearts-reward { grid-column: 2; grid-row: 1; }
+    .get-hearts-activity--quiz-create > .get-hearts-progress--quiz-create { grid-column: 1 / -1; grid-row: 2; }
 }
 @media (max-width: 639px) {
     .get-hearts-page { padding-top: 0; }
@@ -1885,6 +1898,10 @@ html.watch-ad-open { overflow: hidden; }
     .get-hearts-progress-guest, .get-hearts-unlimited { padding-left: 0; }
     .get-hearts-activity-note { grid-column: 1 / -1; margin-left: 51px; }
     .get-hearts-activity > :is(.get-hearts-action, .get-hearts-status) { grid-column: 1 / -1; width: calc(100% - 51px); margin-left: 51px; }
+    .get-hearts-activity--quiz-create > .get-hearts-quiz-create-left { grid-column: 1; grid-row: 1; }
+    .get-hearts-activity--quiz-create > .get-hearts-reward { grid-column: 2; grid-row: 1; }
+    .get-hearts-activity--quiz-create > .get-hearts-progress--quiz-create { grid-column: 1 / -1; grid-row: 2; }
+    .get-hearts-quiz-create-left > .get-hearts-action { width: calc(100% - 51px); margin-left: 51px; }
     .get-hearts-sponsor-grid { grid-template-columns: minmax(0, 1fr); }
     .get-hearts-sponsor-grid { grid-auto-rows: auto; }
     .get-hearts-sponsor { height: auto; }
@@ -1898,7 +1915,7 @@ html.watch-ad-open { overflow: hidden; }
 .attendance-hero-icon { display: grid; width: 64px; height: 64px; flex: 0 0 64px; place-items: center; border-radius: 18px; background: #ffe5f2; color: #ed3d91; }
 .attendance-hero-icon svg { width: 31px; height: 31px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
 .attendance-hero h1 { margin: 0; color: #102563; font-size: clamp(26px, 3.5vw, 38px); line-height: 1.15; letter-spacing: -.7px; }
-.attendance-hero p { margin: 7px 0 0; color: #6177a8; font-size: 14px; line-height: 1.5; }
+.attendance-hero p { margin: 6px 0 0; color: #6177a8; font-size: 15px; line-height: 1.5; }
 .attendance-hero-reward { display: inline; font: inherit; line-height: inherit; white-space: nowrap; color: #ed3d91; }
 .attendance-hero-reward svg { display: inline-block; margin-right: 3px; vertical-align: -2px; }
 .attendance-composer, .attendance-feed { margin-top: 22px; }
@@ -1942,7 +1959,7 @@ select.fan-post-sort-select, .country-picker-trigger.fan-post-sort-select { padd
 .attendance-card-translation-status { margin: 6px 0 0; color: #7d89a1; font-size: 11px; line-height: 1.4; }
 .attendance-card-footer { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-top: 14px; padding-top: 10px; border-top: 1px solid #edf0f6; }
 .attendance-card-footer time { color: #939cb0; font-size: 10px; }
-.attendance-card-reward { display: inline-flex; align-items: center; gap: 4px; color: #e33d8c; font-size: 12px; white-space: nowrap; }
+.attendance-card-reward { display: inline-flex; align-items: center; gap: 4px; color: #e33d8c; font-size: 13px; white-space: nowrap; }
 .attendance-card-reward svg { width: 15px; height: 15px; fill: currentColor; }
 .attendance-empty { margin: 0; padding: 44px 20px; border: 1px dashed #dce4f4; border-radius: 8px; color: #7183ae; text-align: center; }
 .attendance-page .number-pagination { margin-top: 10px; }
@@ -2136,6 +2153,7 @@ html.invite-friends-open { overflow: hidden; }
     .main-nav .drawer-content > .header-idol > span,
     .main-nav .drawer-content > .header-group > span,
     .main-nav .drawer-content > .header-fan-posts > span,
+    .main-nav .drawer-content > .header-quizzes > span,
     .main-nav .drawer-content > .header-get-hearts > span,
     .main-nav .drawer-content > .header-attendance > span,
     .main-nav .drawer-content > .header-search-trigger .header-search-label { font-size: 16px; }

@@ -106,6 +106,11 @@ Thumbs.db
 !/sql/patches/20261018_001_drop_unused_fan_post_monthly_views.sql
 !/sql/patches/20261019_001_stop_storing_raw_visitor_ips.sql
 !/sql/patches/20261019_002_add_fan_post_distribution.sql
+!/sql/patches/20261025_001_create_member_quizzes.sql
+!/sql/patches/20261025_002_add_quiz_creation_reward.sql
+!/sql/patches/20261025_003_add_quiz_idol_and_cover.sql
+!/sql/patches/20261025_004_add_quiz_question_versions.sql
+!/sql/patches/20261025_005_allow_quiz_creator_retries.sql
 /sql/deploy/*
 !/sql/deploy/mariadb11_schema.sql
 !/sql/deploy/mariadb11_seed.sql
@@ -137,3 +142,13 @@ Thumbs.db
 /temp/
 /backups/
 /dumps/
+/docs/
+!/sql/schema/quizzes.sql
+!/sql/patches/20261025_006_add_quiz_title.sql
+!/sql/patches/20261025_007_update_quiz_creator_reward_policy.sql
+!/sql/patches/20261025_008_add_quiz_creation_daily_limit.sql
+!/sql/patches/20261025_009_weekly_quiz_participation_ranking.sql
+!/sql/patches/20261025_010_centralize_quiz_heart_reward_settings.sql
+!/sql/patches/20261025_011_rank_weekly_quiz_creator_rewards.sql
+!/sql/patches/20261025_012_add_quiz_soft_deletion.sql
+!/sql/patches/20261025_013_create_quiz_likes.sql

@@ -9,6 +9,9 @@ log() {
 
 fail() {
     log "ERROR: $1"
+    if [[ "${MODE:-}" == 'patch-tunnel' && -n "${server_status:-}" && -d "${stage_root:-/nonexistent}" ]]; then
+        printf 'FAILED\n' > "$server_status.tmp" && mv -f -- "$server_status.tmp" "$server_status"
+    fi
     exit 1
 }
 
@@ -27,7 +30,7 @@ APP_DIR='/home/u624668418/domains/orchid-oryx-674671.hostingersite.com/idolranki
 PUBLIC_DIR='/home/u624668418/domains/orchid-oryx-674671.hostingersite.com/public_html'
 PHP='/opt/alt/php84/usr/bin/php'
 
-[[ "$MODE" == 'patch' || "$MODE" == 'replace' ]] || fail 'Unknown database operation mode.'
+[[ "$MODE" == 'patch' || "$MODE" == 'patch-tunnel' || "$MODE" == 'replace' ]] || fail 'Unknown database operation mode.'
 [[ "$DATABASE" =~ ^[A-Za-z0-9_]{1,64}$ ]] || fail 'Unsafe database name.'
 [[ "$DB_USER" =~ ^[A-Za-z0-9_.@-]{1,128}$ ]] || fail 'Unsafe database username.'
 [[ "$DB_HOST" =~ ^(localhost|127(\.[0-9]{1,3}){3}|10(\.[0-9]{1,3}){3}|192\.168(\.[0-9]{1,3}){2}|172\.(1[6-9]|2[0-9]|3[01])(\.[0-9]{1,3}){2}|::1)$ ]] \
@@ -39,9 +42,12 @@ PHP='/opt/alt/php84/usr/bin/php'
 [[ "$STAGED_FILE" == "$HOME"/.idolranking-sql-staging-*/input.sql ]] \
     || fail 'SQL input is not under the protected per-run staging path.'
 stage_root=${STAGED_FILE%/input.sql}
+server_status="$stage_root/server.status"
 [[ -d "$stage_root" && ! -L "$stage_root" && -f "$STAGED_FILE" ]] || fail 'Protected SQL staging input is missing.'
 [[ "$(stat -c '%a' "$stage_root" 2>/dev/null || true)" == '700' ]] || fail 'SQL staging directory permissions are not 700.'
-command -v mariadb >/dev/null 2>&1 || fail 'MariaDB command-line client is unavailable on the server.'
+if [[ "$MODE" != 'patch-tunnel' ]]; then
+    command -v mariadb >/dev/null 2>&1 || fail 'MariaDB command-line client is unavailable on the server.'
+fi
 command -v flock >/dev/null 2>&1 || fail 'Deployment lock utility is unavailable.'
 [[ -x "$PHP" && -f "$APP_DIR/artisan" && -f "$APP_DIR/.env" ]] || fail 'Laravel application or PHP 8.4 is unavailable.'
 [[ "$("$PHP" -r 'echo PHP_MAJOR_VERSION.".".PHP_MINOR_VERSION;')" == '8.4' ]] \
@@ -78,6 +84,9 @@ database_cleanup() {
         else
             log 'Database operation failed after changes began; maintenance mode remains enabled for manual recovery.'
         fi
+    fi
+    if (( result != 0 )) && [[ "$MODE" == 'patch-tunnel' && -n "${server_status:-}" && -d "$stage_root" ]]; then
+        printf 'FAILED\n' > "$server_status.tmp" && mv -f -- "$server_status.tmp" "$server_status"
     fi
     exit "$result"
 }
@@ -129,15 +138,62 @@ smoke_tests() {
     check_2xx 'Vite asset' "$base_url/build/$asset_path"
 }
 
-if [[ "$MODE" == 'patch' ]]; then
+if [[ "$MODE" == 'patch' || "$MODE" == 'patch-tunnel' ]]; then
     # The wrapper has already verified the repository filename and checksum. Keep it as an explicit argument.
     [[ "$BACKUP_REFERENCE" == patch:* ]] || fail 'Patch filename token is missing.'
     patch_name=${BACKUP_REFERENCE#patch:}
     [[ "$patch_name" =~ ^[0-9]{8}_[0-9]{3}_[A-Za-z0-9_-]+\.sql$ ]] || fail 'Patch name validation failed.'
     phrase="APPLY PATCH $patch_name TO $DATABASE WITH $EXPECTED_SHA"
-    printf 'Selected patch: %s\nTarget database: %s\nChecksum: %s\n' "$patch_name" "$DATABASE" "$EXPECTED_SHA"
-    read -r -p "Type exactly to authorize: $phrase " typed_phrase
-    [[ "$typed_phrase" == "$phrase" ]] || fail 'Patch confirmation did not match.'
+    if [[ "$MODE" == 'patch' ]]; then
+        printf 'Selected patch: %s\nTarget database: %s\nChecksum: %s\n' "$patch_name" "$DATABASE" "$EXPECTED_SHA"
+        read -r -p "Type exactly to authorize: $phrase " typed_phrase
+        [[ "$typed_phrase" == "$phrase" ]] || fail 'Patch confirmation did not match.'
+    fi
+
+    if [[ "$MODE" == 'patch-tunnel' ]]; then
+        # The caller has already confirmed the exact patch/checksum locally. Keep this
+        # process alive so this same deployment lock and failure handler cover local
+        # MySQL traffic sent through the SSH -L tunnel.
+        server_status="$stage_root/server.status"
+        client_status="$stage_root/client.status"
+        write_server_status() {
+            printf '%s\n' "$1" > "$server_status.tmp"
+            mv -f -- "$server_status.tmp" "$server_status"
+        }
+        wait_client_status() {
+            expected_one=$1
+            expected_two=${2:-}
+            for ((attempt = 0; attempt < 1800; attempt++)); do
+                if [[ -f "$client_status" ]]; then
+                    client_value=$(cat "$client_status")
+                    if [[ "$client_value" == "$expected_one" || ( -n "$expected_two" && "$client_value" == "$expected_two" ) ]]; then
+                        rm -f -- "$client_status"
+                        return 0
+                    fi
+                    [[ "$client_value" != 'PREFLIGHT_FAILED' && "$client_value" != 'APPLY_FAILED' ]] \
+                        || return 1
+                fi
+                sleep 1
+            done
+            return 1
+        }
+
+        write_server_status 'READY'
+        wait_client_status 'PREFLIGHT_OK' || fail 'Tunnel client preflight failed or timed out; no patch was imported.'
+        enter_maintenance
+        database_mutated=1
+        write_server_status 'APPLY'
+        wait_client_status 'APPLY_OK' || fail 'Tunnel patch import or ledger update failed; inspect the database before retrying.'
+        refresh_laravel_caches
+        after_env_checksum=$(sha256sum "$APP_DIR/.env" | awk '{print $1}')
+        [[ "$env_checksum" == "$after_env_checksum" ]] || fail '.env changed unexpectedly during patch deployment.'
+        "$PHP" "$APP_DIR/artisan" up
+        maintenance_active=0
+        smoke_tests
+        write_server_status 'DONE'
+        log 'Selected patch and schema_patch_history entry completed through the verified SSH tunnel.'
+        exit 0
+    fi
 
     history_exists=$("${mariadb_base[@]}" --database="$DATABASE" --batch --skip-column-names \
         --execute="SELECT COUNT(*) FROM information_schema.tables WHERE table_schema = DATABASE() AND table_name = 'schema_patch_history' AND table_type = 'BASE TABLE';") \
