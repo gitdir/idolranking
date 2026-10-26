@@ -9,7 +9,7 @@ $translations = [
     'fan_post_edit_fields_immutable' => 'Only the title, content, and tags can be changed when editing a Fan Post.',
     'language' => 'Language', 'language_settings' => 'Language', 'english' => 'English', 'korean' => '한국어', 'admin' => 'Admin',
     'idol' => 'Idol', 'group' => 'Group', 'idols' => 'idols', 'groups' => 'groups', 'fan_posts' => 'Fan Posts', 'get_hearts' => 'Get Hearts',
-    'register_idol' => 'Register Idol', 'invite_friends' => 'Invite Friends', 'invite_cta' => 'Invite your friends and get :amount Hearts!',
+    'register_idol' => 'Register Idol', 'invite_friends' => 'Invite Friends', 'invite_cta_before' => 'Invite a friend and earn', 'invite_cta_after' => '!',
     'invite_cta_modal_before' => 'Invite your friends and get', 'invite_cta_modal_after' => ' Hearts!',
     'my_page' => 'My Page', 'log_out' => 'Log Out', 'sign_in' => 'Sign In', 'sign_up' => 'Sign Up',
     'google_sign_in' => 'Google Sign In', 'email_sign_in' => 'Email Sign In', 'no_account' => "Don't have an account?",

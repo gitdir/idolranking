@@ -44,7 +44,7 @@
             </div>
             <div class="idol-request-progressive-fields" data-registration-details hidden>
             <div class="idol-request-fields-grid">
-            @php($defaultSourceLanguage = in_array(app()->getLocale(), ['ko', 'en'], true) ? app()->getLocale() : 'en')
+            @php($defaultSourceLanguage = app()->getLocale())
             @php($sourceLanguage = old('source_language_code', $defaultSourceLanguage))
             <div class="fan-post-create-field idol-request-source-language-field idol-request-field-full">
                 <label for="idol-request-source-language">{{ __('ui.source_language') }} <span>*</span></label>

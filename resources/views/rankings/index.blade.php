@@ -4,7 +4,7 @@
 
 @section('content')
     <div class="ranking-page ranking-page--{{ $theme }}">
-        <x-ranking-hero :title="$title" :type="$heroType" />
+        <x-ranking-hero :title="$title" :type="$heroType" :gender="$gender" />
 
         <div class="ranking-controls">
             <nav class="ranking-gender-filter" aria-label="{{ __('ui.ranking_filter') }}">

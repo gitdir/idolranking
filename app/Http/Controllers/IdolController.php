@@ -145,6 +145,7 @@ class IdolController extends Controller
 
         return view('idols.show', [
             'activeMenu' => $category,
+            'heroGender' => $idol->gender === 'male' ? 'boy' : 'girl',
             'idol' => [
                 'idx' => (int) $idol->idx,
                 'name' => $name,

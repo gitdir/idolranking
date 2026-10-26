@@ -317,8 +317,7 @@ class GetHeartsController extends Controller
                 'member_url' => route('member.fan-posts', ['member_code' => $savedCheckIn->member_code]),
                 'profile_image_url' => ManagedImageStorage::publicUrl($savedCheckIn->profile_image_path),
                 'country_name' => Countries::localizedName($savedCheckIn->country_code, app()->getLocale()),
-                'language_code' => FanPostLanguages::isValid($savedCheckIn->language_code)
-                    ? strtolower($savedCheckIn->language_code) : null,
+                'language_code' => FanPostLanguages::canonicalCode($savedCheckIn->language_code),
                 'content' => $savedCheckIn->content,
                 'reward_awarded' => $rewardAwarded,
                 'awarded_hearts' => $amount,

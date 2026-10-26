@@ -2,7 +2,7 @@
 @php($monthLabel = $monthLabel ?: 'This Month')
 
 <aside class="ranking-top-voters" aria-labelledby="ranking-top-voters-title">
-    <h2 id="ranking-top-voters-title" translate="no">Top Voters <span>({{ $monthLabel }})</span></h2>
+<h2 id="ranking-top-voters-title">{{ __('ui.top_voters') }} <span>({{ $monthLabel }})</span></h2>
     <ol aria-label="{{ __('ui.top_voters_for', ['name' => $idolName, 'month' => $monthLabel]) }}">
         @foreach ($voters as $voter)
             <li class="ranking-voter">

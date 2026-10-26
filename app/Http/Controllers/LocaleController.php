@@ -10,7 +10,7 @@ class LocaleController extends Controller
     public function update(Request $request): RedirectResponse
     {
         $locale = $request->string('locale')->toString();
-        abort_unless(in_array($locale, ['ko', 'en'], true), 404);
+        abort_unless(array_key_exists($locale, config('locales.public', [])), 404);
 
         $request->session()->put('locale', $locale);
         $request->session()->reflash();

@@ -9,7 +9,7 @@ $translations = [
     'fan_post_edit_fields_immutable' => '팬포스트 수정에서는 제목, 내용, 태그만 변경할 수 있습니다.',
     'language' => '언어', 'language_settings' => '언어 설정', 'english' => 'English', 'korean' => '한국어', 'admin' => '관리자',
     'idol' => '아이돌', 'group' => '그룹', 'idols' => '아이돌', 'groups' => '그룹', 'fan_posts' => '팬 포스트', 'get_hearts' => '하트 받기',
-    'register_idol' => '아이돌 등록', 'invite_friends' => '친구 초대', 'invite_cta' => '친구를 초대하고 하트 :amount개를 받으세요!',
+    'register_idol' => '아이돌 등록', 'invite_friends' => '친구 초대', 'invite_cta_before' => '친구를 초대하고', 'invite_cta_after' => '을 받으세요!',
     'invite_cta_modal_before' => '친구를 초대하고', 'invite_cta_modal_after' => '을 받으세요!',
     'my_page' => '마이 페이지', 'log_out' => '로그아웃', 'sign_in' => '로그인', 'sign_up' => '회원가입',
     'google_sign_in' => 'Google 로그인', 'email_sign_in' => '이메일 로그인', 'no_account' => '계정이 없으신가요?',

@@ -4,6 +4,7 @@
 
 @section('content')
     <div class="fan-post-detail">
+        <x-fan-posts-hero />
         <div class="fan-detail-columns">
             <div class="fan-detail-main">
                 <article class="fan-detail-post">
@@ -32,8 +33,8 @@
                         </form>
                     </div>
                 @endif
-                @php($showTranslationControl = \App\Support\FanPostLanguages::isValid($post['language_code'] ?? null)
-                    && strtolower($post['language_code']) !== app()->getLocale())
+                @php($showTranslationControl = \App\Support\FanPostLanguages::canonicalCode($post['language_code'] ?? null) !== null
+                    && \App\Support\FanPostLanguages::canonicalCode($post['language_code'] ?? null) !== app()->getLocale())
                 @if ($showTranslationControl)
                     <div class="fan-post-title-translation" data-fan-post-translation
                         data-endpoint="{{ route('fan-post.translation', ['idx' => $post['idx']]) }}"
@@ -74,7 +75,7 @@
                             data-csrf="{{ csrf_token() }}" aria-pressed="{{ $isRecommended ? 'true' : 'false' }}"
                             @disabled($isRecommended)>
                             <svg aria-hidden="true"><use href="#icon-recommend"/></svg>
-                            <span translate="no">Likes</span>
+                            <span>{{ __('ui.like') }}</span>
                         </button>
                         <button class="fan-detail-report" type="button" data-fan-post-report-open
                             data-endpoint="{{ route('fan-post.report', ['idx' => $post['idx']]) }}" data-report-title="{{ __('ui.report_fan_post') }}"
@@ -110,7 +111,7 @@
                                         <option value="{{ $code }}" @selected(old('language_code', ($randomDummyMode ?? false) ? 'ko' : app()->getLocale()) === $code)>{{ $name }} ({{ strtoupper($code) }})</option>
                                     @endforeach
                                 </select>
-                                <button type="submit" translate="no">Submit</button>
+                                <button type="submit">{{ __('ui.submit') }}</button>
                             </div>
                         </div>
                     </form>
@@ -135,7 +136,7 @@
                                                 aria-haspopup="dialog" aria-controls="fan-post-report-modal">{{ __('ui.report') }}</button>
                                         @endif
                                     </div>
-                                    @if (\App\Support\FanPostLanguages::isValid($comment['language_code'] ?? null) && strtolower($comment['language_code']) !== app()->getLocale())
+                                    @if (\App\Support\FanPostLanguages::canonicalCode($comment['language_code'] ?? null) !== null && \App\Support\FanPostLanguages::canonicalCode($comment['language_code'] ?? null) !== app()->getLocale())
                                         <div class="fan-post-comment-translation" data-comment-translation
                                             data-endpoint="{{ route('fan-post.comments.translation', ['idx' => $post['idx'], 'commentIdx' => $comment['idx']]) }}"
                                             data-target-language="{{ app()->getLocale() }}">
@@ -164,7 +165,7 @@
         <x-fan-post-list :posts="$posts" :current-fan-post-idx="$post['idx']" heading-id="detail-fan-posts-title" :empty-message="__('ui.no_fan_posts')">
             <x-slot:heading>
                 <div class="member-post-list-heading public-fan-posts-heading">
-                    <div><h2 id="detail-fan-posts-title" translate="no">Fan Posts</h2></div>
+                    <div><h2 id="detail-fan-posts-title">{{ __('ui.fan_posts') }}</h2></div>
                     <div class="idol-detail-fan-post-actions member-fan-post-actions fan-post-toolbar">
                         <form method="get" action="{{ route('fan-post.show', ['idx' => $post['idx']]) }}">
                             <label class="sr-only" for="detail-fan-post-sort">{{ __('ui.sort_fan_posts') }}</label>

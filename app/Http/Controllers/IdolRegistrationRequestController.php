@@ -27,7 +27,7 @@ class IdolRegistrationRequestController extends Controller
         'girl_group' => ['group', 'female'],
     ];
 
-    private const SOURCE_LANGUAGES = ['ko', 'en', 'ja', 'zh-CN', 'zh-TW'];
+    private const SOURCE_LANGUAGES = ['ko', 'en', 'ja', 'es', 'id', 'pt-BR', 'zh-CN', 'zh-TW'];
 
     public function create(Request $request, HeartRewardManager $heartRewards)
     {

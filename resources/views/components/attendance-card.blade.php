@@ -1,6 +1,7 @@
 @props(['checkIn'])
 @php
     $sourceLanguage = $checkIn['language_code'] ?? null;
+    $sourceLanguage = \App\Support\FanPostLanguages::canonicalCode($sourceLanguage);
     $canTranslate = $sourceLanguage && $sourceLanguage !== app()->getLocale();
     $badgeLanguage = strtoupper((string) $sourceLanguage);
     $createdAt = \Illuminate\Support\Carbon::parse($checkIn['created_at'], 'UTC')->timezone(config('app.timezone'));

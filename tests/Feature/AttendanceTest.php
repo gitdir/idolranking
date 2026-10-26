@@ -70,7 +70,7 @@ class AttendanceTest extends TestCase
             ->assertSee('<html lang="en">', false)
             ->assertSee('<link rel="canonical" href="'.route('attendance').'">', false)
             ->assertSee('class="drawer-category-link header-attendance"', false)
-            ->assertDontSee('Private member message')->assertSee('+17 Heart')
+            ->assertDontSee('Private member message')->assertSee('+17')
             ->assertSee('title="EN" aria-label="EN"', false)
             ->assertDontSee('title="South Korea · EN"', false)
             ->assertSee('src="'.asset('images/flags/kr.svg').'"', false)
@@ -116,7 +116,7 @@ class AttendanceTest extends TestCase
         ]);
 
         $this->withSession(['member_idx' => 1])->get(route('attendance'))->assertOk()
-            ->assertSee('You have checked in today')->assertSee('+17 Heart')
+            ->assertSee('You have checked in today')->assertSee('+17')
             ->assertSee('Today &lt;script&gt;alert(1)&lt;/script&gt;', false)
             ->assertDontSee('<script>alert(1)</script>', false)
             ->assertDontSee('data-attendance-check-in-form', false);
@@ -131,12 +131,12 @@ class AttendanceTest extends TestCase
         ]);
         $zeroReward->assertOk()->assertJsonPath('data.reward_awarded', true)
             ->assertJsonPath('data.amount', 0)->assertJsonPath('message', __('messages.daily_awarded', ['amount' => '0']));
-        $this->assertStringContainsString('+0 Heart', $zeroReward->json('data.card_html'));
+        $this->assertStringContainsString('+0', $zeroReward->json('data.card_html'));
         $this->assertDatabaseHas('heart_histories', [
             'member_idx' => 1, 'amount' => 0, 'reason' => 'daily_attendance',
             'operation_key' => 'daily_attendance:1:'.now('UTC')->toDateString(),
         ]);
-        $this->withSession(['member_idx' => 1])->get(route('attendance'))->assertSee('+0 Heart');
+        $this->withSession(['member_idx' => 1])->get(route('attendance'))->assertSee('+0');
     }
 
     public function test_successful_check_in_response_drives_the_completed_page_state_and_retry_uses_saved_data(): void
@@ -157,13 +157,13 @@ class AttendanceTest extends TestCase
         $cardHtml = $response->json('data.card_html');
         $this->assertStringContainsString('id="attendance-card-1"', $cardHtml);
         $this->assertStringContainsString('data-check-in-id="1"', $cardHtml);
-        $this->assertStringContainsString('+10 Heart', $cardHtml);
+        $this->assertStringContainsString('+10', $cardHtml);
         $this->assertStringContainsString(e($submittedMessage), $cardHtml);
 
         $this->withSession($session)->get(route('attendance'))->assertOk()
             ->assertDontSee('data-attendance-check-in-form', false)
             ->assertSee('data-attendance-completed', false)
-            ->assertSee('+10 Heart')
+            ->assertSee('+10')
             ->assertSee($submittedMessage);
 
         $retry = $this->withSession($session)->postJson(route('get-hearts.daily-check-in'), [
@@ -282,6 +282,27 @@ class AttendanceTest extends TestCase
             'target_language_code' => 'ko',
             'source_hash' => hash('sha256', "Hi\nthere"),
             'translated_content' => '안녕하세요',
+        ]);
+    }
+
+    public function test_translation_uses_canonical_regional_source_and_active_target_locale_codes(): void
+    {
+        config(['services.google_translate.api_key' => 'test-translation-key']);
+        Http::fake(['*translation.googleapis.com/language/translate/v2*' => Http::response([
+            'data' => ['translations' => [['translatedText' => '你好']]],
+        ])]);
+        $checkInIdx = $this->addCheckIn(1, 'Olá', 'pt-br');
+
+        $this->withSession(['locale' => 'zh-CN'])->getJson(route('attendance.translation', [
+            'idx' => $checkInIdx,
+            'language' => 'zh-CN',
+        ]))->assertOk()->assertJsonPath('data.content', '你好')->assertJsonPath('data.language_code', 'zh-CN');
+
+        Http::assertSent(fn ($request) => $request['source'] === 'pt-BR' && $request['target'] === 'zh-CN');
+        $this->assertDatabaseHas('daily_check_in_translations', [
+            'daily_check_in_idx' => $checkInIdx,
+            'source_language_code' => 'pt-BR',
+            'target_language_code' => 'zh-CN',
         ]);
     }
 

@@ -197,4 +197,8 @@ return [
     'idol_group_name_label' => 'Group Name',
     'select_idol_group_type' => 'Select a group type (optional)',
     'select_idol_group' => 'Select a group (optional)',
+    'like' => 'Like',
+    'idol_ranking_hero_title' => 'Idol Ranking',
+    'idol_ranking_hero_subtitle' => 'Celebrate your favorites. Every Heart counts.',
+    'fan_posts_hero_subtitle' => 'Explore posts created by fans!',
 ];

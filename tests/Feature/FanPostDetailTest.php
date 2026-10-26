@@ -606,6 +606,33 @@ class FanPostDetailTest extends TestCase
         ]);
     }
 
+    public function test_fan_post_translation_uses_active_regional_target_and_canonical_source_codes(): void
+    {
+        $this->database();
+        Config::set('services.google_translate.api_key', 'test-secret-key');
+        Http::fake(['*translation.googleapis.com/language/translate/v2*' => Http::response([
+            'data' => ['translations' => [
+                ['translatedText' => 'Título traduzido'],
+                ['translatedText' => 'Conteúdo traduzido'],
+            ]],
+        ])]);
+        $postIdx = DB::table('fan_posts')->insertGetId([
+            'idol_idx' => 1, 'member_idx' => 1, 'actor_member_idx' => 1, 'title' => 'Título',
+            'language_code' => 'pt-br', 'content' => 'Conteúdo', 'status' => 'published',
+        ]);
+
+        $this->withSession(['locale' => 'zh-CN'])->getJson(route('fan-post.translation', [
+            'idx' => $postIdx, 'language' => 'zh-CN',
+        ]))->assertOk()->assertJsonPath('data.language_code', 'zh-CN');
+
+        Http::assertSent(fn ($request) => $request['source'] === 'pt-BR' && $request['target'] === 'zh-CN');
+        $this->assertDatabaseHas('fan_post_translations', [
+            'fan_post_idx' => $postIdx,
+            'language_code' => 'zh-CN',
+            'source_hash' => \App\Support\FanPostSourceHash::make('Título', 'Conteúdo'),
+        ]);
+    }
+
     public function test_translation_api_failure_is_retryable_and_does_not_save_cache(): void
     {
         $this->database();

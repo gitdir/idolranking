@@ -63,8 +63,7 @@ class AttendanceController extends Controller
                     'profile_image_url' => ManagedImageStorage::publicUrl($checkIn->profile_image_path),
                     'country_name' => Countries::localizedName($checkIn->country_code, app()->getLocale()),
                     'country_code' => $checkIn->country_code,
-                    'language_code' => FanPostLanguages::isValid($checkIn->language_code)
-                        ? strtolower($checkIn->language_code) : null,
+                    'language_code' => FanPostLanguages::canonicalCode($checkIn->language_code),
                     'content' => $checkIn->content,
                     'reward_awarded' => $rewardAwarded,
                     'awarded_hearts' => $rewardAwarded ? (int) $rewardAmounts->get($operationKey) : null,
@@ -89,7 +88,7 @@ class AttendanceController extends Controller
     public function translation(Request $request, string $idx)
     {
         $targetLanguage = $request->query('language', app()->getLocale());
-        if (!is_string($targetLanguage) || !in_array($targetLanguage, ['ko', 'en'], true)
+        if (!is_string($targetLanguage) || !array_key_exists($targetLanguage, config('locales.public', []))
             || $targetLanguage !== app()->getLocale()) {
             return $this->translationError('translation_target_invalid', 422);
         }
@@ -100,8 +99,8 @@ class AttendanceController extends Controller
             return $this->translationError('attendance_not_found', 404);
         }
 
-        $sourceLanguage = strtolower((string) $checkIn->language_code);
-        if (!FanPostLanguages::isValid($sourceLanguage)) {
+        $sourceLanguage = FanPostLanguages::canonicalCode($checkIn->language_code);
+        if ($sourceLanguage === null) {
             return $this->translationError('translation_unavailable', 404);
         }
         if ($sourceLanguage === $targetLanguage || $checkIn->content === '') {
@@ -166,7 +165,7 @@ class AttendanceController extends Controller
             $saved = DB::transaction(function () use ($idx, $sourceLanguage, $targetLanguage, $sourceHash, $translatedContent): bool {
                 $current = $this->publicCheckIns()->where('check_in.idx', $idx)->lockForUpdate()
                     ->first(['check_in.content', 'check_in.language_code']);
-                if ($current === null || strtolower((string) $current->language_code) !== $sourceLanguage
+                if ($current === null || FanPostLanguages::canonicalCode($current->language_code) !== $sourceLanguage
                     || !hash_equals($sourceHash, hash('sha256', $current->content))) {
                     return false;
                 }

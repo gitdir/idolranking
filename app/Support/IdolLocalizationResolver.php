@@ -13,7 +13,7 @@ final class IdolLocalizationResolver
      */
     public function resolveMany(iterable $idols, ?string $locale = null): array
     {
-        $locale = in_array($locale ?? app()->getLocale(), ['ko', 'en'], true)
+        $locale = array_key_exists($locale ?? app()->getLocale(), config('locales.public', []))
             ? ($locale ?? app()->getLocale())
             : 'en';
         $fallbacks = [];

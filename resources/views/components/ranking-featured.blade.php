@@ -3,11 +3,13 @@
 
 <section class="ranking-featured" aria-labelledby="ranking-featured-name">
     <h2 id="ranking-featured-name" class="sr-only"><a translate="no" href="{{ $detailUrl }}">{{ $idol['name'] }}</a></h2>
-    <a class="ranking-featured-images" href="{{ $detailUrl }}" aria-label="{{ __('ui.popular_rank_details', ['name' => $idol['name']]) }}">
+    <div class="ranking-featured-images">
         @foreach ($images as $image)
-            <img src="{{ $image }}" width="320" height="320" alt="{{ __('ui.fan_post_image_for', ['name' => $idol['name']]) }}" loading="lazy">
+            <a class="ranking-featured-image-link" href="{{ $detailUrl }}" aria-label="{{ __('ui.popular_rank_details', ['name' => $idol['name']]) }}">
+                <img src="{{ $image }}" width="320" height="320" alt="{{ __('ui.fan_post_image_for', ['name' => $idol['name']]) }}" loading="lazy">
+            </a>
         @endforeach
-    </a>
+    </div>
     <dl class="ranking-featured-stats">
         <div>
             <dt>{{ __('ui.current_month_rank') }}</dt>

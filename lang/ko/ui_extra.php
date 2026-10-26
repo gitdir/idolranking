@@ -107,6 +107,7 @@ return [
     'fan_post_thumbnail' => '팬 포스트 이미지', 'youtube_thumbnail' => 'YouTube 동영상 미리보기', 'fan_post_placeholder_image' => '팬 포스트 기본 이미지',
     'hearts_aria' => '하트: ', 'views_aria' => '조회수 :amount', 'recommendations_aria' => '좋아요 :amount개', 'comments_aria' => '댓글 :amount개',
     'member_fan_posts_label' => ':name님의 팬 포스트 보기', 'top_voters' => '상위 투표자', 'no_month_votes' => '이번 달 투표 기록이 없습니다.',
+    'no_monthly_votes' => '이번 달 투표 기록이 없습니다.',
     'search_result_type' => '검색 결과 유형', 'search_results' => '검색 결과', 'search_results_for' => '“:query” 검색 결과',
     'results_found' => '검색 결과 :amount개', 'enter_keyword' => '검색어를 입력해 주세요.', 'search_help' => '헤더 검색창에서 아이돌, 그룹 또는 팬 포스트를 찾을 수 있습니다.',
     'no_results_for' => '“:query” 검색 결과가 없습니다.', 'try_keyword' => '다른 검색어를 입력해 보세요.', 'result_count' => ':name (:amount)',
@@ -200,4 +201,8 @@ return [
     'idol_group_name_label' => '그룹명',
     'select_idol_group_type' => '그룹 유형 선택 (선택)',
     'select_idol_group' => '그룹 선택 (선택)',
+    'like' => '좋아요',
+    'idol_ranking_hero_title' => '아이돌 랭킹',
+    'idol_ranking_hero_subtitle' => '최애를 응원하세요. 하트 하나하나가 순위에 반영됩니다.',
+    'fan_posts_hero_subtitle' => '팬들이 직접 작성한 포스트를 만나보세요!',
 ];

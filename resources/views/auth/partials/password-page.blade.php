@@ -55,7 +55,7 @@
         <button type="button" class="password-page-sign-in" data-sign-in-open aria-haspopup="dialog" aria-controls="sign-in-modal"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M20 12H4m7-7-7 7 7 7"/></svg>{{ __('ui.sign_in') }}</button>
     </div>
     @if ($reset)
-        <footer class="password-page-footer"><strong translate="no">IDOL RANKING</strong><p translate="no">&copy; {{ date('Y') }} IDOL RANKING. All rights reserved.</p></footer>
+<footer class="password-page-footer"><strong translate="no">IDOL RANKING</strong><p>&copy; {{ date('Y') }} <span translate="no">IDOL RANKING.</span> {{ __('ui.all_rights_reserved') }}</p></footer>
     @endif
 </section>
 <script>

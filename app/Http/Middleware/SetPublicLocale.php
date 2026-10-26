@@ -10,10 +10,8 @@ class SetPublicLocale
 {
     public function handle(Request $request, Closure $next)
     {
-        if (! $request->routeIs('admin.*')) {
-            $locale = $request->session()->get('locale', 'en');
-            App::setLocale(in_array($locale, ['ko', 'en'], true) ? $locale : 'en');
-        }
+        $locale = $request->routeIs('admin.*') ? 'ko' : $request->session()->get('locale', 'en');
+        App::setLocale(array_key_exists($locale, config('locales.public', [])) ? $locale : 'en');
 
         return $next($request);
     }

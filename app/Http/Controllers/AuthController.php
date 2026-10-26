@@ -380,7 +380,7 @@ class AuthController extends Controller
     public function logout(Request $request)
     {
         $locale = $request->session()->get('locale', 'en');
-        $locale = in_array($locale, ['ko', 'en'], true) ? $locale : 'en';
+        $locale = array_key_exists($locale, config('locales.public', [])) ? $locale : 'en';
 
         $request->session()->invalidate();
         $request->session()->put('locale', $locale);

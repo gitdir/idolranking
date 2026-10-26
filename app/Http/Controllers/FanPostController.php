@@ -611,7 +611,7 @@ class FanPostController extends Controller
     public function translation(Request $request, string $idx)
     {
         $targetLanguage = $request->query('language', app()->getLocale());
-        if (!is_string($targetLanguage) || !in_array($targetLanguage, ['ko', 'en'], true)
+        if (!is_string($targetLanguage) || !array_key_exists($targetLanguage, config('locales.public', []))
             || $targetLanguage !== app()->getLocale()) {
             return response()->json([
                 'success' => false,
@@ -636,8 +636,8 @@ class FanPostController extends Controller
             ], 404);
         }
 
-        $sourceLanguage = strtolower((string) $post->language_code);
-        if (!FanPostLanguages::isValid($sourceLanguage)) {
+        $sourceLanguage = FanPostLanguages::canonicalCode($post->language_code);
+        if ($sourceLanguage === null) {
             return $this->translationUnavailable();
         }
 
@@ -732,7 +732,7 @@ class FanPostController extends Controller
     public function commentTranslation(Request $request, string $idx, string $commentIdx)
     {
         $targetLanguage = $request->query('language', app()->getLocale());
-        if (!is_string($targetLanguage) || !in_array($targetLanguage, ['ko', 'en'], true)
+        if (!is_string($targetLanguage) || !array_key_exists($targetLanguage, config('locales.public', []))
             || $targetLanguage !== app()->getLocale()) {
             return response()->json([
                 'success' => false,
@@ -750,8 +750,8 @@ class FanPostController extends Controller
             ], 404)->header('Cache-Control', 'no-store');
         }
 
-        $sourceLanguage = strtolower((string) $comment->language_code);
-        if (!FanPostLanguages::isValid($sourceLanguage)) {
+        $sourceLanguage = FanPostLanguages::canonicalCode($comment->language_code);
+        if ($sourceLanguage === null) {
             return $this->commentTranslationUnavailable();
         }
         if ($sourceLanguage === $targetLanguage) {

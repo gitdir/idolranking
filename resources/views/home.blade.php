@@ -18,7 +18,7 @@
         }
     @endphp
 
-    <h1 class="sr-only">{{ __('ui.ranking') }} / <span translate="no">Fan Posts</span></h1>
+    <h1 class="sr-only">{{ __('ui.ranking') }} / {{ __('ui.fan_posts') }}</h1>
     <section class="rankings" aria-label="{{ __('ui.ranking') }}">
         @foreach ($panels as $panel)
             <x-ranking-panel :panel="$panel" />
@@ -28,7 +28,7 @@
     <x-fan-post-list :posts="$posts" heading-id="home-fan-posts-title" :empty-message="__('ui.no_fan_posts')">
         <x-slot:heading>
             <div class="member-post-list-heading public-fan-posts-heading">
-                <div><h2 id="home-fan-posts-title" translate="no">Fan Posts</h2></div>
+                <div><h2 id="home-fan-posts-title">{{ __('ui.fan_posts') }}</h2></div>
                 <div class="idol-detail-fan-post-actions member-fan-post-actions fan-post-toolbar">
                     <form method="get" action="{{ route('home') }}">
                         <label class="sr-only" for="home-fan-post-sort">{{ __('ui.sort_fan_posts') }}</label>

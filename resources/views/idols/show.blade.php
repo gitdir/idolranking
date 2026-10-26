@@ -4,6 +4,7 @@
 
 @section('content')
     <div class="idol-detail">
+        <x-ranking-hero title="Idol Ranking" type="boy" :gender="$heroGender" />
         <header class="idol-detail-heading">
             <h1><a translate="no" href="{{ route('idol.show', ['idx' => $idol['idx']]) }}">{{ $idol['name'] }}</a></h1><span translate="no">@if (!empty($idol['group_idx']))<a href="{{ route('idol.show', ['idx' => $idol['group_idx']]) }}">{{ $idol['group'] }}</a>@else{{ $idol['group'] }}@endif</span>
         </header>
@@ -113,7 +114,7 @@
                     @endif
                 </section>
                 <section class="idol-detail-box voting-trend" aria-labelledby="trend-title">
-                    <h2 id="trend-title" translate="no">Voting Trend</h2>
+                    <h2 id="trend-title">{{ __('ui.voting_trend') }}</h2>
                     <p class="trend-period" translate="no">Daily votes · Last 30 days</p>
                     <x-voting-trend :days="$trend" />
                 </section>
@@ -122,7 +123,7 @@
         <x-fan-post-list :posts="$posts" :empty-message="__('ui.be_first_fan_post')">
             <x-slot:heading>
                 <div class="idol-detail-fan-post-heading">
-                    <h2 id="fan-posts-title" translate="no">Fan Posts</h2>
+                    <h2 id="fan-posts-title">{{ __('ui.fan_posts') }}</h2>
                     <div class="idol-detail-fan-post-actions fan-post-toolbar">
                         <form method="get" action="{{ route('idol.show', ['idx' => $idol['idx']]) }}">
                             <label class="sr-only" for="idol-fan-post-sort">{{ __('ui.sort_fan_posts') }}</label>

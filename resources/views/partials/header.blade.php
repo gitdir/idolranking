@@ -13,9 +13,7 @@
         $selectedDummyIdx = $isHeaderAdmin && $selectedDummyMember !== null ? (int) $selectedDummyMember->idx : null;
         $activityDummyModeEnabled = $isHeaderAdmin && (bool) request()->attributes->get('activityDummyMode', false);
         $headerAvatar = \App\Support\ManagedImageStorage::publicUrl($headerMember?->profile_image_path);
-        $inviteRewardAmount = $headerActivityMember
-            ? number_format(app(\App\Support\HeartRewardManager::class)->configuredAmount('invite_friend'))
-            : '0';
+        $inviteRewardAmount = number_format(app(\App\Support\HeartRewardManager::class)->configuredAmount('invite_friend'));
         $drawerLikesPercentile = $headerMember
             ? app(\App\Support\PublicRanking::class)->memberFanPostLikesPercentile((int) $headerMember->idx)
             : null;
@@ -40,7 +38,7 @@
                     <path stroke="#ff4596" stroke-width="3" d="M11 38h26"/>
                     <g fill="#ff80b6"><circle cx="4" cy="10" r="3"/><circle cx="24" cy="3" r="3"/><circle cx="44" cy="10" r="3"/></g>
                 </svg>
-                <span translate="no"><span class="brand-accent brand-accent--animated">IDOL</span> RANKING</span>
+                <span class="brand-wordmark brand-wordmark--animated" translate="no">IDOL RANKING</span>
             </a>
             <button class="menu-toggle" type="button" aria-controls="main-navigation" aria-expanded="false" aria-label="{{ __('ui.toggle_navigation') }}">
                 <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 6h18M3 12h18M3 18h18"/></svg>
@@ -115,7 +113,7 @@
                 @endif
                 <button class="drawer-invite-card" type="button" data-invite-friends-open data-signed-in="{{ $headerMember ? 'true' : 'false' }}" @unless($headerMember) data-sign-in-open aria-controls="sign-in-modal" @else aria-controls="invite-friends-dialog" @endunless aria-haspopup="dialog">
                     <svg class="drawer-invite-gift" viewBox="0 0 48 48" aria-hidden="true"><path d="M7 20h34v23H7Zm-3-8h40v10H4Z"/><path d="M24 12v31M9 20h30"/><path d="M24 12c-8 0-12-2-12-6 0-3 3-4 5-3 4 1 7 9 7 9Zm0 0c8 0 12-2 12-6 0-3-3-4-5-3-4 1-7 9-7 9Z"/></svg>
-                    <span class="drawer-invite-content"><strong translate="no">{{ __('ui.invite_friends') }}</strong><small>{{ __('ui.invite_cta', ['amount' => $inviteRewardAmount]) }}</small></span>
+                    <span class="drawer-invite-content"><strong translate="no">{{ __('ui.invite_friends') }}</strong><small>{{ __('ui.invite_cta_before') }} <span class="invite-reward-inline"><svg class="heart-icon--small" aria-hidden="true"><use href="#icon-heart"/></svg>+{{ $inviteRewardAmount }}</span>{{ __('ui.invite_cta_after') }}</small></span>
                     <span class="desktop-invite-label" translate="no">{{ __('ui.invite_friends') }}</span>
                     <svg class="drawer-invite-chevron" viewBox="0 0 16 16" aria-hidden="true"><path d="m6 3 5 5-5 5"/></svg>
                 </button>
@@ -238,23 +236,11 @@
                 @endif
                 <div class="drawer-login" role="group" aria-label="{{ __('ui.sign_in_options') }}">
                     @unless ($headerMember)
-                        <a class="drawer-login-button drawer-login-google" href="{{ route('auth.google.redirect', ['return_url' => request()->fullUrl()]) }}"><svg viewBox="0 0 24 24" aria-hidden="true"><path fill="#4285f4" d="M21.6 12.2c0-.7-.1-1.5-.2-2.2H12v4.2h5.4a4.6 4.6 0 0 1-2 3v2.5h3.2c1.9-1.8 3-4.3 3-7.5Z"/><path fill="#34a853" d="M12 22c2.7 0 5-.9 6.6-2.3l-3.2-2.5c-.9.6-2 1-3.4 1-2.6 0-4.9-1.8-5.7-4.2H3v2.6A10 10 0 0 0 12 22Z"/><path fill="#fbbc05" d="M6.3 14a6 6 0 0 1 0-4V7.4H3a10 10 0 0 0 0 9.2Z"/><path fill="#ea4335" d="M12 5.8c1.5 0 2.8.5 3.8 1.5l2.9-2.9A9.6 9.6 0 0 0 12 2a10 10 0 0 0-9 5.4L6.3 10c.8-2.4 3.1-4.2 5.7-4.2Z"/></svg>{{ __('ui.google_sign_in') }}</a>
                         <button class="drawer-login-button drawer-login-email" type="button" data-sign-in-open aria-haspopup="dialog" aria-controls="sign-in-modal"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="m3 6 9 7 9-7"/></svg>{{ __('ui.email_sign_in') }}</button>
+                        <a class="drawer-login-button drawer-login-google" href="{{ route('auth.google.redirect', ['return_url' => request()->fullUrl()]) }}"><svg viewBox="0 0 24 24" aria-hidden="true"><path fill="#4285f4" d="M21.6 12.2c0-.7-.1-1.5-.2-2.2H12v4.2h5.4a4.6 4.6 0 0 1-2 3v2.5h3.2c1.9-1.8 3-4.3 3-7.5Z"/><path fill="#34a853" d="M12 22c2.7 0 5-.9 6.6-2.3l-3.2-2.5c-.9.6-2 1-3.4 1-2.6 0-4.9-1.8-5.7-4.2H3v2.6A10 10 0 0 0 12 22Z"/><path fill="#fbbc05" d="M6.3 14a6 6 0 0 1 0-4V7.4H3a10 10 0 0 0 0 9.2Z"/><path fill="#ea4335" d="M12 5.8c1.5 0 2.8.5 3.8 1.5l2.9-2.9A9.6 9.6 0 0 0 12 2a10 10 0 0 0-9 5.4L6.3 10c.8-2.4 3.1-4.2 5.7-4.2Z"/></svg>{{ __('ui.google_sign_in') }}</a>
                         <div class="drawer-sign-up"><span>{{ __('ui.no_account') }}</span><a href="{{ route('register') }}">{{ __('ui.sign_up') }}</a></div>
                     @endunless
                 </div>
-                <form class="language-selector" method="post" action="{{ route('language.update') }}">
-                    @csrf
-                    <input type="hidden" name="return_to" value="{{ request()->getRequestUri() }}">
-                    <span class="language-selector-label">
-                        <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3a14 14 0 0 1 0 18m0-18a14 14 0 0 0 0 18"/></svg>
-                        <span>{{ __('ui.language_settings') }}</span>
-                    </span>
-                    <select id="public-language" name="locale" aria-label="{{ __('ui.select_language') }}" onchange="this.form.submit()">
-                        <option value="en" @selected(app()->getLocale() === 'en')>{{ __('ui.english') }}</option>
-                        <option value="ko" @selected(app()->getLocale() === 'ko')>{{ __('ui.korean') }}</option>
-                    </select>
-                </form>
                 </div>
                 <button class="drawer-close" type="button" aria-label="{{ __('ui.close_navigation') }}">
                     <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m6 6 12 12M18 6 6 18"/></svg>
@@ -263,7 +249,7 @@
         </div>
         <dialog id="site-search-dialog" class="search-dialog" aria-modal="true" aria-labelledby="site-search-title">
             <div class="search-dialog-header">
-                <h2 id="site-search-title" translate="no">Search</h2>
+                <h2 id="site-search-title">{{ __('ui.search') }}</h2>
                 <button class="search-dialog-close" type="button" data-search-close aria-label="{{ __('ui.close') }}">
                     <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m6 6 12 12M18 6 6 18"/></svg>
                 </button>

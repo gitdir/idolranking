@@ -5,6 +5,22 @@ const closeButton = navigation?.querySelector('.drawer-close');
 const drawerLogoutDialog = document.querySelector('#drawer-logout-dialog');
 const drawerLogoutTrigger = navigation?.querySelector('[data-drawer-logout-open]');
 const searchDialog = document.querySelector('#site-search-dialog');
+const languageSelector = document.querySelector('[data-language-selector]');
+const mobileLanguageSlot = document.querySelector('[data-mobile-language-selector-slot]');
+const desktopLanguageSlot = document.querySelector('[data-desktop-language-selector-slot]');
+
+if (languageSelector && mobileLanguageSlot && desktopLanguageSlot) {
+    const placeLanguageSelector = () => {
+        if (window.matchMedia('(max-width: 639px)').matches) {
+            mobileLanguageSlot.append(languageSelector);
+        } else {
+            desktopLanguageSlot.append(languageSelector);
+        }
+    };
+
+    placeLanguageSelector();
+    window.matchMedia('(max-width: 639px)').addEventListener('change', placeLanguageSelector);
+}
 
 if (toggle && navigation && overlay && closeButton) {
     const mobile = window.matchMedia('(max-width: 639px)');

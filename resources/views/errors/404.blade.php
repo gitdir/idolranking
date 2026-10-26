@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-@php($errorLocale = in_array(session('locale'), ['ko', 'en'], true) ? session('locale') : app()->getLocale())
+@php($errorLocale = array_key_exists(session('locale'), config('locales.public', [])) ? session('locale') : app()->getLocale())
 <html lang="{{ $errorLocale }}">
 <head>
     <meta charset="utf-8">
