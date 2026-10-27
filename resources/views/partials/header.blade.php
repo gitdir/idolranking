@@ -12,6 +12,7 @@
         $selectedDummyMember = request()->attributes->get('selectedActivityMember');
         $selectedDummyIdx = $isHeaderAdmin && $selectedDummyMember !== null ? (int) $selectedDummyMember->idx : null;
         $activityDummyModeEnabled = $isHeaderAdmin && (bool) request()->attributes->get('activityDummyMode', false);
+        $languageFlags = ['en' => 'us', 'ko' => 'kr', 'ja' => 'jp', 'es' => 'es', 'id' => 'id', 'pt-BR' => 'br', 'zh-CN' => 'cn'];
         $headerAvatar = \App\Support\ManagedImageStorage::publicUrl($headerMember?->profile_image_path);
         $inviteRewardAmount = number_format(app(\App\Support\HeartRewardManager::class)->configuredAmount('invite_friend'));
         $drawerLikesPercentile = $headerMember
@@ -40,6 +41,7 @@
                 </svg>
                 <span class="brand-wordmark brand-wordmark--animated" translate="no">IDOL RANKING</span>
             </a>
+            <div class="header-mobile-language-slot" data-mobile-language-selector-slot></div>
             <button class="menu-toggle" type="button" aria-controls="main-navigation" aria-expanded="false" aria-label="{{ __('ui.toggle_navigation') }}">
                 <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 6h18M3 12h18M3 18h18"/></svg>
             </button>
@@ -234,6 +236,34 @@
                         </div>
                     </div>
                 @endif
+                <div class="language-selector-host" data-desktop-language-selector-slot>
+                    <form class="language-selector" method="post" action="{{ route('language.update') }}" data-language-selector>
+                        @csrf
+                        <input type="hidden" name="return_to" value="{{ request()->getRequestUri() }}">
+                        <span class="language-selector-label">
+                            <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3a14 14 0 0 1 0 18m0-18a14 14 0 0 0 0 18"/></svg>
+                            <span>{{ __('ui.language_settings') }}</span>
+                        </span>
+                        <select id="public-language" name="locale" aria-label="{{ __('ui.select_language') }}" onchange="this.form.submit()">
+                            @foreach (config('locales.public', []) as $localeCode => $localeName)
+                                <option value="{{ $localeCode }}" @selected(app()->getLocale() === $localeCode)>{{ $localeName }}</option>
+                            @endforeach
+                        </select>
+                        <button class="language-selector-trigger" type="button" aria-label="{{ __('ui.select_language') }}: {{ config('locales.public')[app()->getLocale()] ?? app()->getLocale() }}" aria-haspopup="menu" aria-expanded="false" aria-controls="header-language-menu" data-language-trigger>
+                            <img class="language-selector-current-flag" src="{{ asset('images/flags/'.($languageFlags[app()->getLocale()] ?? 'us').'.svg') }}" alt="" aria-hidden="true">
+                        </button>
+                        <div class="language-selector-menu" id="header-language-menu" role="menu" aria-label="{{ __('ui.select_language') }}" hidden data-language-menu>
+                            <div class="language-selector-menu-options" role="presentation">
+                                @foreach (config('locales.public', []) as $localeCode => $localeName)
+                                    <button class="language-selector-option" type="button" role="menuitemradio" aria-checked="{{ app()->getLocale() === $localeCode ? 'true' : 'false' }}" data-language-option="{{ $localeCode }}">
+                                        <img class="language-selector-option-flag" src="{{ asset('images/flags/'.($languageFlags[$localeCode] ?? 'us').'.svg') }}" alt="" aria-hidden="true">
+                                        <span>{{ $localeName }}</span>
+                                    </button>
+                                @endforeach
+                            </div>
+                        </div>
+                    </form>
+                </div>
                 <div class="drawer-login" role="group" aria-label="{{ __('ui.sign_in_options') }}">
                     @unless ($headerMember)
                         <button class="drawer-login-button drawer-login-email" type="button" data-sign-in-open aria-haspopup="dialog" aria-controls="sign-in-modal"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="m3 6 9 7 9-7"/></svg>{{ __('ui.email_sign_in') }}</button>

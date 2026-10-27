@@ -22,6 +22,62 @@ if (languageSelector && mobileLanguageSlot && desktopLanguageSlot) {
     window.matchMedia('(max-width: 639px)').addEventListener('change', placeLanguageSelector);
 }
 
+const languageTrigger = languageSelector?.querySelector('[data-language-trigger]');
+const languageMenu = languageSelector?.querySelector('[data-language-menu]');
+const languageSelect = languageSelector?.querySelector('select[name="locale"]');
+
+if (languageSelector && languageTrigger && languageMenu && languageSelect) {
+    const languageOptions = [...languageMenu.querySelectorAll('[data-language-option]')];
+    const setLanguageMenuOpen = (open, restoreFocus = false) => {
+        languageTrigger.setAttribute('aria-expanded', String(open));
+        languageMenu.hidden = !open;
+        if (open) {
+            const selected = languageOptions.find((option) => option.dataset.languageOption === languageSelect.value);
+            (selected || languageOptions[0])?.focus();
+        } else if (restoreFocus) {
+            languageTrigger.focus();
+        }
+    };
+
+    languageTrigger.addEventListener('click', () => {
+        setLanguageMenuOpen(languageTrigger.getAttribute('aria-expanded') !== 'true');
+    });
+    languageMenu.addEventListener('click', (event) => {
+        const option = event.target.closest('[data-language-option]');
+        if (!option) return;
+        languageSelect.value = option.dataset.languageOption;
+        languageSelector.querySelector('.language-selector-current-flag').src = option.querySelector('img').src;
+        setLanguageMenuOpen(false, true);
+        languageSelect.form.requestSubmit();
+    });
+    languageMenu.addEventListener('keydown', (event) => {
+        const currentIndex = languageOptions.indexOf(document.activeElement);
+        let nextIndex = null;
+        if (event.key === 'ArrowDown') nextIndex = (currentIndex + 1) % languageOptions.length;
+        if (event.key === 'ArrowUp') nextIndex = (currentIndex - 1 + languageOptions.length) % languageOptions.length;
+        if (event.key === 'Home') nextIndex = 0;
+        if (event.key === 'End') nextIndex = languageOptions.length - 1;
+        if (nextIndex !== null) {
+            event.preventDefault();
+            languageOptions[nextIndex].focus();
+        } else if (event.key === 'Escape') {
+            event.preventDefault();
+            setLanguageMenuOpen(false, true);
+        }
+    });
+    document.addEventListener('click', (event) => {
+        if (languageTrigger.getAttribute('aria-expanded') === 'true' && !languageSelector.contains(event.target)) {
+            setLanguageMenuOpen(false);
+        }
+    });
+    document.addEventListener('keydown', (event) => {
+        if (event.key === 'Escape' && languageTrigger.getAttribute('aria-expanded') === 'true') {
+            event.preventDefault();
+            setLanguageMenuOpen(false, true);
+        }
+    });
+}
+
 if (toggle && navigation && overlay && closeButton) {
     const mobile = window.matchMedia('(max-width: 639px)');
     const setOpen = (open, restoreFocus = true) => {

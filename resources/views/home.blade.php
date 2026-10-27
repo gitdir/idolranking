@@ -2,11 +2,21 @@
 
 @section('content')
     @php
+        $homeRankingTitle = static function (string $gender, bool $isGroup = false): string {
+            $genderLabel = __('ui.'.$gender);
+            $categoryLabel = $isGroup ? __('ui.group') : __('ui.idol');
+
+            if (app()->getLocale() === 'id') {
+                return __('ui.ranking').' '.$categoryLabel.' '.$genderLabel;
+            }
+
+            return $genderLabel.($isGroup ? ' '.$categoryLabel : '').' '.__('ui.ranking');
+        };
         $panels = [
-            ['key' => 'boy', 'title' => __('ui.boy').' '.__('ui.ranking'), 'theme' => 'blue'],
-            ['key' => 'girl', 'title' => __('ui.girl').' '.__('ui.ranking'), 'theme' => 'pink'],
-            ['key' => 'boy-group', 'title' => __('ui.boy').' '.__('ui.group').' '.__('ui.ranking'), 'theme' => 'purple'],
-            ['key' => 'girl-group', 'title' => __('ui.girl').' '.__('ui.group').' '.__('ui.ranking'), 'theme' => 'pink'],
+            ['key' => 'boy', 'title' => $homeRankingTitle('boy'), 'theme' => 'blue'],
+            ['key' => 'girl', 'title' => $homeRankingTitle('girl'), 'theme' => 'pink'],
+            ['key' => 'boy-group', 'title' => $homeRankingTitle('boy', true), 'theme' => 'purple'],
+            ['key' => 'girl-group', 'title' => $homeRankingTitle('girl', true), 'theme' => 'pink'],
         ];
         foreach ($panels as $panelIndex => $panel) {
             $visible = $publicRankings[$panel['key']] ?? [];

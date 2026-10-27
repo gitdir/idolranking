@@ -849,6 +849,8 @@ When frontend assets change:
 npm run build
 ```
 
+For CSS or visual UI changes, also verify the affected page in a real browser after the build. On Windows, use Chrome with a temporary profile and a screenshot or browser inspection. If the restricted shell prevents Chrome's GPU process from starting, run only that browser check with the approved elevated execution path; do not treat the sandbox GPU failure as an application failure. Check the relevant viewport and hover/focus states, and report any browser check that could not be completed.
+
 Do not claim a feature works unless there is a reasonable verification basis.
 
 If something could not be tested, say so clearly.
