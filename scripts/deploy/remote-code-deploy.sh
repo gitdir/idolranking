@@ -102,6 +102,10 @@ stage_mode=$(stat -c '%a' "$stage_root" 2>/dev/null || true)
 [[ -f "$ASSET_STAGE/manifest.json" ]] || fail 'Staged Vite manifest is missing.'
 [[ -d "$stage_root/images" && -f "$stage_root/favicon.ico" ]] \
     || fail 'Staged application images or favicon are missing.'
+for flag in us kr jp es id br cn; do
+    [[ -f "$stage_root/images/flags/$flag.svg" ]] \
+        || fail "Staged language flag is missing: $flag.svg."
+done
 [[ -f "$APP_DIR/composer.json" && -f "$APP_DIR/composer.lock" ]] \
     || fail 'Composer definition or lock file is missing.'
 if find "$stage_root" -type l -print -quit | grep -q .; then
@@ -222,6 +226,27 @@ normalize_build_permissions() {
     log 'Verified public/build directories are mode 755 and regular files are mode 644.'
 }
 
+normalize_language_flag_permissions() {
+    local flags_dir="$PUBLIC_DIR/images/flags" unsafe_path flag
+    [[ -d "$flags_dir" && ! -L "$flags_dir" ]] || return 1
+
+    unsafe_path=$(find -P "$flags_dir" -type l -print -quit) || return 1
+    [[ -z "$unsafe_path" ]] || { log "Unexpected language-flag symlink: $unsafe_path"; return 1; }
+
+    find -P "$flags_dir" -type d -exec chmod 755 -- {} + || return 1
+    find -P "$flags_dir" -type f -exec chmod 644 -- {} + || return 1
+
+    unsafe_path=$(find -P "$flags_dir" -type d ! -perm 755 -print -quit) || return 1
+    [[ -z "$unsafe_path" ]] || { log "Unexpected language-flag directory mode: $unsafe_path"; return 1; }
+    unsafe_path=$(find -P "$flags_dir" -type f ! -perm 644 -print -quit) || return 1
+    [[ -z "$unsafe_path" ]] || { log "Unexpected language-flag file mode: $unsafe_path"; return 1; }
+
+    for flag in us kr jp es id br cn; do
+        [[ -f "$flags_dir/$flag.svg" && ! -L "$flags_dir/$flag.svg" ]] || return 1
+    done
+    log 'Verified all language-flag directories are mode 755 and regular files are mode 644.'
+}
+
 # Fetch only the named main branch. No force refspec or reset is used.
 GIT_SSH_COMMAND='ssh -i /home/u624668418/.ssh/idolranking_deploy -o IdentitiesOnly=yes -o StrictHostKeyChecking=yes -o UserKnownHostsFile=/home/u624668418/.ssh/known_hosts' \
     git fetch --no-tags origin refs/heads/main:refs/remotes/origin/main
@@ -290,6 +315,9 @@ if ! rsync -rlt --checksum --omit-dir-times --no-owner --no-group --chmod=Du=rwx
 fi
 if ! chmod 755 -- "$PUBLIC_DIR/images"; then
     asset_failure 'Could not set the public images directory mode.'
+fi
+if ! normalize_language_flag_permissions; then
+    asset_failure 'Could not set or verify public language-flag filesystem permissions.'
 fi
 if ! install -m 644 "$stage_root/favicon.ico" "$PUBLIC_DIR/.idolranking-favicon.$$.tmp" \
     || ! mv -f -- "$PUBLIC_DIR/.idolranking-favicon.$$.tmp" "$PUBLIC_DIR/favicon.ico"; then
@@ -376,6 +404,24 @@ garden_code=$(curl --silent --show-error --max-time 30 --output /dev/null --writ
     || smoke_fail 'Fan Garden smoke test request failed.'
 [[ "$garden_code" == '404' ]] || smoke_fail "Fan Garden should return 404, but returned HTTP $garden_code."
 log 'Smoke test passed: /fan-garden remains HTTP 404.'
+
+for flag in us kr jp es id br cn; do
+    flag_path="$PUBLIC_DIR/images/flags/$flag.svg"
+    [[ -f "$flag_path" && ! -L "$flag_path" ]] \
+        || asset_failure "A language flag is missing or unsafe: $flag.svg."
+    flag_mode=$(stat -c '%a' -- "$flag_path") \
+        || asset_failure "Could not inspect language flag mode: $flag.svg."
+    [[ "$flag_mode" == '644' ]] \
+        || asset_failure "A language flag is not mode 644: $flag.svg."
+    response=$(curl --silent --show-error --location --max-time 30 --output /dev/null \
+        --write-out '%{http_code} %{content_type}' "$base_url/images/flags/$flag.svg") \
+        || asset_failure "Language flag request failed: $flag.svg."
+    code=${response%% *}
+    content_type=${response#* }
+    [[ "$code" == '200' ]] || asset_failure "Language flag returned HTTP $code: $flag.svg."
+    case "$content_type" in image/svg+xml*) ;; *) asset_failure "Language flag response has an unexpected Content-Type: $flag.svg." ;; esac
+    log "Smoke test passed: language flag $flag.svg (HTTP 200, image/svg+xml)."
+done
 
 while IFS= read -r css_asset; do
     response=$(curl --silent --show-error --location --max-time 30 --output /dev/null \
