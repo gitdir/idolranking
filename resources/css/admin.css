@@ -359,6 +359,9 @@ td.admin-table-empty, .admin-management-table td.admin-table-empty, .admin-distr
 .admin-settings-form { display: grid; gap: 18px; max-width: 880px; padding: 24px; border: 1px solid #e2e8f2; border-radius: 9px; background: #fff; }
 .admin-settings-form > label { display: grid; gap: 7px; color: #385487; font-size: 13px; font-weight: 700; }
 .admin-settings-form :is(input, textarea, select) { width: 100%; min-width: 0; border: 1px solid #d5deed; border-radius: 6px; padding: 10px 12px; background: #fff; color: #17346f; font: inherit; }
+.admin-dummy-nickname { color: #0ee647 !important; }
+.admin-auto-vote-fields { display: flex; align-items: center; flex-wrap: wrap; min-width: 0; gap: 8px; color: #385487; font-size: 13px; font-weight: 700; }
+.admin-settings-form .admin-auto-vote-fields input { width: 94px; }
 .admin-settings-actions { display: flex; justify-content: flex-end; gap: 8px; }
 .admin-secondary-button { display: inline-flex; min-height: 36px; align-items: center; justify-content: center; padding: 7px 18px; border: 1px solid #d5deed; border-radius: 6px; background: #fff; color: #385487; font-weight: 700; text-decoration: none; }
 .admin-page-heading > a.admin-primary-button { display: inline-flex; align-items: center; text-decoration: none; white-space: nowrap; }

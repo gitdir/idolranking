@@ -1257,6 +1257,7 @@ class FanPostController extends Controller
             'member_code' => $member->member_code,
             'member_url' => route('member.fan-posts', ['member_code' => $member->member_code]),
             'nickname' => $member->nickname,
+            'highlight_dummy_nickname' => \App\Support\AdminDummyNickname::matches(memberCode: $member->member_code),
             'member_label' => __('ui.member_view_posts_label', ['name' => $member->nickname]),
             'image_url' => \App\Support\ManagedImageStorage::publicUrl($member->profile_image_path),
             'content' => $comment->content,

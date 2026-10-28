@@ -13,7 +13,7 @@
         <dt>대상</dt><dd>{{ $report->idol_type === 'group' ? '그룹' : '개인 아이돌' }}: {{ $report->idol_name }} ({{ $report->english_name }})</dd>
         <dt>공개 상태</dt><dd>{{ $report->idol_status === 'active' ? '공개 중' : '비활성' }}</dd>
         <dt>현재 프로필 이미지</dt><dd>{{ $report->current_image_path === $report->reported_image_path ? '신고 이미지와 일치' : ($report->current_image_path ? '신고 접수 후 이미지 변경됨' : '현재 프로필 이미지 없음') }}</dd>
-        <dt>신고자</dt><dd>{{ $report->reporter_nickname }} (회원 #{{ $report->member_idx }})@if($report->actor_member_idx !== $report->member_idx) · 실제 제출자 {{ $report->actor_nickname }}@endif</dd>
+        <dt>신고자</dt><dd><x-admin-dummy-name :nickname="$report->reporter_nickname" /> (회원 #{{ $report->member_idx }})@if($report->actor_member_idx !== $report->member_idx) · 실제 제출자 {{ $report->actor_nickname }}@endif</dd>
         <dt>신고 접수</dt><dd>{{ \Illuminate\Support\Carbon::parse($report->created_at, 'UTC')->timezone('Asia/Seoul')->format('Y-m-d H:i') }} KST</dd>
         <dt>사유</dt><dd>{{ ['copyright' => '저작권 침해', 'portrait_rights' => '초상권 침해', 'other' => '기타'][$report->reason] ?? '기타' }}</dd>
         <dt>상세 내용</dt><dd>{{ $report->details ?: '상세 내용 없음' }}</dd>

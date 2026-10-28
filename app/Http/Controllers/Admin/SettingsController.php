@@ -11,7 +11,7 @@ use Illuminate\Support\Facades\Storage;
 
 class SettingsController extends Controller
 {
-    private const SECTIONS = ['general', 'seo', 'custom-code'];
+    private const SECTIONS = ['general', 'seo', 'management', 'custom-code'];
 
     public function edit(string $section = 'general')
     {
@@ -25,6 +25,13 @@ class SettingsController extends Controller
         $rules = match ($section) {
             'general' => ['site_title'=>['nullable','string','max:100'],'site_description'=>['nullable','string','max:500']],
             'seo' => ['site_title'=>['nullable','string','max:100'],'site_description'=>['nullable','string','max:500'],'site_keywords'=>['nullable','string','max:500'],'social_title'=>['nullable','string','max:100'],'social_description'=>['nullable','string','max:500'],'social_image'=>['nullable','image','mimes:jpg,jpeg,png,webp','max:5120'],'favicon'=>['nullable','file','mimes:png,ico','max:1024'],'remove_social_image'=>['nullable','boolean'],'remove_favicon'=>['nullable','boolean']],
+            'management' => [
+                'fan_post_view_boost_enabled' => ['required', 'boolean'],
+                'dummy_auto_vote_enabled' => ['required', 'boolean'],
+                'dummy_auto_vote_interval_minutes' => ['required', 'integer', 'min:1', 'max:1440'],
+                'dummy_auto_vote_min_hearts' => ['required', 'integer', 'min:1', 'max:100000'],
+                'dummy_auto_vote_max_hearts' => ['required', 'integer', 'gte:dummy_auto_vote_min_hearts', 'max:100000'],
+            ],
             default => ['head_code'=>['nullable','string','max:100000'],'custom_css'=>['nullable','string','max:100000'],'body_end_code'=>['nullable','string','max:100000']],
         };
         $data = $request->validate($rules);

@@ -230,6 +230,7 @@ Route::prefix('admin')->name('admin.')->middleware(RequireAdmin::class)->group(f
     Route::get('/members/dummy/create', [AdminMemberController::class, 'createDummy'])->name('members.dummy.create');
     Route::post('/members/dummy', [AdminMemberController::class, 'storeDummy'])->name('members.dummy.store');
     Route::get('/members/{idx}', [AdminMemberController::class, 'show'])->whereNumber('idx')->name('members.show');
+    Route::put('/members/{idx}/favorites', [AdminMemberController::class, 'updateFavorites'])->whereNumber('idx')->name('members.favorites');
     Route::patch('/members/{idx}/status', [AdminMemberController::class, 'updateStatus'])->whereNumber('idx')->name('members.status');
     Route::get('/activity-logs', AdminActivityLogController::class)->name('activity-logs.index');
     Route::get('/fan-posts', AdminFanPostController::class)->name('fan-posts.index');
@@ -256,6 +257,6 @@ Route::prefix('admin')->name('admin.')->middleware(RequireAdmin::class)->group(f
     Route::get('/ip-access', [AdminIpAccessController::class, 'index'])->name('ip-access.index');
     Route::post('/ip-access', [AdminIpAccessController::class, 'store'])->name('ip-access.store');
     Route::patch('/ip-access/{idx}', [AdminIpAccessController::class, 'toggle'])->whereNumber('idx')->name('ip-access.toggle');
-    Route::get('/settings/{section?}', [AdminSettingsController::class, 'edit'])->where('section', 'general|seo|custom-code')->name('settings.edit');
-    Route::put('/settings/{section}', [AdminSettingsController::class, 'update'])->where('section', 'general|seo|custom-code')->name('settings.update');
+    Route::get('/settings/{section?}', [AdminSettingsController::class, 'edit'])->where('section', 'general|seo|management|custom-code')->name('settings.edit');
+    Route::put('/settings/{section}', [AdminSettingsController::class, 'update'])->where('section', 'general|seo|management|custom-code')->name('settings.update');
 });

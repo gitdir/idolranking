@@ -26,6 +26,16 @@
             @endforeach
         </select>
     </label>
+    @foreach ([1, 2, 3] as $rank)
+        <label>최애 {{ $rank }} (선택)
+            <select name="favorite_idol_{{ $rank }}_idx">
+                <option value="">선택 안 함</option>
+                @foreach ($favoriteIdols as $idol)
+                    <option value="{{ $idol->idx }}" @selected((string) old('favorite_idol_'.$rank.'_idx') === (string) $idol->idx)>{{ $idol->name }} #{{ $idol->idx }}</option>
+                @endforeach
+            </select>
+        </label>
+    @endforeach
     <label>비밀번호
         <input type="password" name="password" minlength="8" maxlength="64" required autocomplete="new-password">
     </label>

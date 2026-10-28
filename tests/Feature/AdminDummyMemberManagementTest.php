@@ -14,7 +14,8 @@ class AdminDummyMemberManagementTest extends TestCase
             $this->markTestSkipped('The isolated dummy member tests require pdo_sqlite.');
         }
 
-        DB::statement('CREATE TABLE members (idx INTEGER PRIMARY KEY AUTOINCREMENT, member_code TEXT UNIQUE, email TEXT UNIQUE, password_hash TEXT, nickname TEXT UNIQUE, member_level INTEGER DEFAULT 1, is_dummy INTEGER DEFAULT 0, status TEXT DEFAULT \'active\', country_code TEXT, profile_image_path TEXT, heart_balance INTEGER DEFAULT 0, email_verified_at TEXT, last_login_at TEXT, password_changed_at TEXT, created_by_member_idx INTEGER, referred_by_member_idx INTEGER, deleted_at TEXT, created_at TEXT, updated_at TEXT)');
+        DB::statement('CREATE TABLE members (idx INTEGER PRIMARY KEY AUTOINCREMENT, member_code TEXT UNIQUE, email TEXT UNIQUE, password_hash TEXT, nickname TEXT UNIQUE, member_level INTEGER DEFAULT 1, is_dummy INTEGER DEFAULT 0, favorite_idol_1_idx INTEGER, favorite_idol_2_idx INTEGER, favorite_idol_3_idx INTEGER, status TEXT DEFAULT \'active\', country_code TEXT, profile_image_path TEXT, heart_balance INTEGER DEFAULT 0, email_verified_at TEXT, last_login_at TEXT, password_changed_at TEXT, created_by_member_idx INTEGER, referred_by_member_idx INTEGER, deleted_at TEXT, created_at TEXT, updated_at TEXT)');
+        DB::statement("CREATE TABLE idols (idx INTEGER PRIMARY KEY, name TEXT, type TEXT, status TEXT)");
         DB::statement('CREATE TABLE admin_activity_logs (idx INTEGER PRIMARY KEY AUTOINCREMENT, actor_member_idx INTEGER, action TEXT, target_type TEXT, target_idx INTEGER, reason TEXT, summary TEXT, created_at TEXT)');
         DB::statement('CREATE TABLE member_login_histories (idx INTEGER PRIMARY KEY AUTOINCREMENT, member_idx INTEGER, login_type TEXT, result TEXT, ip_address TEXT, user_agent TEXT, failure_reason TEXT, created_at TEXT)');
         DB::statement('CREATE TABLE heart_histories (idx INTEGER PRIMARY KEY AUTOINCREMENT, member_idx INTEGER, amount INTEGER, balance_after INTEGER, reason TEXT, vote_idx INTEGER, comment_idx INTEGER, reversal_of_history_idx INTEGER, operation_key TEXT, actor_member_idx INTEGER, memo TEXT, created_at TEXT)');
@@ -38,21 +39,48 @@ class AdminDummyMemberManagementTest extends TestCase
         ], $overrides);
     }
 
+    public function test_member_search_and_pagination_keep_the_admin_layout(): void
+    {
+        $this->database();
+        $rows = [];
+        for ($idx = 3; $idx <= 27; $idx++) {
+            $rows[] = [
+                'idx' => $idx,
+                'member_code' => 'Member'.str_pad((string) $idx, 6, '0', STR_PAD_LEFT),
+                'email' => 'member'.$idx.'@example.test',
+                'nickname' => $idx === 27 ? '은하리본' : 'member_'.$idx,
+            ];
+        }
+        DB::table('members')->insert($rows);
+
+        $this->withSession(['member_idx' => 1])->get(route('admin.members.index'))
+            ->assertOk()->assertSee('aria-label="페이지 이동"', false)
+            ->assertDontSee('Showing 1 to 20');
+        $this->withSession(['member_idx' => 1])->get(route('admin.members.index', ['page' => 2]))
+            ->assertOk()->assertSee('member_3');
+        $this->withSession(['member_idx' => 1])->get(route('admin.members.index', ['q' => '은하리본']))
+            ->assertOk()->assertSee('은하리본');
+    }
+
     public function test_admin_creates_audited_dummy_account_that_can_log_in_normally(): void
     {
         $this->database();
+        DB::table('idols')->insert(['idx' => 10, 'name' => 'Favorite Idol', 'type' => 'individual', 'status' => 'active']);
 
         $page = $this->withSession(['member_idx' => 1])->get(route('admin.members.dummy.create'))
             ->assertOk()->assertSee('더미 계정 생성');
         $this->assertStringContainsString('name="password_confirmation"', $page->getContent());
 
-        $this->withSession(['member_idx' => 1])->post(route('admin.members.dummy.store'), $this->validDummy())
+        $this->withSession(['member_idx' => 1])->post(route('admin.members.dummy.store'), $this->validDummy([
+            'favorite_idol_1_idx' => 10,
+        ]))
             ->assertRedirect();
         $dummy = DB::table('members')->where('email', 'dummy.account@example.test')->first();
 
         $this->assertNotNull($dummy);
         $this->assertSame(1, (int) $dummy->member_level);
         $this->assertSame(1, (int) $dummy->is_dummy);
+        $this->assertSame(10, (int) $dummy->favorite_idol_1_idx);
         $this->assertSame(1, (int) $dummy->created_by_member_idx);
         $this->assertSame('active', $dummy->status);
         $this->assertMatchesRegularExpression('/^[A-Za-z0-9]{12}$/', $dummy->member_code);

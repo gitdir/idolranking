@@ -1,7 +1,7 @@
 @extends('layouts.admin')
 @section('title','회원 하트 내역')
 @section('content')
-<header class="admin-page-heading"><div><h1><span translate="no">{{ $member->nickname }}</span> 하트 내역</h1><p>{{ $member->member_code }} · 현재 {{ number_format($member->heart_balance) }} 하트</p></div></header>
+<header class="admin-page-heading"><div><h1><span translate="no"><x-admin-dummy-name :nickname="$member->nickname" /></span> 하트 내역</h1><p>{{ $member->member_code }} · 현재 {{ number_format($member->heart_balance) }} 하트</p></div></header>
 @if(session('admin_success'))<div class="admin-alert-success" role="status">{{ session('admin_success') }}</div>@endif
 @if($errors->any())<div class="admin-alert-error" role="alert">{{ $errors->first() }}</div>@endif
 @if(session('admin_success'))<div class="admin-alert-success" role="status">{{ session('admin_success') }}</div>@endif

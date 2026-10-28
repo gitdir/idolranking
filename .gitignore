@@ -152,3 +152,4 @@ Thumbs.db
 !/sql/patches/20261025_011_rank_weekly_quiz_creator_rewards.sql
 !/sql/patches/20261025_012_add_quiz_soft_deletion.sql
 !/sql/patches/20261025_013_create_quiz_likes.sql
+!/sql/patches/20261028_001_add_member_favorite_idols.sql

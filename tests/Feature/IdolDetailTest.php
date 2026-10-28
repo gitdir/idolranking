@@ -63,6 +63,22 @@ class IdolDetailTest extends TestCase
             ->assertDontSee('Jungkook')->assertDontSee('golden_army');
     }
 
+    public function test_detail_banner_uses_group_ranking_title_for_groups(): void
+    {
+        $this->database();
+
+        $groupPage = $this->withSession(['locale' => 'en'])->get('/idol/102')->assertOk();
+        $this->assertMatchesRegularExpression('/Girl<\/span>\s*<span[^>]*>Group<\/span>\s*<span>Ranking<\/span>/', $groupPage->getContent());
+        $groupPage->assertViewHas('heroType', 'group');
+
+        DB::table('idols')->where('idx', 102)->update(['gender' => 'male']);
+        $boyGroupPage = $this->withSession(['locale' => 'en'])->get('/idol/102')->assertOk();
+        $this->assertMatchesRegularExpression('/Boy<\/span>\s*<span[^>]*>Group<\/span>\s*<span>Ranking<\/span>/', $boyGroupPage->getContent());
+
+        $this->withSession(['locale' => 'en'])->get('/idol/101')->assertOk()
+            ->assertViewHas('heroType', 'boy');
+    }
+
     public function test_detail_page_offers_a_report_action_for_its_current_managed_profile_image(): void
     {
         $this->database();

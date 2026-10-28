@@ -50,6 +50,7 @@ if (form) {
         const content = makeElement('div', 'fan-detail-comment-content');
         const heading = makeElement('h3');
         const nickname = makeElement('a', 'member-identity-link', comment.nickname);
+        if (comment.highlight_dummy_nickname === true) nickname.classList.add('admin-dummy-nickname');
         nickname.setAttribute('translate', 'no');
         nickname.href = comment.member_url;
         const time = makeElement('small', 'fan-detail-time', comment.created_label);

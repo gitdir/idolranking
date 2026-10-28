@@ -13,11 +13,15 @@
     <nav class="admin-settings-tabs">
         <a href="{{ route('admin.settings.edit', 'general') }}" @if ($section === 'general') aria-current="page" @endif>기본 설정</a>
         <a href="{{ route('admin.settings.edit', 'seo') }}" @if ($section === 'seo') aria-current="page" @endif>SEO 설정</a>
+        <a href="{{ route('admin.settings.edit', 'management') }}" @if ($section === 'management') aria-current="page" @endif>기능 관리</a>
         <a href="{{ route('admin.settings.edit', 'custom-code') }}" @if ($section === 'custom-code') aria-current="page" @endif>추가 코드 설정</a>
     </nav>
 
     @if (session('admin_success'))
         <div class="admin-alert-success">{{ session('admin_success') }}</div>
+    @endif
+    @if ($errors->any())
+        <div class="admin-alert-error" role="alert">{{ $errors->first() }}</div>
     @endif
 
     <form class="admin-settings-form" method="post" enctype="multipart/form-data" action="{{ route('admin.settings.update', $section) }}">
@@ -75,6 +79,30 @@
                 <img class="admin-setting-preview admin-setting-favicon" src="{{ \App\Support\ManagedImageStorage::publicUrl($settings['favicon_path']) }}" alt="현재 파비콘">
                 <label class="admin-check"><input type="checkbox" name="remove_favicon" value="1"> 파비콘 제거</label>
             @endif
+        @elseif ($section === 'management')
+            <h2>팬포스트 조회수 자동 증가</h2>
+            <p>켜면 매분 공개된 팬포스트 중 하나의 조회수를 1~5 사이의 무작위 값만큼 올립니다. 대상 글이 없으면 아무 작업도 하지 않습니다.</p>
+            <label class="admin-check">
+                <input type="hidden" name="fan_post_view_boost_enabled" value="0">
+                <input type="checkbox" name="fan_post_view_boost_enabled" value="1" @checked(old('fan_post_view_boost_enabled', $settings['fan_post_view_boost_enabled'] ?? '0') === '1')>
+                팬포스트 조회수 자동 증가 사용
+            </label>
+            <h2>더미 계정 자동투표</h2>
+            <p>최애 아이돌이 등록된 활성 더미 계정 한 명을 무작위로 골라, 등록된 최애 중 활성 아이돌 한 명에게 투표합니다. 하트가 부족하면 부족분만 지급하고 이력에 남깁니다.</p>
+            <label class="admin-check">
+                <input type="hidden" name="dummy_auto_vote_enabled" value="0">
+                <input type="checkbox" name="dummy_auto_vote_enabled" value="1" @checked((string) old('dummy_auto_vote_enabled', $settings['dummy_auto_vote_enabled'] ?? '0') === '1')>
+                더미 계정 자동투표 사용
+            </label>
+            <div class="admin-auto-vote-fields">
+                <span>매</span>
+                <input type="number" name="dummy_auto_vote_interval_minutes" aria-label="투표 간격 (분)" min="1" max="1440" required value="{{ old('dummy_auto_vote_interval_minutes', $settings['dummy_auto_vote_interval_minutes'] ?? '5') }}">
+                <span>분 하트</span>
+                <input type="number" name="dummy_auto_vote_min_hearts" aria-label="최소 투표 하트" min="1" max="100000" required value="{{ old('dummy_auto_vote_min_hearts', $settings['dummy_auto_vote_min_hearts'] ?? '10') }}">
+                <span>개 ~</span>
+                <input type="number" name="dummy_auto_vote_max_hearts" aria-label="최대 투표 하트" min="1" max="100000" required value="{{ old('dummy_auto_vote_max_hearts', $settings['dummy_auto_vote_max_hearts'] ?? '50') }}">
+                <span>개 투표</span>
+            </div>
         @else
             <div class="admin-code-warning">추가한 코드는 사이트 전체 화면에 영향을 줄 수 있습니다.</div>
             <label>

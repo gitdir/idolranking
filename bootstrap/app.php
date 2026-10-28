@@ -4,6 +4,8 @@ use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
 use App\Console\Commands\CreateDummyMembers;
+use App\Console\Commands\AutoVoteForDummyMembers;
+use App\Console\Commands\BoostFanPostViews;
 use App\Console\Commands\PublishQueuedFanPosts;
 use App\Console\Commands\SettleQuizWeeklyRanking;
 use App\Http\Middleware\ResolveMember;
@@ -19,7 +21,7 @@ $app = Application::configure(basePath: dirname(__DIR__))
         commands: __DIR__.'/../routes/console.php',
         health: '/up',
     )
-    ->withCommands([CreateDummyMembers::class, PublishQueuedFanPosts::class, SettleQuizWeeklyRanking::class])
+    ->withCommands([CreateDummyMembers::class, AutoVoteForDummyMembers::class, BoostFanPostViews::class, PublishQueuedFanPosts::class, SettleQuizWeeklyRanking::class])
     ->withMiddleware(function (Middleware $middleware): void {
         // Comment text is source content for later translation and must remain byte-for-byte as submitted.
         $middleware->trimStrings(except: [

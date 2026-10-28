@@ -37,8 +37,8 @@
                             <small>{{ $report->last_comment_moderation_action === 'fan_post_comment_hidden' ? '관리자 비공개 처리' : '작성자 삭제' }}</small>
                         @endif
                     </td>
-                    <td>{{ $report->author_nickname }}</td>
-                    <td>{{ $report->reporter_nickname }}</td>
+                    <td><x-admin-dummy-name :nickname="$report->author_nickname" /></td>
+                    <td><x-admin-dummy-name :nickname="$report->reporter_nickname" /></td>
                     <td>
                         <strong>{{ ['spam' => '스팸', 'harassment_hate' => '괴롭힘 / 혐오', 'inappropriate_content' => '부적절한 콘텐츠', 'other' => '기타'][$report->reason] ?? '기타' }}</strong>
                         <small>{{ $report->details ?: '상세 내용 없음' }}</small>

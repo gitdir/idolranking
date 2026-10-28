@@ -25,7 +25,7 @@
 <section class="admin-request-table-card admin-distribution-table"><div class="admin-table-scroll"><table><thead><tr><th>순번</th><th>제목</th><th>작성자</th><th>대기 등록 시각</th><th>상태</th><th>관리</th></tr></thead><tbody>
 @forelse($posts as $post)
 <tr>
-    <td>{{ $posts->firstItem() + $loop->index }}</td><td>{{ $post->title }}</td><td>{{ $post->nickname }}</td>
+    <td>{{ $posts->firstItem() + $loop->index }}</td><td>{{ $post->title }}</td><td><x-admin-dummy-name :nickname="$post->nickname" /></td>
     <td>{{ $post->queued_at }}</td><td><span class="admin-distribution-status">예약 대기</span></td>
     <td><div class="admin-distribution-actions">
         <a href="{{ route('admin.fan-post-distribution.preview', $post->idx) }}">미리보기</a>

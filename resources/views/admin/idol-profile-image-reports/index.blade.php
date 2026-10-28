@@ -25,7 +25,7 @@
                     <td>{{ \Illuminate\Support\Carbon::parse($report->created_at, 'UTC')->timezone('Asia/Seoul')->format('Y-m-d H:i') }}</td>
                     <td><a class="admin-record-link" href="{{ route('admin.idol-profile-image-reports.show', $report->idx) }}">{{ $report->english_name ?: $report->idol_name }}</a><small>{{ $report->idol_type === 'group' ? '그룹' : '개인 아이돌' }} #{{ $report->idol_idx }}</small></td>
                     <td><a href="{{ route('admin.idol-profile-image-reports.evidence', $report->idx) }}" target="_blank" rel="noopener noreferrer">이미지 확인</a></td>
-                    <td>{{ $report->reporter_nickname }}</td>
+                    <td><x-admin-dummy-name :nickname="$report->reporter_nickname" /></td>
                     <td><strong>{{ ['copyright' => '저작권 침해', 'portrait_rights' => '초상권 침해', 'other' => '기타'][$report->reason] ?? '기타' }}</strong><small>{{ $report->details ?: '상세 내용 없음' }}</small></td>
                     <td><span class="admin-status-badge admin-status-{{ $report->status }}">{{ ['pending' => '대기', 'reviewing' => '검토 중', 'reviewed' => '처리 완료', 'rejected' => '기각'][$report->status] ?? '알 수 없음' }}</span></td>
                     <td><a class="admin-record-link" href="{{ route('admin.idol-profile-image-reports.show', $report->idx) }}">검토 및 조치</a></td>

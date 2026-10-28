@@ -108,6 +108,9 @@ CREATE TABLE `members` (
   `nickname` varchar(50) DEFAULT NULL COMMENT '공개 닉네임; 탈퇴 시 NULL',
   `member_level` smallint unsigned NOT NULL DEFAULT '1' COMMENT '0 탈퇴, 1 일반, 10 관리자; 중간 권한은 애플리케이션 정책으로 추가',
   `is_dummy` tinyint unsigned NOT NULL DEFAULT '0' COMMENT '0 일반 계정, 1 관리자 생성 더미계정',
+  `favorite_idol_1_idx` bigint unsigned DEFAULT NULL COMMENT 'Member favorite idol or group, priority 1',
+  `favorite_idol_2_idx` bigint unsigned DEFAULT NULL COMMENT 'Member favorite idol or group, priority 2',
+  `favorite_idol_3_idx` bigint unsigned DEFAULT NULL COMMENT 'Member favorite idol or group, priority 3',
   `status` varchar(16) NOT NULL DEFAULT 'active' COMMENT 'active, suspended, inactive',
   `country_code` char(2) DEFAULT NULL COMMENT '사용자 선택 ISO 3166-1 alpha-2 대문자 코드; 탈퇴 시 NULL 가능',
   `profile_image_path` varchar(1024) DEFAULT NULL COMMENT '회원 프로필 이미지 공개 저장 경로',
@@ -125,11 +128,17 @@ CREATE TABLE `members` (
   UNIQUE KEY `uq_members_email` (`email`),
   UNIQUE KEY `uq_members_nickname` (`nickname`),
   KEY `idx_members_is_dummy_member_level_status_idx` (`is_dummy`,`member_level`,`status`,`idx`),
+  KEY `idx_members_favorite_idol_1_idx` (`favorite_idol_1_idx`),
+  KEY `idx_members_favorite_idol_2_idx` (`favorite_idol_2_idx`),
+  KEY `idx_members_favorite_idol_3_idx` (`favorite_idol_3_idx`),
   KEY `idx_members_created_by_member_idx` (`created_by_member_idx`),
   KEY `idx_members_country_code_idx` (`country_code`,`idx`),
   KEY `idx_members_referred_by_member_idx` (`referred_by_member_idx`),
   CONSTRAINT `fk_members_created_by_member_idx` FOREIGN KEY (`created_by_member_idx`) REFERENCES `members` (`idx`),
-  CONSTRAINT `fk_members_referred_by_member_idx` FOREIGN KEY (`referred_by_member_idx`) REFERENCES `members` (`idx`)
+  CONSTRAINT `fk_members_referred_by_member_idx` FOREIGN KEY (`referred_by_member_idx`) REFERENCES `members` (`idx`),
+  CONSTRAINT `fk_members_favorite_idol_1_idx` FOREIGN KEY (`favorite_idol_1_idx`) REFERENCES `idols` (`idx`),
+  CONSTRAINT `fk_members_favorite_idol_2_idx` FOREIGN KEY (`favorite_idol_2_idx`) REFERENCES `idols` (`idx`),
+  CONSTRAINT `fk_members_favorite_idol_3_idx` FOREIGN KEY (`favorite_idol_3_idx`) REFERENCES `idols` (`idx`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='회원, 권한, 국가 및 현재 하트 잔액';
 
 CREATE TABLE `partner_banners` (

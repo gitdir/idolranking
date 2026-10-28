@@ -4,7 +4,7 @@
 
 @section('content')
     <div class="idol-detail">
-        <x-ranking-hero title="Idol Ranking" type="boy" :gender="$heroGender" />
+        <x-ranking-hero title="Idol Ranking" :type="$heroType" :gender="$heroGender" />
         <header class="idol-detail-heading">
             <h1><a translate="no" href="{{ route('idol.show', ['idx' => $idol['idx']]) }}">{{ $idol['name'] }}</a></h1><span translate="no">@if (!empty($idol['group_idx']))<a href="{{ route('idol.show', ['idx' => $idol['group_idx']]) }}">{{ $idol['group'] }}</a>@else{{ $idol['group'] }}@endif</span>
         </header>
