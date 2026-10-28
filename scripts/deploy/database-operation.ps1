@@ -255,13 +255,13 @@ if ($UseSshTunnel) {
     function Send-TunnelStatus {
         param([Parameter(Mandatory = $true)][ValidateSet('PREFLIGHT_OK','PREFLIGHT_FAILED','APPLY_OK','APPLY_FAILED')][string]$Value)
         $statusCommand = "printf '%s' '$Value' > '$stageRoot/client.status'"
-        & $SshExe @commonSshOptions $Target $statusCommand
+        & $SshExe -n @commonSshOptions $Target $statusCommand
         if ($LASTEXITCODE -ne 0) { throw 'Could not signal the locked remote patch runner.' }
     }
 
     function Get-TunnelServerStatus {
         $statusCommand = "if [ -f '$stageRoot/server.status' ]; then cat '$stageRoot/server.status'; fi"
-        $lines = @(& $SshExe @commonSshOptions $Target $statusCommand 2>$null)
+        $lines = @(& $SshExe -n @commonSshOptions $Target $statusCommand 2>$null)
         if ($LASTEXITCODE -ne 0) { throw 'Could not read the remote patch runner state.' }
         return (($lines -join '').Trim())
     }
