@@ -270,9 +270,9 @@ class MyPageTest extends TestCase
         ]);
 
         $this->withSession(['member_idx' => 1])->get(route('my-page.heart-history'))->assertOk()
-            ->assertSee('+17 Heart')->assertSee('+0 Heart')->assertSee('-100 Heart')
+            ->assertSee('>+17</strong>', false)->assertSee('>+0</strong>', false)->assertSee('>-100</strong>', false)
             ->assertSee('Vote for Group')
-            ->assertDontSee('+9,000 Heart')->assertDontSee('operation_key')->assertDontSee('member_idx');
+            ->assertDontSee('>+9,000</strong>', false)->assertDontSee('operation_key')->assertDontSee('member_idx');
     }
 
     public function test_dedicated_history_earned_and_spent_filters_include_zero_rewards_as_earned(): void
@@ -285,10 +285,10 @@ class MyPageTest extends TestCase
         ]);
 
         $this->withSession(['member_idx' => 1])->get(route('my-page.heart-history', ['filter' => 'earned']))
-            ->assertOk()->assertSee('+0 Heart')->assertSee('+12 Heart')->assertDontSee('-25 Heart')
+            ->assertOk()->assertSee('>+0</strong>', false)->assertSee('>+12</strong>', false)->assertDontSee('>-25</strong>', false)
             ->assertSee('aria-current="page"', false);
         $this->withSession(['member_idx' => 1])->get(route('my-page.heart-history', ['filter' => 'spent']))
-            ->assertOk()->assertSee('-25 Heart')->assertDontSee('+12 Heart')->assertDontSee('+0 Heart');
+            ->assertOk()->assertSee('>-25</strong>', false)->assertDontSee('>+12</strong>', false)->assertDontSee('>+0</strong>', false);
     }
 
     public function test_dedicated_history_is_paginated_newest_first_and_preserves_filter(): void

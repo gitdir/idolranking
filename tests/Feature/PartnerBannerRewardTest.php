@@ -20,6 +20,9 @@ class PartnerBannerRewardTest extends TestCase
         DB::statement('CREATE TABLE heart_reward_settings (idx INTEGER PRIMARY KEY AUTOINCREMENT, action_code TEXT UNIQUE, heart_amount INTEGER, daily_limit INTEGER DEFAULT 0, is_enabled INTEGER DEFAULT 1)');
         DB::statement('CREATE TABLE heart_histories (idx INTEGER PRIMARY KEY AUTOINCREMENT, member_idx INTEGER, amount INTEGER, balance_after INTEGER, reason TEXT, vote_idx INTEGER, comment_idx INTEGER, reversal_of_history_idx INTEGER, operation_key TEXT, actor_member_idx INTEGER, memo TEXT, created_at TEXT, UNIQUE (member_idx, operation_key))');
         DB::statement('CREATE TABLE daily_check_ins (idx INTEGER PRIMARY KEY AUTOINCREMENT, member_idx INTEGER NOT NULL, check_in_date TEXT NOT NULL, UNIQUE (member_idx, check_in_date))');
+        DB::statement("CREATE TABLE idols (idx INTEGER PRIMARY KEY, status TEXT DEFAULT 'active')");
+        DB::statement('CREATE TABLE fan_posts (idx INTEGER PRIMARY KEY, idol_idx INTEGER, member_idx INTEGER, status TEXT, deleted_at TEXT)');
+        DB::statement('CREATE TABLE fan_post_likes (fan_post_idx INTEGER, member_idx INTEGER)');
         DB::statement('CREATE TABLE partner_banners (idx INTEGER PRIMARY KEY AUTOINCREMENT, title TEXT, image_path TEXT, target_url TEXT, heart_reward INTEGER DEFAULT 10, reward_enabled INTEGER DEFAULT 0, is_active INTEGER DEFAULT 1, display_order INTEGER DEFAULT 0, starts_at TEXT, ends_at TEXT, created_at TEXT, updated_at TEXT)');
         DB::table('members')->insert([
             'idx' => 1, 'member_code' => 'BannerMember1', 'email' => 'member@example.test', 'nickname' => 'banner_member',

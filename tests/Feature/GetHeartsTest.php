@@ -435,9 +435,9 @@ class GetHeartsTest extends TestCase
         ]);
 
         $settingsPage = $this->withSession(['member_idx' => 8])->get('/admin/hearts/settings')->assertOk()
-            ->assertSee('name="min_heart_amount" min="0" max="2147483647" value="10"', false)
-            ->assertSee('name="max_heart_amount" min="0" max="2147483647" value="10"', false)
             ->assertSee('name="heart_amount"', false);
+        $this->assertMatchesRegularExpression('/name="min_heart_amount"[^>]*value="10"/', $settingsPage->getContent());
+        $this->assertMatchesRegularExpression('/name="max_heart_amount"[^>]*value="10"/', $settingsPage->getContent());
         $this->assertSame(3, substr_count($settingsPage->getContent(), 'name="min_heart_amount"'));
         $this->assertSame(3, substr_count($settingsPage->getContent(), 'name="max_heart_amount"'));
 

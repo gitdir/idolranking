@@ -18,7 +18,9 @@ class FanPostDistributionTest extends TestCase
         DB::statement("CREATE TABLE members (idx INTEGER PRIMARY KEY, member_code TEXT, email TEXT, nickname TEXT, country_code TEXT, profile_image_path TEXT, heart_balance INTEGER DEFAULT 0, member_level INTEGER DEFAULT 1, is_dummy INTEGER DEFAULT 0, status TEXT DEFAULT 'active', deleted_at TEXT)");
         DB::statement("CREATE TABLE idols (idx INTEGER PRIMARY KEY, name TEXT, type TEXT DEFAULT 'individual', status TEXT DEFAULT 'active')");
         DB::statement("CREATE TABLE fan_posts (idx INTEGER PRIMARY KEY AUTOINCREMENT, idol_idx INTEGER, member_idx INTEGER, title TEXT, content TEXT, status TEXT, queued_at TEXT, published_at TEXT, deleted_at TEXT, updated_at TEXT, media_type TEXT, image_path TEXT, youtube_video_id TEXT)");
+        DB::statement('CREATE TABLE fan_post_likes (fan_post_idx INTEGER, member_idx INTEGER)');
         DB::statement('CREATE TABLE site_settings (setting_key TEXT PRIMARY KEY, setting_value TEXT, updated_by_member_idx INTEGER, updated_at TEXT)');
+        DB::statement('CREATE TABLE heart_reward_settings (action_code TEXT PRIMARY KEY, heart_amount INTEGER, is_enabled INTEGER DEFAULT 1)');
         DB::statement('CREATE TABLE admin_activity_logs (idx INTEGER PRIMARY KEY AUTOINCREMENT, actor_member_idx INTEGER, action TEXT, target_type TEXT, target_idx INTEGER, reason TEXT, summary TEXT, created_at TEXT)');
         DB::table('members')->insert([
             ['idx' => 1, 'member_code' => 'AdminCode001', 'email' => 'admin@example.test', 'nickname' => 'Admin', 'member_level' => 10, 'is_dummy' => 0],
