@@ -10,7 +10,7 @@ final class SocialLinks
             $decoded = json_decode($storedLinks, true);
 
             return is_array($decoded)
-                ? array_values(array_slice(array_filter($decoded, 'is_string'), 0, 3))
+                ? array_values(array_slice(array_filter($decoded, 'is_string'), 0, 10))
                 : [];
         }
 

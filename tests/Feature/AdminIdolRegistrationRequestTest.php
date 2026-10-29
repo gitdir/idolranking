@@ -62,10 +62,10 @@ class AdminIdolRegistrationRequestTest extends TestCase
         $page = $this->withSession(['member_idx' => 1])->get('/admin/idol-requests/12')->assertOk();
         $html = $page->getContent();
         $englishField = strpos($html, '<span>영문 이름 *</span><input name="english_name"');
-        $koreanField = strpos($html, '<span>한글 이름</span><input name="name"');
+        $localizedField = strpos($html, '<span>등록 이름</span><input name="name"');
         $this->assertNotFalse($englishField);
-        $this->assertNotFalse($koreanField);
-        $this->assertLessThan($koreanField, $englishField);
+        $this->assertNotFalse($localizedField);
+        $this->assertLessThan($localizedField, $englishField);
         $this->assertStringNotContainsString('name="name" value="하나" maxlength="200" required', $html);
 
         $this->withSession(['member_idx' => 1])->post('/admin/idol-requests/12/approve', [
@@ -96,7 +96,7 @@ class AdminIdolRegistrationRequestTest extends TestCase
             'birth_date' => '2000-01-01',
             'debut_dates' => [['country_code' => 'KR', 'debut_date' => '2025-01-01'], ['country_code' => 'JP', 'debut_date' => '2025-02-01']],
             'height_cm' => 165, 'weight_kg' => 48, 'blood_type' => 'A', 'position' => '보컬',
-            'sns_links' => ['https://instagram.com/hana', 'https://youtu.be/hana'], 'content' => '수정된 소개',
+            'sns_links' => array_map(static fn (int $number): string => 'https://example.com/hana/'.$number, range(1, 10)), 'content' => '수정된 소개',
         ];
         $this->withSession(['member_idx' => 1])->post('/admin/idol-requests/12/approve', $payload)
             ->assertRedirect('/admin/idol-requests/12')
@@ -106,7 +106,7 @@ class AdminIdolRegistrationRequestTest extends TestCase
         $this->assertSame('approved', $saved->status);
         $this->assertNotNull($saved->approved_idol_idx);
         $this->assertSame($saved->image_path, DB::table('idols')->where('idx', $saved->approved_idol_idx)->value('image_path'));
-        $expectedSocialLinks = ['https://instagram.com/hana', 'https://youtu.be/hana'];
+        $expectedSocialLinks = array_map(static fn (int $number): string => 'https://example.com/hana/'.$number, range(1, 10));
         $this->assertSame($expectedSocialLinks, json_decode($saved->sns_links, true));
         $this->assertSame($expectedSocialLinks, json_decode(
             DB::table('idols')->where('idx', $saved->approved_idol_idx)->value('sns_links'), true
@@ -131,7 +131,7 @@ class AdminIdolRegistrationRequestTest extends TestCase
 
         $idolIdx = (int) $saved->approved_idol_idx;
         $this->withSession(['member_idx' => 1])->get("/admin/idols/{$idolIdx}/edit")
-            ->assertOk()->assertSee('https://instagram.com/hana')->assertSee('https://youtu.be/hana');
+            ->assertOk()->assertSee('https://example.com/hana/1')->assertSee('https://example.com/hana/10');
         $this->withSession(['member_idx' => 1])->put("/admin/idols/{$idolIdx}", [
             'name' => 'HANA EDITED', 'english_name' => 'HANA EDITED', 'agency' => 'Demo Agency',
             'content' => 'Updated introduction', 'status' => 'active',
@@ -702,7 +702,7 @@ class AdminIdolRegistrationRequestTest extends TestCase
         }
     }
 
-    public function test_admin_can_submit_on_behalf_of_dummy_and_approval_pays_the_requester(): void
+    public function test_admin_acting_as_dummy_registration_is_approved_immediately(): void
     {
         $this->database();
         DB::table('members')->insert([
@@ -724,15 +724,13 @@ class AdminIdolRegistrationRequestTest extends TestCase
             ]))->assertOk()->json('token'),
             'profile_image' => UploadedFile::fake()->image('idol.jpg'),
             'content' => 'A real request from the dummy member.', 'source_language_code' => 'en', 'request_key' => $requestKey,
-        ])->assertRedirect(route('idol-registration.create'));
+        ])->assertRedirect(route('idol.show', ['idx' => 1]));
 
         $this->assertDatabaseHas('idol_registration_requests', [
-            'member_idx' => 3, 'actor_member_idx' => 1, 'status' => 'pending',
+            'member_idx' => 3, 'actor_member_idx' => 1, 'status' => 'approved',
         ]);
         $requestIdx = (int) DB::table('idol_registration_requests')->where('member_idx', 3)->value('idx');
-        $this->post('/admin/idol-requests/'.$requestIdx.'/approve', [
-            'name' => 'Test Idol', 'english_name' => 'Test Idol', 'content' => 'Approved dummy request.',
-        ])->assertRedirect('/admin/idol-requests/'.$requestIdx);
+        $this->assertSame(1, DB::table('idols')->count());
         $this->assertSame(4371, (int) DB::table('members')->where('idx', 3)->value('heart_balance'));
         $this->assertDatabaseHas('heart_histories', [
             'member_idx' => 3, 'actor_member_idx' => 1, 'amount' => 4321,
@@ -741,7 +739,40 @@ class AdminIdolRegistrationRequestTest extends TestCase
         $this->assertSame(1, (int) session('member_idx'));
     }
 
-    public function test_random_dummy_registration_is_approved_and_rewarded_once_with_actor_attribution(): void
+    public function test_admin_can_approve_a_request_without_an_introduction(): void
+    {
+        $this->database();
+
+        $this->withSession(['member_idx' => 1])->post('/admin/idol-requests/12/approve', [
+            'name' => 'HANA', 'english_name' => 'HANA',
+        ])->assertRedirect('/admin/idol-requests/12');
+
+        $this->assertDatabaseHas('idol_registration_requests', ['idx' => 12, 'status' => 'approved', 'content' => '']);
+        $this->assertDatabaseHas('idols', ['idx' => 1, 'status' => 'active', 'content' => '']);
+    }
+
+    public function test_admin_name_edit_keeps_the_submitted_language(): void
+    {
+        $this->database();
+        DB::table('idol_registration_requests')->where('idx', 12)->update([
+            'name' => 'Bintang Pagi', 'english_name' => 'Morning Star',
+        ]);
+        DB::table('idol_registration_request_localizations')->insert([
+            'request_idx' => 12, 'language_code' => 'id', 'text_role' => 'submitted',
+            'localized_name' => 'Bintang Pagi', 'created_at' => now(), 'updated_at' => now(),
+        ]);
+
+        $this->withSession(['member_idx' => 1])->post('/admin/idol-requests/12/approve', [
+            'name' => 'Bintang Baru', 'english_name' => 'Morning Star', 'content' => 'Introduction',
+        ])->assertRedirect('/admin/idol-requests/12');
+
+        $idolIdx = DB::table('idol_registration_requests')->where('idx', 12)->value('approved_idol_idx');
+        $this->assertDatabaseHas('idol_localizations', [
+            'idol_idx' => $idolIdx, 'language_code' => 'id', 'localized_name' => 'Bintang Baru',
+        ]);
+    }
+
+    public function test_admin_registration_without_dummy_mode_is_approved_for_dummy_and_rewarded_once(): void
     {
         $this->database();
         DB::table('members')->insert([
@@ -750,7 +781,7 @@ class AdminIdolRegistrationRequestTest extends TestCase
         ]);
         Storage::fake('public');
 
-        $session = ['member_idx' => 1, \App\Support\RandomDummyActivity::SESSION_KEY => true];
+        $session = ['member_idx' => 1];
         $this->withSession($session)->get('/idol-registration/request')->assertOk();
         $requestKey = (string) session('idol_registration_request_key');
         $duplicateToken = $this->getJson(route('idol-registration.duplicates', [
@@ -760,7 +791,7 @@ class AdminIdolRegistrationRequestTest extends TestCase
         $payload = [
             'request_type' => 'boy', 'name' => '', 'english_name' => 'Random Mode Idol',
             'duplicate_search_token' => $duplicateToken, 'profile_image' => $image,
-            'content' => 'Random mode introduction.', 'source_language_code' => 'en', 'request_key' => $requestKey,
+            'source_language_code' => 'en', 'request_key' => $requestKey,
         ];
 
         $first = $this->post('/idol-registration/request', $payload)->assertRedirect();
@@ -768,9 +799,12 @@ class AdminIdolRegistrationRequestTest extends TestCase
         $this->assertSame(3, (int) $requestRow->member_idx);
         $this->assertSame(1, (int) $requestRow->actor_member_idx);
         $this->assertSame('approved', $requestRow->status);
+        $this->assertNotNull($requestRow->approved_idol_idx);
+        $this->assertSame(1, (int) $requestRow->reviewed_by_member_idx);
         $this->assertSame('ko', DB::table('idol_registration_request_localizations')
             ->where('request_idx', $requestRow->idx)->where('text_role', 'submitted')
-            ->where('description', 'Random mode introduction.')->value('language_code'));
+            ->where('description', '')->value('language_code'));
+        $this->assertSame('', $requestRow->content);
         $this->assertDatabaseHas('admin_dummy_activity_requests', [
             'actor_member_idx' => 1, 'member_idx' => 3, 'action_code' => 'idol_registration',
             'result_type' => 'registration_request', 'result_idx' => $requestRow->idx,

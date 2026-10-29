@@ -1,14 +1,14 @@
 @props(['values' => [], 'disabled' => false, 'label' => null, 'idPrefix' => 'social-link', 'admin' => false])
 @php
     $values = old('sns_links', $values);
-    $values = is_array($values) ? array_slice(array_values($values), 0, 3) : [];
+    $values = is_array($values) ? array_slice(array_values($values), 0, 10) : [];
     if ($values === []) $values = [''];
-    $addLabel = $admin ? 'SNS 링크 추가' : __('ui.social_add_link');
+    $addLabel = $admin ? '링크 추가' : __('ui.social_add_link');
     $removeLabel = $admin ? 'SNS 링크 삭제' : __('ui.social_remove_link');
     $placeholder = $admin ? 'https://…' : __('ui.social_url_placeholder');
     $inputLabel = $admin ? 'SNS 링크 :number' : __('ui.social_link_number', ['number' => ':number']);
 @endphp
-<div class="social-link-fields" data-social-link-list data-id-prefix="{{ $idPrefix }}" data-disabled="{{ $disabled ? 'true' : 'false' }}" data-add-label="{{ $addLabel }}" data-remove-label="{{ $removeLabel }}" data-placeholder="{{ $placeholder }}" data-input-label="{{ $inputLabel }}">
+<div class="social-link-fields" data-social-link-list data-id-prefix="{{ $idPrefix }}" data-disabled="{{ $disabled ? 'true' : 'false' }}" data-add-label="{{ $addLabel }}" data-remove-label="{{ $removeLabel }}" data-placeholder="{{ $placeholder }}" data-input-label="{{ $inputLabel }}" data-max-links="10" data-duplicate-message="{{ __('ui.social_links_duplicate') }}">
     @if ($label)<label class="social-link-fields-label" for="{{ $idPrefix }}-0">{{ $label }}</label>@endif
     <div class="social-link-items" data-social-link-items>
         @foreach ($values as $index => $value)
@@ -20,5 +20,5 @@
             </div>
         @endforeach
     </div>
-    <button type="button" class="social-link-add" data-social-link-add @disabled($disabled || count($values) >= 3)>{{ $addLabel }}</button>
+    <button type="button" class="social-link-add" data-social-link-add @disabled($disabled || count($values) >= 10)>+ {{ $addLabel }}</button>
 </div>

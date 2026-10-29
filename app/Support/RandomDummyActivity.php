@@ -22,7 +22,11 @@ final class RandomDummyActivity
     /** A completed registration can be replayed even after its one-time form key was cleared. */
     public function completed(Request $request, string $action, string $requestKey, array $payload): ?object
     {
-        if (! $this->enabled($request)) {
+        $actor = $request->attributes->get('currentMember');
+        $adminRegistration = $action === 'idol_registration'
+            && (int) ($actor?->member_level ?? 0) === 10
+            && (int) ($actor?->is_dummy ?? 1) === 0;
+        if (! $this->enabled($request) && ! $adminRegistration) {
             return null;
         }
 
@@ -56,6 +60,7 @@ final class RandomDummyActivity
         $quizDummyMode = in_array($action, ['quiz_create', 'quiz_participation'], true)
             && (bool) $request->attributes->get('activityDummyMode', false);
         $modeEnabled = $this->enabled($request)
+            || ($action === 'idol_registration' && $isAdmin)
             || ($action === 'heart_vote' && $isAdmin && $adminDummyVoteMode)
             || ($isAdmin && $quizDummyMode);
         $reuseVoteReservation = $action === 'heart_vote' && $isAdmin;

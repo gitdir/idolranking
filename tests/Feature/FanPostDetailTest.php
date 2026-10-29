@@ -424,6 +424,43 @@ class FanPostDetailTest extends TestCase
         $this->assertSame(1, DB::table('heart_histories')->where('reason', 'fan_post_reward')->count());
     }
 
+    public function test_fan_post_accepts_content_or_youtube_media_and_rejects_neither(): void
+    {
+        $this->database();
+        $base = ['idol_category' => 'boy', 'idol_idx' => 1, 'title' => 'Media or content'];
+
+        $this->withSession(['member_idx' => 1])->post('/fan-post', $base + [
+            'media_type' => 'youtube', 'youtube_url' => 'https://www.youtube.com/shorts/dQw4w9WgXcQ',
+        ])->assertRedirect();
+        $video = DB::table('fan_posts')->where('media_type', 'youtube')->first();
+        $this->assertNotNull($video);
+        $this->assertNull($video->content);
+        $this->assertSame('dQw4w9WgXcQ', $video->youtube_video_id);
+
+        Storage::fake('public');
+        $this->withSession(['member_idx' => 1])->post('/fan-post', $base + [
+            'media_type' => 'image', 'image' => UploadedFile::fake()->image('post.jpg'),
+        ])->assertRedirect();
+        $image = DB::table('fan_posts')->where('media_type', 'image')->first();
+        $this->assertNotNull($image);
+        $this->assertNull($image->content);
+        $this->assertNotNull($image->image_path);
+
+        $this->withSession(['member_idx' => 1])->post('/fan-post', $base + [
+            'media_type' => 'text', 'content' => 'Text without media',
+        ])->assertRedirect();
+        $this->assertDatabaseHas('fan_posts', ['media_type' => 'text', 'content' => 'Text without media']);
+
+        $this->withSession(['member_idx' => 1])->post('/fan-post', $base + [
+            'media_type' => 'text',
+        ])->assertSessionHasErrors('content');
+
+        $this->withSession(['member_idx' => 1])->put('/fan-post/'.$video->idx, [
+            'title' => 'Updated media only', 'content' => '',
+        ])->assertRedirect();
+        $this->assertDatabaseHas('fan_posts', ['idx' => $video->idx, 'content' => null]);
+    }
+
     public function test_fan_post_reward_failure_is_logged_and_post_remains_saved(): void
     {
         $this->database();

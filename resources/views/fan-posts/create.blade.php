@@ -20,7 +20,7 @@
             @unless($editing)
             <div class="fan-post-create-field idol-request-type-row">
                 <div class="fan-post-create-label">{{ __('ui.request_type') }} <span>*</span></div>
-                <div class="idol-request-type-options" data-idol-category-options data-idol-category-url="{{ route('fan-post.create.idols') }}" data-group-label="{{ __('ui.group_type') }}">
+                <div class="idol-request-type-options" data-idol-category-options data-idol-category-url="{{ route('fan-post.create.idols') }}" data-group-label="{{ __('ui.group_type') }}" data-idol-choose-category="{{ __('quiz.idol_choose_category') }}" data-idol-choose-option="{{ __('quiz.idol_choose_option') }}" data-idol-loading="{{ __('quiz.idol_loading') }}" data-idol-none-available="{{ __('quiz.idol_none_available') }}" data-idol-options-unavailable="{{ __('quiz.idol_options_unavailable') }}">
                     @foreach (['boy' => __('ui.boy'), 'boy_group' => __('ui.boy_group'), 'girl' => __('ui.girl'), 'girl_group' => __('ui.girl_group')] as $value => $label)
                         <label><input type="radio" name="idol_category" value="{{ $value }}" @checked($idolCategory === $value) required><span>{{ $label }}</span></label>
                     @endforeach
@@ -36,7 +36,7 @@
                         </select>
                         <small>{{ __('ui.fan_post_edit_fields_immutable') }}</small>
                     @else
-                        <select id="fan-post-idol" class="fan-post-sort-select" name="idol_idx" required data-idol-select @disabled($idolCategory === null || $idols->isEmpty())><option value="" @selected(!$selectedIdolIdx)>{{ __('ui.select_idol') }}</option>@foreach($idols as $idol)<option translate="no" value="{{ $idol->idx }}" @selected((string) $selectedIdolIdx === (string) $idol->idx)>{{ $idol->name }}{{ $idol->type === 'group' ? ' ('.__('ui.group_type').')' : '' }}</option>@endforeach</select><small>{{ __('ui.choose_post_idol') }}</small>
+                        <select id="fan-post-idol" class="fan-post-sort-select" name="idol_idx" required data-idol-select @disabled($idolCategory === null || $idols->isEmpty())><option value="" @selected(!$selectedIdolIdx)>{{ $idolCategory === null ? __('quiz.idol_choose_category') : ($idols->isEmpty() ? __('quiz.idol_none_available') : __('quiz.idol_choose_option')) }}</option>@foreach($idols as $idol)<option translate="no" value="{{ $idol->idx }}" @selected((string) $selectedIdolIdx === (string) $idol->idx)>{{ $idol->name }}{{ $idol->type === 'group' ? ' ('.__('ui.group_type').')' : '' }}</option>@endforeach</select><small>{{ __('ui.choose_post_idol') }}</small>
                         <x-idol-registration-prompt :approval-reward-amount="$approvalRewardAmount" />
                     @endif
                 </div>
@@ -83,7 +83,7 @@
                         <input type="hidden" name="media_type" value="{{ old('media_type', $editingPost['media_type'] ?? 'text') }}" data-media-type>
                         <div class="fan-post-media-tabs" role="tablist" aria-label="{{ __('ui.media_type') }}">
                             <button type="button" role="tab" data-media-tab="image" @disabled($editing && empty($editingPost['image_url']))><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="2"/><circle cx="9" cy="10" r="2"/><path d="m4 18 5-5 4 4 3-3 4 4"/></svg>{{ __('ui.image') }}</button>
-                            <button type="button" role="tab" data-media-tab="youtube"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="m10 9 5 3-5 3Z"/></svg>{{ __('ui.youtube_video') }}</button>
+                            <button type="button" role="tab" data-media-tab="youtube"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="m10 9 5 3-5 3Z"/></svg>YouTube</button>
                         </div>
                         <section data-media-panel="image">
                             @unless($editing)<label class="fan-post-upload" for="fan-post-image"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="2"/><circle cx="9" cy="10" r="2"/><path d="m4 18 5-5 4 4 3-3 4 4"/></svg><strong>{{ __('ui.upload_image_prompt') }}</strong><span>{{ __('ui.image_help') }}</span></label>@endunless
@@ -95,8 +95,8 @@
                 </div>
             </div>
             <div class="fan-post-create-field">
-                <label for="fan-post-content">{{ __('ui.content') }} <span>*</span></label>
-                <div><textarea id="fan-post-content" name="content" maxlength="2000" rows="6" placeholder="{{ __('ui.content_placeholder') }}" required>{{ old('content', $editingPost['content'] ?? '') }}</textarea><output class="fan-post-counter" for="fan-post-content">{{ mb_strlen(old('content', $editingPost['content'] ?? '')) }}/2000</output></div>
+                <label for="fan-post-content">{{ __('ui.content') }}</label>
+                <div><textarea id="fan-post-content" name="content" maxlength="2000" rows="6" placeholder="{{ __('ui.content_placeholder') }}">{{ old('content', $editingPost['content'] ?? '') }}</textarea><output class="fan-post-counter" for="fan-post-content">{{ mb_strlen(old('content', $editingPost['content'] ?? '')) }}/2000</output></div>
             </div>
             <div class="fan-post-create-field">
                 <label for="fan-post-tag-entry">{{ __('ui.tags') }}</label>

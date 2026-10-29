@@ -2201,7 +2201,7 @@ html.invite-friends-open { overflow: hidden; }
 .idol-request-date-picker-button svg { display: block; width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
 .idol-debut-date-remove, .idol-debut-date-remove-placeholder { display: grid; width: 32px; height: 32px; place-items: center; }
 .idol-debut-date-remove { border: 1px solid #e4d4dd; border-radius: 6px; background: #fff; color: #bb386d; font-size: 20px; line-height: 1; cursor: pointer; }
-.idol-debut-date-add { justify-self: start; padding: 6px 10px; border: 1px solid #f0b6d0; border-radius: 6px; background: #fff7fb; color: #c02a70; font-size: 12px; font-weight: 700; cursor: pointer; }
+.idol-debut-date-add, .social-link-add { justify-self: start; padding: 6px 10px; border: 1px solid #f0b6d0; border-radius: 6px; background: #fff7fb; color: #c02a70; font-size: 12px; font-weight: 700; cursor: pointer; }
 .idol-duplicate-search-controls { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; margin-top: 8px; }
 .idol-duplicate-search-controls button { min-height: 36px; padding: 7px 12px; border: 1px solid #ff91bf; border-radius: 7px; background: #fff5fa; color: #d92578; font-size: 12px; font-weight: 800; cursor: pointer; }
 .idol-duplicate-search-controls button:disabled { opacity: .6; cursor: wait; }
@@ -2233,7 +2233,8 @@ html.invite-friends-open { overflow: hidden; }
 .idol-request-source-language-field select { max-width: 260px; }
 .idol-request-introduction-field { grid-template-columns: minmax(0, 1fr); gap: 7px; }
 .idol-request-introduction-field > label { padding-top: 0; }
-.idol-request-group-selects { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 2fr); align-items: start; gap: 14px; min-width: 0; }
+.idol-request-person-details, .idol-request-group-details { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); align-items: start; gap: 20px; min-width: 0; }
+.idol-request-group-selects { display: grid; grid-template-columns: minmax(0, 1fr); align-items: start; gap: 14px; min-width: 0; }
 .idol-request-group-selects > label { display: grid; gap: 7px; min-width: 0; color: #385487; font-size: 13px; font-weight: 700; }
 .idol-request-group-selects select { width: 100%; min-width: 0; min-height: 42px; }
 .idol-group-search-status { margin: 0; color: #6278a7; font-size: 12px; }
@@ -2245,8 +2246,7 @@ html.invite-friends-open { overflow: hidden; }
 .social-link-items { display: grid; gap: 8px; width: 100%; }
 .social-link-input-row { display: flex; align-items: center; gap: 8px; min-width: 0; }
 .social-link-input-row input { flex: 1 1 auto; min-width: 0; min-height: 42px; padding: 9px 12px; border: 1px solid #d8e0f2; border-radius: 7px; background: #fff; color: #17346f; font: inherit; }
-.social-link-add, .social-link-remove { display: inline-grid; place-items: center; min-height: 36px; padding: 6px 12px; border: 1px solid #d8e0f2; border-radius: 7px; background: #fff; color: #475f91; font-size: 12px; font-weight: 700; cursor: pointer; }
-.social-link-remove { flex: 0 0 36px; width: 36px; padding: 0; font-size: 20px; }
+.social-link-remove { display: inline-grid; place-items: center; flex: 0 0 36px; width: 36px; min-height: 36px; padding: 0; border: 1px solid #d8e0f2; border-radius: 7px; background: #fff; color: #475f91; font-size: 20px; font-weight: 700; cursor: pointer; }
 .social-link-icons { display: inline-flex; flex-wrap: wrap; align-items: center; gap: 8px; min-height: 34px; }
 .social-link-icon { display: inline-grid; place-items: center; width: 34px; height: 34px; border: 1px solid #e1e7f1; border-radius: 8px; background: #fff; color: #53678e; transition: background-color .15s ease, border-color .15s ease, color .15s ease; }
 .social-link-icon:hover, .social-link-icon:focus-visible { border-color: #ff8bbd; background: #fff2f8; color: #d92578; }
@@ -2276,7 +2276,7 @@ html.invite-friends-open { overflow: hidden; }
     .drawer-invite-chevron { width: 14px; height: 14px; fill: none; stroke: #17366e; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
     .idol-request-type-options { grid-template-columns: repeat(2, minmax(0, 1fr)); }
     .idol-request-fields-grid { grid-template-columns: minmax(0, 1fr); gap: 16px; }
-    .idol-request-group-selects { grid-template-columns: minmax(0, 1fr); gap: 12px; }
+    .idol-request-person-details, .idol-request-group-details { grid-template-columns: minmax(0, 1fr); gap: 16px; }
     .idol-debut-date-row { grid-template-columns: minmax(0, 1fr) 32px; }
     .idol-debut-date-row .country-picker { grid-column: 1 / -1; }
     .idol-duplicate-card-list { grid-template-columns: minmax(0, 1fr); }

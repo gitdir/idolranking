@@ -1,6 +1,8 @@
 <?php
 
 return array (
+  'homepage_boy_group_ranking' => 'Clasificación de grupos masculinos',
+  'homepage_girl_group_ranking' => 'Clasificación de grupos femeninos',
   'homepage_ranking_view_all' => 'Ver todo',
   'random_dummy_vote_mode' => 'Modo ficticio aleatorio',
   'random_dummy_vote_notice' => 'Un miembro ficticio seleccionado al azar votará. Cualquier escasez de corazones se acreditará únicamente para este voto.',
@@ -51,7 +53,7 @@ return array (
   'upload_image_prompt' => 'Toca para subir una imagen',
   'selected_fan_post_image' => 'Imagen seleccionada de una publicación de un fan',
   'youtube_url' => 'URL de YouTube',
-  'youtube_url_help' => 'Pega la URL de un vídeo de YouTube.',
+  'youtube_url_help' => 'Pega la URL de un vídeo o Short de YouTube.',
   'content_placeholder' => 'Comparte tus pensamientos, sentimientos o historias...',
   'tag_placeholder' => 'Añade etiquetas y pulsa Intro...',
   'tag_help' => 'Puedes añadir varias etiquetas. Se admiten letras, números, guiones bajos y guiones.',
@@ -390,6 +392,7 @@ return array (
   'social_link_invalid' => 'Introduzca una URL HTTP o HTTPS válida sin credenciales de inicio de sesión integradas.',
   'social_links_duplicate' => 'Cada vínculo social debe ser único.',
   'source_language' => 'Lenguaje de escritura',
+  'name_in_language_optional' => 'Nombre en :language (opcional)',
   'source_language_select' => 'Seleccione un idioma',
   'source_language_help' => 'Se aplica a la agencia, el puesto, el género, el líder y el texto de introducción. Modificarlo no alterará lo que hayas introducido.',
   'source_language_invalid' => 'Elige un idioma de escritura compatible.',

@@ -1,6 +1,29 @@
 document.querySelectorAll('[data-social-link-list]').forEach((list) => {
     const items = list.querySelector('[data-social-link-items]');
     const addButton = list.querySelector('[data-social-link-add]');
+    const maxLinks = Number(list.dataset.maxLinks);
+    const duplicateKey = (value) => {
+        try {
+            const url = new URL(value.trim());
+            return `${url.protocol}//${url.host}${url.pathname}${url.search}`;
+        } catch {
+            return value.trim().toLowerCase();
+        }
+    };
+    const alertIfDuplicate = () => {
+        const seen = new Set();
+        for (const input of items.querySelectorAll('input[name="sns_links[]"]')) {
+            if (!input.value.trim() || input.disabled) continue;
+            const key = duplicateKey(input.value);
+            if (seen.has(key)) {
+                window.alert(list.dataset.duplicateMessage);
+                input.focus();
+                return true;
+            }
+            seen.add(key);
+        }
+        return false;
+    };
     const updateControls = () => {
         const rows = [...items.querySelectorAll('[data-social-link-row]')];
         rows.forEach((row, index) => {
@@ -24,13 +47,13 @@ document.querySelectorAll('[data-social-link-list]').forEach((list) => {
             }
             removeButton.setAttribute('aria-label', list.dataset.removeLabel);
         });
-        addButton.hidden = rows.length >= 3;
-        addButton.disabled = list.dataset.disabled === 'true' || rows.length >= 3;
+        addButton.hidden = rows.length >= maxLinks;
+        addButton.disabled = list.dataset.disabled === 'true' || rows.length >= maxLinks;
     };
 
     addButton.addEventListener('click', () => {
         const rows = items.querySelectorAll('[data-social-link-row]');
-        if (rows.length >= 3) return;
+        if (rows.length >= maxLinks) return;
         const index = rows.length;
         const row = document.createElement('div');
         row.className = 'social-link-input-row';
@@ -59,6 +82,13 @@ document.querySelectorAll('[data-social-link-list]').forEach((list) => {
         if (!removeButton) return;
         removeButton.closest('[data-social-link-row]')?.remove();
         updateControls();
+    });
+
+    items.addEventListener('change', (event) => {
+        if (event.target.matches('input[name="sns_links[]"]')) alertIfDuplicate();
+    });
+    list.closest('form')?.addEventListener('submit', (event) => {
+        if (alertIfDuplicate()) event.preventDefault();
     });
 
     updateControls();

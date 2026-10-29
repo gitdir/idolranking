@@ -69,7 +69,9 @@ class FanPostDistributionTest extends TestCase
     {
         $this->database();
         $adminPage = $this->withSession(['member_idx' => 1])->get(route('fan-post.create'))->assertOk()
-            ->assertSee('name="auto_distribute" value="1" checked', false);
+            ->assertSee('name="auto_distribute" value="1" checked', false)
+            ->assertSee('data-idol-loading="'.__('quiz.idol_loading').'"', false)
+            ->assertSee(__('quiz.idol_choose_category'));
         $this->assertTrue($this->dummyModeCheckboxIsChecked($adminPage->getContent(), 'desktop'));
         $this->assertTrue($this->dummyModeCheckboxIsChecked($adminPage->getContent(), 'drawer'));
         $this->withSession(['member_idx' => 1, 'acting_dummy_member_idx' => 3])->get(route('fan-post.create'))->assertOk()

@@ -153,7 +153,7 @@
 
         <div class="admin-review-grid">
             <label><span>영문 이름 *</span><input name="english_name" value="{{ old('english_name', $registrationRequest->english_name) }}" maxlength="200" @disabled(!$isPending) required></label>
-            <label><span>한글 이름</span><input name="name" value="{{ old('name', $registrationRequest->name) }}" maxlength="200" @disabled(!$isPending)></label>
+            <label><span>등록 이름</span><input name="name" value="{{ old('name', $registrationRequest->name) }}" maxlength="200" @disabled(!$isPending)></label>
 
             @if ($isIndividual)
                 <label class="admin-review-full"><span>그룹</span><select name="group_idx" @disabled(!$isPending)><option value="">소속 그룹 없음</option>@foreach ($groups as $group)<option value="{{ $group->idx }}" @selected((string) old('group_idx', $registrationRequest->group_idx) === (string) $group->idx)>{{ $group->name }}</option>@endforeach</select></label>
@@ -189,7 +189,7 @@
                 </div>
             @endif
 
-            <label class="admin-review-full"><span>짧은 소개 *</span><textarea name="content" rows="6" maxlength="1000" @disabled(!$isPending) required>{{ old('content', $registrationRequest->content) }}</textarea></label>
+            <label class="admin-review-full"><span>짧은 소개</span><textarea name="content" rows="6" maxlength="1000" @disabled(!$isPending)>{{ old('content', $registrationRequest->content) }}</textarea></label>
         </div>
 
         @if ($isPending)

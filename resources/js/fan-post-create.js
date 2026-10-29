@@ -41,24 +41,34 @@ if (form) {
         let categoryRequest;
         const loadCategory = async (category) => {
             categoryRequest?.abort();
-            categoryRequest = new AbortController();
+            const controller = new AbortController();
+            categoryRequest = controller;
             idolSelect.disabled = true;
             const placeholder = idolSelect.options[0];
+            placeholder.textContent = categoryOptions.dataset.idolLoading;
             idolSelect.replaceChildren(placeholder);
             try {
                 const url = new URL(categoryOptions.dataset.idolCategoryUrl, window.location.origin);
                 url.searchParams.set('category', category);
                 const response = await fetch(url, {
                     headers: { Accept: 'application/json' },
-                    signal: categoryRequest.signal,
+                    signal: controller.signal,
                 });
                 if (!response.ok) throw new Error('Unable to load idols for this category.');
                 const data = await response.json();
-                const idols = data.idols ?? [];
+                if (!Array.isArray(data.idols)) throw new Error('Invalid idol list response.');
+                if (categoryRequest !== controller) return;
+                const idols = data.idols;
                 setIdolOptions(idols);
                 idolSelect.disabled = idols.length === 0;
+                placeholder.textContent = idolSelect.disabled
+                    ? categoryOptions.dataset.idolNoneAvailable
+                    : categoryOptions.dataset.idolChooseOption;
             } catch (error) {
-                if (error.name !== 'AbortError') console.error(error);
+                if (error.name !== 'AbortError' && categoryRequest === controller) {
+                    placeholder.textContent = categoryOptions.dataset.idolOptionsUnavailable;
+                    console.error(error);
+                }
             }
         };
 
@@ -79,6 +89,7 @@ if (form) {
             loadCategory(selectedCategory);
         } else if (!selectedCategory) {
             idolSelect.disabled = true;
+            idolSelect.options[0].textContent = categoryOptions.dataset.idolChooseCategory;
         }
     }
 
@@ -103,12 +114,16 @@ if (form) {
             const invalidFields = [...form.querySelectorAll('[required]:not(:disabled)')]
                 .filter((control) => !control.closest('[hidden]') && !control.validity.valid);
             const mediaTypeInput = form.querySelector('[data-media-type]');
-            const mediaType = mediaTypeInput?.value;
             const imageInput = form.querySelector('[data-image-input]');
             const youtubeInput = form.querySelector('#fan-post-youtube');
+            const contentInput = form.querySelector('#fan-post-content');
+            if (form.querySelector('[data-media-tab="youtube"][aria-selected="true"]')) {
+                mediaTypeInput.value = youtubeInput?.value.trim() ? 'youtube' : 'text';
+            }
+            const mediaType = mediaTypeInput?.value;
             if (mediaTypeInput && !['text', 'image', 'youtube'].includes(mediaType)) invalidFields.push(mediaTypeInput);
             if (mediaType === 'image' && imageInput && !imageInput.files.length) invalidFields.push(imageInput);
-            if (mediaType === 'youtube' && youtubeInput && !youtubeInput.value.trim()) invalidFields.push(youtubeInput);
+            if (mediaType === 'text' && !contentInput?.value.trim()) invalidFields.push(contentInput);
 
             const uniqueInvalidFields = [...new Set(invalidFields)];
             if (!uniqueInvalidFields.length) return;

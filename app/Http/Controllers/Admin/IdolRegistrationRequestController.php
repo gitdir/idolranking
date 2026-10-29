@@ -262,7 +262,7 @@ class IdolRegistrationRequestController extends Controller
             // Keep the reward in the approval transaction so failures leave the request pending for retry.
             // A disabled or ineligible reward returns zero and does not block approval.
             $rewardReferences = ['actor_member_idx' => (int) $admin->idx, 'memo' => 'Registration approval reward'];
-            if (app(RandomDummyActivity::class)->enabled($request)) {
+            if ((int) ($admin?->member_level ?? 0) === 10) {
                 $randomRequestIdx = DB::table('admin_dummy_activity_requests')
                     ->where('actor_member_idx', $admin->idx)
                     ->where('member_idx', $registrationRequest->member_idx)
@@ -479,9 +479,8 @@ class IdolRegistrationRequestController extends Controller
     }
 
     /**
-     * Basic English/Korean name fields remain editable for compatibility. When they
-     * differ from the submitted legacy values, retain those edits as reviewed text;
-     * Korean is only assigned when an original Korean name is known.
+     * Basic English and submitted-language names remain editable for compatibility.
+     * Keep edits in the language originally supplied with the request.
      */
     private function includeExplicitBasicNameEdits(
         int $requestIdx,
@@ -495,14 +494,14 @@ class IdolRegistrationRequestController extends Controller
             $reviewed['en']['localized_name'] = $values['english_name'];
         }
 
-        $hasSubmittedKoreanName = DB::table('idol_registration_request_localizations')
-            ->where('request_idx', $requestIdx)->where('language_code', 'ko')->where('text_role', 'submitted')
-            ->whereNotNull('localized_name')->exists();
-        if ($hasSubmittedKoreanName
+        $submittedNameLanguage = DB::table('idol_registration_request_localizations')
+            ->where('request_idx', $requestIdx)->where('language_code', '<>', 'en')->where('text_role', 'submitted')
+            ->whereNotNull('localized_name')->value('language_code');
+        if ($submittedNameLanguage !== null
             && trim($values['name']) !== trim((string) $registrationRequest->name)
-            && trim((string) ($reviewed['ko']['localized_name'] ?? '')) === '') {
-            $reviewed['ko'] ??= ['localized_name' => null, 'description' => null];
-            $reviewed['ko']['localized_name'] = $values['name'];
+            && trim((string) ($reviewed[$submittedNameLanguage]['localized_name'] ?? '')) === '') {
+            $reviewed[$submittedNameLanguage] ??= ['localized_name' => null, 'description' => null];
+            $reviewed[$submittedNameLanguage]['localized_name'] = $values['name'];
         }
 
         return $reviewed;
@@ -616,14 +615,14 @@ class IdolRegistrationRequestController extends Controller
             'name' => ['nullable', 'string', 'max:200'],
             'english_name' => ['required', 'string', 'min:2', 'max:200', IdolDuplicateMatcher::englishNameRule()],
             'agency' => ['nullable', 'string', 'max:200'],
-            'sns_links' => ['nullable', 'array', 'max:3'],
+            'sns_links' => ['nullable', 'array', 'max:10'],
             'sns_links.*' => ['nullable', 'string', 'max:2048', 'url:http,https', static function ($attribute, $value, $fail): void {
                 $parts = parse_url((string) $value);
                 if (is_array($parts) && (isset($parts['user']) || isset($parts['pass']))) {
                     $fail(__('ui.social_link_invalid'));
                 }
             }],
-            'content' => ['required', 'string', 'max:1000'],
+            'content' => ['nullable', 'string', 'max:1000'],
             'group_idx' => $isIndividual ? ['nullable', 'integer'] : ['nullable'],
             'birth_date' => $isIndividual ? ['nullable', 'date', 'before_or_equal:today'] : ['nullable'],
             'height_cm' => $isIndividual ? ['nullable', 'numeric', 'between:50,300'] : ['nullable'],
@@ -667,7 +666,7 @@ class IdolRegistrationRequestController extends Controller
         $values['sns_links'] = SocialLinks::encodeSubmitted($values['sns_links'] ?? []);
         $values['english_name'] = IdolDuplicateMatcher::trimName($values['english_name']);
         $values['name'] = trim((string) ($values['name'] ?? ''));
-        $values['content'] = trim($values['content']);
+        $values['content'] = trim((string) ($values['content'] ?? ''));
         $values['group_idx'] = $isIndividual && !empty($values['group_idx']) ? (int) $values['group_idx'] : null;
 
         if (!$isIndividual) {

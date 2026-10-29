@@ -1,6 +1,8 @@
 <?php
 
 return [
+    'homepage_boy_group_ranking' => '남자 그룹 랭킹',
+    'homepage_girl_group_ranking' => '여자 그룹 랭킹',
     'get_hearts_title' => '하트 받기',
     'hearts_earned_not_bought' => '하트는 구매하는 것이 아니라 활동을 통해 획득합니다.',
     'get_hearts_intro' => '팬 활동에 참여하고 하트를 모아 좋아하는 아이돌을 응원해 보세요!',
@@ -53,7 +55,7 @@ return [
     'just_now' => '방금 전',
     'select_idol' => '아이돌 선택', 'choose_post_idol' => '이 포스트의 주제인 아이돌을 선택해 주세요.', 'group_type' => '그룹',
     'title_placeholder' => '팬 포스트 제목을 입력해 주세요...', 'media_type' => '미디어 유형', 'image' => '이미지', 'youtube_video' => 'YouTube 동영상',
-    'upload_image_prompt' => '눌러서 이미지를 업로드하세요', 'selected_fan_post_image' => '선택한 팬 포스트 이미지', 'youtube_url' => 'YouTube URL', 'youtube_url_help' => 'YouTube 동영상 URL 하나를 붙여넣으세요.',
+    'upload_image_prompt' => '눌러서 이미지를 업로드하세요', 'selected_fan_post_image' => '선택한 팬 포스트 이미지', 'youtube_url' => 'YouTube URL', 'youtube_url_help' => 'YouTube 동영상 또는 쇼츠 URL을 붙여넣으세요.',
     'content_placeholder' => '생각이나 느낌, 이야기를 나눠 보세요...', 'tag_placeholder' => '태그를 입력하고 Enter를 누르세요...',
     'tag_help' => '태그를 여러 개 추가할 수 있습니다. 영문자, 숫자, 밑줄, 하이픈을 사용할 수 있습니다.', 'post_fan_post' => '팬 포스트 등록',
     'posting_tips' => '작성 팁', 'media_guidelines' => '미디어 안내', 'community_guidelines' => '커뮤니티 안내',
@@ -180,6 +182,7 @@ return [
     'social_link_invalid' => '로그인 정보가 포함되지 않은 올바른 HTTP 또는 HTTPS 주소를 입력해 주세요.',
     'social_links_duplicate' => '같은 SNS 주소를 중복 입력할 수 없습니다.',
     'source_language' => '작성 언어',
+    'name_in_language_optional' => ':language 이름 (선택)',
     'source_language_select' => '언어를 선택해 주세요',
     'source_language_help' => '소속사, 포지션, 장르, 리더, 소개 글에 적용됩니다. 선택을 바꿔도 입력한 내용은 변경되지 않습니다.',
     'source_language_invalid' => '지원되는 작성 언어를 선택해 주세요.',

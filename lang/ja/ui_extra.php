@@ -1,6 +1,8 @@
 <?php
 
 return array (
+  'homepage_boy_group_ranking' => '男子グループランキング',
+  'homepage_girl_group_ranking' => '女子グループランキング',
   'homepage_ranking_view_all' => 'すべて表示',
   'random_dummy_vote_mode' => 'ランダムダミーモード',
   'random_dummy_vote_notice' => '無作為に選ばれたダミーメンバーが投票します。ハートの不足分は、この投票分のみに反映されます。',
@@ -51,7 +53,7 @@ return array (
   'upload_image_prompt' => 'タップして画像をアップロード',
   'selected_fan_post_image' => 'ファン投稿画像（選択済み）',
   'youtube_url' => 'YouTubeのURL',
-  'youtube_url_help' => 'YouTube動画のURLを1つ貼り付けてください。',
+  'youtube_url_help' => 'YouTube動画またはショート動画のURLを貼り付けてください。',
   'content_placeholder' => 'あなたの考え、気持ち、体験談を共有してください。',
   'tag_placeholder' => 'タグを追加してEnterキーを押してください...',
   'tag_help' => '複数のタグを追加できます。文字、数字、アンダースコア、ハイフンが使用可能です。',
@@ -390,6 +392,7 @@ return array (
   'social_link_invalid' => 'ログイン認証情報が埋め込まれていない、有効なHTTPまたはHTTPS URLを入力してください。',
   'social_links_duplicate' => 'それぞれのソーシャルリンクは固有のものでなければならない。',
   'source_language' => '言語の書き方',
+  'name_in_language_optional' => ':language名（任意）',
   'source_language_select' => '言語を選択してください',
   'source_language_help' => '所属機関、役職、ジャンル、リーダー、および紹介文に適用されます。変更しても、入力済みの内容は変わりません。',
   'source_language_invalid' => 'サポートされている言語を選択してください。',

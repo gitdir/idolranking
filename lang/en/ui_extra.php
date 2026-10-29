@@ -1,6 +1,8 @@
 <?php
 
 return [
+    'homepage_boy_group_ranking' => 'Boy Group Ranking',
+    'homepage_girl_group_ranking' => 'Girl Group Ranking',
     'homepage_ranking_view_all' => 'View All',
     'random_dummy_vote_mode' => 'Random Dummy Mode',
     'random_dummy_vote_notice' => 'A randomly selected dummy member will vote. Any Heart shortage is credited only for this vote.',
@@ -38,7 +40,7 @@ return [
     'edit_fan_post' => 'Edit Fan Post', 'create_fan_post_title' => 'Create Fan Post', 'check_form' => 'Please check the form.',
     'select_idol' => 'Select an idol', 'choose_post_idol' => 'Choose the idol this post is about.', 'group_type' => 'Group',
     'title_placeholder' => 'Enter a title for your fan post...', 'media_type' => 'Media type', 'image' => 'Image', 'youtube_video' => 'YouTube Video',
-    'upload_image_prompt' => 'Tap to upload an image', 'selected_fan_post_image' => 'Selected Fan Post image', 'youtube_url' => 'YouTube URL', 'youtube_url_help' => 'Paste one YouTube video URL.',
+    'upload_image_prompt' => 'Tap to upload an image', 'selected_fan_post_image' => 'Selected Fan Post image', 'youtube_url' => 'YouTube URL', 'youtube_url_help' => 'Paste a YouTube video or Shorts URL.',
     'content_placeholder' => 'Share your thoughts, feelings, or stories...', 'tag_placeholder' => 'Add tags and press Enter...',
     'tag_help' => 'You can add multiple tags. Letters, numbers, underscores, and hyphens are supported.', 'post_fan_post' => 'Post Fan Post',
     'posting_tips' => 'Posting Tips', 'media_guidelines' => 'Media Guidelines', 'community_guidelines' => 'Community Guidelines',
@@ -176,6 +178,7 @@ return [
     'social_link_invalid' => 'Enter a valid HTTP or HTTPS URL without embedded login credentials.',
     'social_links_duplicate' => 'Each social link must be unique.',
     'source_language' => 'Writing Language',
+    'name_in_language_optional' => ':language name (optional)',
     'source_language_select' => 'Select a language',
     'source_language_help' => 'Applies to the agency, position, genre, leader, and introduction text. Changing it will not alter what you entered.',
     'source_language_invalid' => 'Choose a supported writing language.',

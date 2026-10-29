@@ -5,15 +5,25 @@ const requestForm = document.querySelector('[data-idol-request-form]');
 if (requestForm) {
     const typeInputs = [...requestForm.querySelectorAll('[name="request_type"]')];
     const groupSelects = requestForm.querySelector('[data-group-selects]');
-    const groupType = requestForm.querySelector('[data-group-type]');
     const groupName = requestForm.querySelector('[data-group-name]');
     const groupStatus = requestForm.querySelector('[data-group-status]');
+    const sourceLanguage = requestForm.querySelector('[name="source_language_code"]');
+    const localizedNameField = requestForm.querySelector('[data-localized-name-field]');
+    const localizedNameLabel = requestForm.querySelector('[data-localized-name-label]');
     const individualFields = [...requestForm.querySelectorAll('[data-individual-only]')];
     const groupOnlyFields = [...requestForm.querySelectorAll('[data-group-only]')];
     let groupSearchController = null;
     const selectedGroupId = groupSelects.dataset.selectedGroup;
     let restoreSelectedGroup = Boolean(selectedGroupId);
     const groupPlaceholder = groupName.options[0].textContent;
+    const updateLocalizedNameLabel = () => {
+        const languageName = sourceLanguage.selectedOptions[0]?.textContent.replace(/\s+\([^)]*\)$/, '') || '';
+        localizedNameLabel.textContent = localizedNameLabel.dataset.labelTemplate.replace(':language', languageName);
+        localizedNameField.hidden = sourceLanguage.value === 'en';
+        localizedNameField.querySelector('input').disabled = sourceLanguage.value === 'en';
+    };
+    sourceLanguage.addEventListener('change', updateLocalizedNameLabel);
+    updateLocalizedNameLabel();
 
     const loadGroups = async (type) => {
         if (groupSearchController) groupSearchController.abort();
@@ -75,32 +85,15 @@ if (requestForm) {
                 if (isIndividual) control.value = '';
             });
         });
-        const groupTypeValue = isIndividual ? type : '';
-        if (groupType.value !== groupTypeValue) groupType.value = groupTypeValue;
         groupName.replaceChildren(new Option(groupPlaceholder, ''));
         groupStatus.textContent = '';
-        if (isIndividual) loadGroups(groupTypeValue);
+        if (isIndividual) loadGroups(type);
     };
 
     typeInputs.forEach((input) => input.addEventListener('change', () => {
         restoreSelectedGroup = false;
         updateTypeFields();
     }));
-    groupType.addEventListener('change', () => {
-        restoreSelectedGroup = false;
-        const selectedType = groupType.value;
-        const requestType = typeInputs.find((input) => input.checked)?.value;
-        if (selectedType && selectedType !== requestType) {
-            const matchingType = typeInputs.find((input) => input.value === selectedType);
-            if (matchingType) {
-                matchingType.checked = true;
-                matchingType.dispatchEvent(new Event('change', { bubbles: true }));
-                return;
-            }
-        }
-        loadGroups(selectedType);
-    });
-
     updateTypeFields();
     const intro = requestForm.querySelector('[name="content"]');
     const counter = requestForm.querySelector('[data-intro-count]');

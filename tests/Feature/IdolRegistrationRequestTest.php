@@ -78,7 +78,7 @@ class IdolRegistrationRequestTest extends TestCase
             'agency' => '테스트 기획사', 'position' => '보컬',
             'debut_dates' => [['country_code' => 'KR', 'debut_date' => '2020-02-03'], ['country_code' => 'JP', 'debut_date' => '2021-04-05']],
             'genre' => 'Should be ignored', 'leader' => 'Should be ignored',
-            'sns' => '@testidol', 'content' => 'A concise and accurate introduction.', 'source_language_code' => 'ja',
+            'sns' => '@testidol', 'content' => 'A concise and accurate introduction.', 'source_language_code' => 'ko',
             'profile_image' => UploadedFile::fake()->image('profile.png', 600, 600),
         ]);
 
@@ -96,7 +96,7 @@ class IdolRegistrationRequestTest extends TestCase
         $this->assertDatabaseHas('idol_registration_request_debuts', ['request_idx' => $saved->idx, 'country_code' => 'KR', 'debut_date' => '2020-02-03']);
         $this->assertDatabaseHas('idol_registration_request_debuts', ['request_idx' => $saved->idx, 'country_code' => 'JP', 'debut_date' => '2021-04-05']);
         $this->assertDatabaseHas('idol_registration_request_localizations', [
-            'request_idx' => $saved->idx, 'language_code' => 'ja', 'text_role' => 'submitted',
+            'request_idx' => $saved->idx, 'language_code' => 'ko', 'text_role' => 'submitted',
             'agency' => '테스트 기획사', 'position' => '보컬',
             'description' => 'A concise and accurate introduction.',
         ]);
@@ -154,7 +154,6 @@ class IdolRegistrationRequestTest extends TestCase
         $this->withSession(['member_idx' => 7, 'idol_registration_request_key' => $key])
             ->post('/idol-registration/request', [
                 'request_key' => $key, 'request_type' => 'girl', 'english_name' => 'Fallback Idol', 'source_language_code' => 'en',
-                'group_type' => 'girl',
                 'duplicate_search_token' => $this->duplicateSearchToken('girl', 'Fallback Idol'),
                 'content' => 'Introduction', 'profile_image' => UploadedFile::fake()->image('profile.png'),
             ])->assertRedirect(route('idol-registration.create'));
@@ -267,7 +266,31 @@ class IdolRegistrationRequestTest extends TestCase
             ->assertSee('data-registration-details hidden', false)
             ->assertSee('name="source_language_code" required disabled data-progressive-required', false)
             ->assertSee('name="profile_image" accept="image/jpeg,image/png" data-image-input required disabled data-progressive-required', false)
-            ->assertSee('name="content" maxlength="1000" rows="6" required disabled data-progressive-required', false);
+            ->assertSee('name="content" maxlength="1000" rows="6" disabled data-progressive-required', false);
+    }
+
+    public function test_individual_and_group_requests_allow_an_empty_introduction(): void
+    {
+        $this->database();
+        Storage::fake('public');
+
+        foreach (['boy' => 'Optional Intro Idol', 'girl_group' => 'Optional Intro Group'] as $type => $name) {
+            $key = bin2hex(random_bytes(32));
+            $this->withSession(['member_idx' => 7, 'idol_registration_request_key' => $key]);
+            $this->post('/idol-registration/request', [
+                'request_key' => $key,
+                'duplicate_search_token' => $this->duplicateSearchToken($type, $name),
+                'request_type' => $type,
+                'english_name' => $name,
+                'source_language_code' => 'en',
+                'profile_image' => UploadedFile::fake()->image('profile.png'),
+            ])->assertRedirect(route('idol-registration.create'));
+
+            $saved = DB::table('idol_registration_requests')->where('request_key', $key)->first();
+            $this->assertNotNull($saved);
+            $this->assertSame('', $saved->content);
+            $this->assertSame('pending', $saved->status);
+        }
     }
 
     public function test_form_field_order_and_source_language_default_to_current_supported_locale(): void
@@ -282,8 +305,27 @@ class IdolRegistrationRequestTest extends TestCase
                 'data-duplicate-panel',
                 'name="source_language_code"',
                 'name="name"',
+                'id="idol-request-position"',
+                'id="idol-request-agency"',
                 'data-group-selects',
+                'id="idol-request-group-name"',
+                'id="idol-request-birth-date"',
+                'id="idol-request-height"',
+                'id="idol-request-weight"',
+                'id="idol-request-blood"',
+                'data-debut-date-editor',
+                'data-social-link-list',
             ], false)
+            ->assertSeeInOrder([
+                'data-localized-name-field',
+                'class="idol-request-group-details idol-request-field-full" data-group-only hidden',
+                'id="idol-request-genre"',
+                'id="idol-request-group-agency"',
+                'id="idol-request-leader"',
+                'data-debut-date-editor',
+                'data-social-link-list',
+            ], false)
+            ->assertDontSee('name="group_type"', false)
             ->assertSee('data-duplicate-other-section', false)
             ->assertSee('value="ko" selected', false)
             ->assertDontSee('value="und"', false);
@@ -291,6 +333,33 @@ class IdolRegistrationRequestTest extends TestCase
         $this->withSession(['member_idx' => 7, 'locale' => 'en'])->get('/idol-registration/request')->assertOk()
             ->assertSee('value="en" selected', false)
             ->assertSee('Idols or Groups Registered in Other Categories');
+
+        $this->withSession(['member_idx' => 7, 'locale' => 'id'])->get('/idol-registration/request')->assertOk()
+            ->assertSee('value="id" selected', false)
+            ->assertSee('Nama dalam Bahasa Indonesia (opsional)');
+    }
+
+    public function test_optional_name_is_stored_in_the_selected_language(): void
+    {
+        $this->database();
+        Storage::fake('public');
+        $key = str_repeat('6', 64);
+        $this->withSession(['member_idx' => 7, 'idol_registration_request_key' => $key])
+            ->post('/idol-registration/request', [
+                'request_key' => $key,
+                'request_type' => 'girl',
+                'english_name' => 'Morning Star',
+                'name' => 'Bintang Pagi',
+                'source_language_code' => 'id',
+                'duplicate_search_token' => $this->duplicateSearchToken('girl', 'Morning Star'),
+                'profile_image' => UploadedFile::fake()->image('profile.png'),
+            ])->assertRedirect(route('idol-registration.create'));
+
+        $this->assertDatabaseHas('idol_registration_request_localizations', [
+            'language_code' => 'id', 'localized_name' => 'Bintang Pagi', 'text_role' => 'submitted',
+        ]);
+        $this->assertSame(0, DB::table('idol_registration_request_localizations')
+            ->where('language_code', 'ko')->count());
     }
 
     public function test_duplicate_check_starts_with_compact_neutral_status(): void
@@ -424,13 +493,16 @@ class IdolRegistrationRequestTest extends TestCase
         $this->assertSame(0, DB::table('idol_registration_requests')->count());
     }
 
-    public function test_registration_stores_zero_through_three_social_links(): void
+    public function test_registration_stores_up_to_ten_social_links(): void
     {
         $this->database();
         Storage::fake('public');
-        $links = ['https://instagram.com/sample', 'https://youtu.be/video', 'https://www.tiktok.com/@sample'];
+        $this->withSession(['member_idx' => 7])->get('/idol-registration/request')
+            ->assertOk()->assertSee('data-max-links="10"', false)
+            ->assertSee('data-duplicate-message=', false);
+        $links = array_map(static fn (int $number): string => 'https://example.com/social/'.$number, range(1, 10));
 
-        foreach (range(0, 3) as $count) {
+        foreach ([0, 1, 3, 10] as $count) {
             $key = str_pad(dechex($count + 1), 64, '0', STR_PAD_LEFT);
             $this->withSession(['member_idx' => 7, 'idol_registration_request_key' => $key])
                 ->post('/idol-registration/request', [
@@ -445,7 +517,7 @@ class IdolRegistrationRequestTest extends TestCase
         }
     }
 
-    public function test_registration_rejects_more_than_three_social_links_invalid_urls_and_duplicates(): void
+    public function test_registration_rejects_more_than_ten_social_links_invalid_urls_and_duplicates(): void
     {
         $this->database();
         Storage::fake('public');
@@ -456,7 +528,10 @@ class IdolRegistrationRequestTest extends TestCase
         ];
 
         $this->withSession(['member_idx' => 7, 'idol_registration_request_key' => $key])
-            ->post('/idol-registration/request', $base + ['sns_links' => ['https://a.test', 'https://b.test', 'https://c.test', 'https://d.test']])
+            ->post('/idol-registration/request', $base + ['sns_links' => array_map(
+                static fn (int $number): string => 'https://example.com/social/'.$number,
+                range(1, 11)
+            )])
             ->assertSessionHasErrors('sns_links');
 
         foreach ([['javascript:alert(1)'], ['ftp://example.test/profile'], ['https://instagram.com/a', 'https://INSTAGRAM.com/a']] as $badLinks) {
@@ -568,22 +643,22 @@ class IdolRegistrationRequestTest extends TestCase
             ])->assertRedirect(route('idol-registration.create'))->assertSessionHas('success');
 
         $this->assertSame(1, DB::table('idol_registration_requests')->count());
-        $this->assertSame(2, DB::table('idol_registration_request_localizations')->where('text_role', 'submitted')->count());
+        $this->assertSame(1, DB::table('idol_registration_request_localizations')->where('text_role', 'submitted')->count());
         Mail::assertSent(IdolRegistrationRequestNotification::class, 1);
     }
 
-    public function test_submitted_localizations_preserve_exact_english_korean_and_japanese_text(): void
+    public function test_submitted_localizations_preserve_exact_english_and_japanese_text(): void
     {
         $this->database();
         Storage::fake('public');
         $key = str_repeat('4', 64);
         $english = '  Luna Star  ';
-        $korean = '루나 스타!';
+        $japanese = 'ルナ・スター';
         $description = "  First line, punctuation!\nSecond line ??original.  ";
 
         $this->withSession(['member_idx' => 7, 'idol_registration_request_key' => $key])
             ->post('/idol-registration/request', [
-                'request_key' => $key, 'request_type' => 'girl', 'english_name' => $english, 'name' => $korean,
+                'request_key' => $key, 'request_type' => 'girl', 'english_name' => $english, 'name' => $japanese,
                 'duplicate_search_token' => $this->duplicateSearchToken('girl', $english),
                 'duplicate_search_token' => $this->duplicateSearchToken('girl', $english),
                 'content' => $description, 'source_language_code' => 'ja',
@@ -591,12 +666,10 @@ class IdolRegistrationRequestTest extends TestCase
             ])->assertRedirect(route('idol-registration.create'));
 
         $rows = DB::table('idol_registration_request_localizations')->where('text_role', 'submitted')->get()->keyBy('language_code');
-        $this->assertCount(3, $rows);
+        $this->assertCount(2, $rows);
         $this->assertSame('Luna Star', $rows['en']->localized_name);
         $this->assertNull($rows['en']->description);
-        $this->assertSame($korean, $rows['ko']->localized_name);
-        $this->assertNull($rows['ko']->description);
-        $this->assertNull($rows['ja']->localized_name);
+        $this->assertSame($japanese, $rows['ja']->localized_name);
         $this->assertSame($description, $rows['ja']->description);
         $this->assertSame('Luna Star', DB::table('idol_registration_requests')->value('english_name'));
         $this->assertSame(trim($description), DB::table('idol_registration_requests')->value('content'));
@@ -986,7 +1059,7 @@ class IdolRegistrationRequestTest extends TestCase
         $this->assertSame(0, DB::table('idol_registration_requests')->count());
     }
 
-    public function test_selected_group_type_must_match_the_individual_registration_type(): void
+    public function test_selected_group_gender_must_match_the_individual_registration_type(): void
     {
         $this->database();
         Storage::fake('public');
@@ -996,7 +1069,7 @@ class IdolRegistrationRequestTest extends TestCase
         $this->from('/idol-registration/request')->withSession([
             'member_idx' => 7, 'idol_registration_request_key' => $key,
         ])->post('/idol-registration/request', [
-            'request_key' => $key, 'request_type' => 'girl', 'group_type' => 'boy', 'group_idx' => 5,
+            'request_key' => $key, 'request_type' => 'boy', 'group_idx' => 5,
             'english_name' => 'Mismatched Group Type Test', 'content' => 'Introduction',
             'source_language_code' => 'en', 'profile_image' => $image,
         ])->assertSessionHasErrors('group_idx');
@@ -1013,12 +1086,13 @@ class IdolRegistrationRequestTest extends TestCase
 
         $this->from('/idol-registration/request')->post('/idol-registration/request', [
             'request_key' => $key, 'request_type' => 'girl', 'english_name' => 'Selected Group Restore Test',
-            'group_idx' => 5, 'source_language_code' => 'en', 'profile_image' => UploadedFile::fake()->image('group.png'),
+            'group_idx' => 5, 'source_language_code' => 'en', 'content' => str_repeat('x', 1001),
+            'profile_image' => UploadedFile::fake()->image('group.png'),
         ])->assertSessionHasErrors('content');
 
         $this->get('/idol-registration/request')->assertOk()
             ->assertSee('<option value="5" selected>Demo Group</option>', false)
-            ->assertSee('name="group_type"', false)
+            ->assertDontSee('name="group_type"', false)
             ->assertSee('name="group_idx"', false);
     }
 
@@ -1066,7 +1140,7 @@ class IdolRegistrationRequestTest extends TestCase
             ->assertRedirect(route('idol-registration.create'));
 
         $this->assertSame(1, DB::table('idol_registration_requests')->count());
-        $this->assertSame(2, DB::table('idol_registration_request_localizations')->where('text_role', 'submitted')->count());
+        $this->assertSame(1, DB::table('idol_registration_request_localizations')->where('text_role', 'submitted')->count());
     }
 
     public function test_changing_english_name_invalidates_a_previous_search_confirmation(): void

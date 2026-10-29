@@ -1,6 +1,8 @@
 <?php
 
 return array (
+  'homepage_boy_group_ranking' => 'Peringkat Grup Pria',
+  'homepage_girl_group_ranking' => 'Peringkat Grup Wanita',
   'homepage_ranking_view_all' => 'Lihat Semua',
   'random_dummy_vote_mode' => 'Mode Dummy Acak',
   'random_dummy_vote_notice' => 'Seorang anggota boneka yang dipilih secara acak akan memberikan suara. Kekurangan Heart apa pun hanya akan dihitung untuk suara ini.',
@@ -51,7 +53,7 @@ return array (
   'upload_image_prompt' => 'Ketuk untuk mengunggah gambar',
   'selected_fan_post_image' => 'Gambar Kiriman Penggemar Terpilih',
   'youtube_url' => 'URL YouTube',
-  'youtube_url_help' => 'Tempelkan satu URL video YouTube.',
+  'youtube_url_help' => 'Tempelkan URL video YouTube atau Shorts.',
   'content_placeholder' => 'Bagikan pemikiran, perasaan, atau cerita Anda...',
   'tag_placeholder' => 'Tambahkan tag dan tekan Enter...',
   'tag_help' => 'Anda dapat menambahkan beberapa tag. Huruf, angka, garis bawah, dan tanda hubung didukung.',
@@ -390,6 +392,7 @@ return array (
   'social_link_invalid' => 'Masukkan URL HTTP atau HTTPS yang valid tanpa menyertakan kredensial login.',
   'social_links_duplicate' => 'Setiap tautan sosial harus unik.',
   'source_language' => 'Bahasa Tulis',
+  'name_in_language_optional' => 'Nama dalam :language (opsional)',
   'source_language_select' => 'Pilih bahasa',
   'source_language_help' => 'Berlaku untuk agensi, posisi, genre, pemimpin, dan teks pengantar. Mengubahnya tidak akan mengubah apa yang telah Anda masukkan.',
   'source_language_invalid' => 'Pilih bahasa tulis yang didukung.',

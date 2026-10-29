@@ -32,10 +32,9 @@ class IdolRegistrationRequestController extends Controller
     public function create(Request $request, HeartRewardManager $heartRewards)
     {
         $requestType = (string) old('request_type', 'boy');
-        $selectedGroupType = (string) old('group_type', in_array($requestType, ['boy', 'girl'], true) ? $requestType : '');
         $selectedGroup = null;
-        if (in_array($selectedGroupType, ['boy', 'girl'], true) && ctype_digit((string) old('group_idx'))) {
-            $gender = $selectedGroupType === 'boy' ? 'male' : 'female';
+        if (in_array($requestType, ['boy', 'girl'], true) && ctype_digit((string) old('group_idx'))) {
+            $gender = $requestType === 'boy' ? 'male' : 'female';
             $selectedGroup = DB::table('idols')->where('idx', old('group_idx'))
                 ->where('type', 'group')->where('gender', $gender)->where('status', 'active')
                 ->first(['idx', 'name', 'english_name', 'gender']);
@@ -145,7 +144,8 @@ class IdolRegistrationRequestController extends Controller
         $member = $request->attributes->get('activityMember');
         $actor = $request->attributes->get('activityActor');
         $randomActivities = app(RandomDummyActivity::class);
-        $randomMode = $randomActivities->enabled($request);
+        $randomMode = $randomActivities->enabled($request)
+            || ((int) ($actor?->member_level ?? 0) === 10 && (int) ($actor?->is_dummy ?? 1) === 0);
         if ($randomMode) {
             $request->merge(['source_language_code' => 'ko']);
         }
@@ -155,7 +155,6 @@ class IdolRegistrationRequestController extends Controller
         if ($isGroup) {
             $request->merge([
                 'group_idx' => null,
-                'group_type' => null,
                 'birth_date' => null,
                 'height_cm' => null,
                 'weight_kg' => null,
@@ -173,7 +172,6 @@ class IdolRegistrationRequestController extends Controller
             'name' => ['nullable', 'string', 'max:200'],
             'english_name' => ['required', 'string', 'min:2', 'max:200', IdolDuplicateMatcher::englishNameRule()],
             'group_idx' => ['nullable', 'integer'],
-            'group_type' => ['nullable', Rule::in(['boy', 'girl'])],
             'birth_date' => ['nullable', 'date', 'before_or_equal:today'],
             'height_cm' => ['nullable', 'numeric', 'between:50,300'],
             'weight_kg' => ['nullable', 'numeric', 'between:10,500'],
@@ -182,7 +180,7 @@ class IdolRegistrationRequestController extends Controller
             'position' => ['nullable', 'string', 'max:200'],
             'genre' => ['nullable', 'string', 'max:200'],
             'leader' => ['nullable', 'string', 'max:200'],
-            'sns_links' => ['nullable', 'array', 'max:3'],
+            'sns_links' => ['nullable', 'array', 'max:10'],
             'sns_links.*' => ['nullable', 'string', 'max:2048', 'url:http,https', static function ($attribute, $value, $fail): void {
                 $parts = parse_url((string) $value);
                 if (is_array($parts) && (isset($parts['user']) || isset($parts['pass']))) {
@@ -190,7 +188,7 @@ class IdolRegistrationRequestController extends Controller
                 }
             }],
             'profile_image' => ['required', 'file', 'image', 'mimes:jpg,jpeg,png', 'max:5120'],
-            'content' => ['required', 'string', 'max:1000'],
+            'content' => ['nullable', 'string', 'max:1000'],
             'source_language_code' => ['required', 'string', Rule::in(self::SOURCE_LANGUAGES)],
             'request_key' => ['required', 'string', 'size:64', 'regex:/^[a-f0-9]+$/'],
         ], [
@@ -203,13 +201,15 @@ class IdolRegistrationRequestController extends Controller
             'source_language_code.required' => __('ui.source_language_invalid'),
             'source_language_code.in' => __('ui.source_language_invalid'),
         ]);
+        $validated['content'] = $validated['content'] ?? '';
         // Keep the user's internal spacing and punctuation; only trim the outer whitespace.
         $validated['english_name'] = IdolDuplicateMatcher::trimName($validated['english_name']);
         $debutDates = IdolDebutDates::validate($request->input('debut_dates', []));
         $validated['sns_links'] = SocialLinks::encodeSubmitted($validated['sns_links'] ?? []);
-        $submittedKoreanName = $validated['name'] ?? null;
-        // The SQL name columns are NOT NULL; keep an explicitly entered Korean name, otherwise use English.
-        $validated['name'] = is_string($validated['name'] ?? null) && trim($validated['name']) !== ''
+        $sourceLanguage = $validated['source_language_code'];
+        $submittedLocalizedName = $sourceLanguage !== 'en' ? ($validated['name'] ?? null) : null;
+        // The SQL name columns are NOT NULL; use the selected-language name when supplied.
+        $validated['name'] = is_string($submittedLocalizedName) && trim($submittedLocalizedName) !== ''
             ? $validated['name']
             : $validated['english_name'];
         $legacyName = trim($validated['name']);
@@ -218,10 +218,6 @@ class IdolRegistrationRequestController extends Controller
 
         $gender = str_starts_with($requestType, 'boy') ? 'male' : 'female';
         if (!$isGroup && !empty($validated['group_idx'])) {
-            $selectedGender = ($validated['group_type'] ?? null) === 'boy' ? 'male' : 'female';
-            if (isset($validated['group_type']) && (!in_array($validated['group_type'], ['boy', 'girl'], true) || $selectedGender !== $gender)) {
-                return back()->withInput()->withErrors(['group_idx' => __('messages.idol_group_type_mismatch')]);
-            }
             $validGroup = DB::table('idols')->where('idx', $validated['group_idx'])
                 ->where('type', 'group')->where('gender', $gender)->where('status', 'active')->exists();
             if (!$validGroup) {
@@ -311,11 +307,9 @@ class IdolRegistrationRequestController extends Controller
         $submittedLocalizations = [
             'en' => ['localized_name' => $validated['english_name'], 'description' => null, 'agency' => null, 'position' => null, 'genre' => null, 'leader' => null],
         ];
-        if (is_string($submittedKoreanName) && $submittedKoreanName !== '') {
-            // Only store a Korean row when the member actually supplied a Korean-name field.
-            $submittedLocalizations['ko'] = ['localized_name' => $submittedKoreanName, 'description' => null, 'agency' => null, 'position' => null, 'genre' => null, 'leader' => null];
+        if (is_string($submittedLocalizedName) && $submittedLocalizedName !== '') {
+            $submittedLocalizations[$sourceLanguage] = ['localized_name' => $submittedLocalizedName, 'description' => null, 'agency' => null, 'position' => null, 'genre' => null, 'leader' => null];
         }
-        $sourceLanguage = $validated['source_language_code'];
         $submittedLocalizations[$sourceLanguage] ??= ['localized_name' => null, 'description' => null, 'agency' => null, 'position' => null, 'genre' => null, 'leader' => null];
         $submittedLocalizations[$sourceLanguage]['description'] = $validated['content'];
         foreach (['agency', 'position', 'genre', 'leader'] as $field) {

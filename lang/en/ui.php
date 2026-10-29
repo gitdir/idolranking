@@ -84,7 +84,7 @@ $translations = [
     'select_idol' => 'Select an idol', 'choose_post_idol' => 'Choose the idol this post is about.', 'group_type' => 'Group',
     'title_placeholder' => 'Enter a title for your fan post...', 'media_type' => 'Media type', 'image' => 'Image', 'youtube_video' => 'YouTube Video',
     'upload_image_prompt' => 'Tap to upload an image', 'selected_fan_post_image' => 'Selected Fan Post image', 'youtube_url' => 'YouTube URL',
-    'youtube_url_help' => 'Paste one YouTube video URL.', 'content_placeholder' => 'Share your thoughts, feelings, or stories...',
+    'youtube_url_help' => 'Paste a YouTube video or Shorts URL.', 'content_placeholder' => 'Share your thoughts, feelings, or stories...',
     'tag_placeholder' => 'Add tags and press Enter...', 'tag_help' => 'You can add multiple tags. Letters, numbers, underscores, and hyphens are supported.',
     'post_fan_post' => 'Post Fan Post', 'posting_tips' => 'Posting Tips', 'media_guidelines' => 'Media Guidelines', 'community_guidelines' => 'Community Guidelines',
     'share_own_creations' => 'Share your own photos, videos, or creations.', 'write_honestly' => 'Write your honest thoughts and feelings.',

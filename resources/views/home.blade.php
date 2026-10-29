@@ -3,14 +3,18 @@
 @section('content')
     @php
         $homeRankingTitle = static function (string $gender, bool $isGroup = false): string {
+            if ($isGroup) {
+                return __('ui.homepage_'.$gender.'_group_ranking');
+            }
+
             $genderLabel = __('ui.'.$gender);
-            $categoryLabel = $isGroup ? __('ui.group') : __('ui.idol');
+            $categoryLabel = __('ui.idol');
 
             if (app()->getLocale() === 'id') {
                 return __('ui.ranking').' '.$categoryLabel.' '.$genderLabel;
             }
 
-            return $genderLabel.($isGroup ? ' '.$categoryLabel : '').' '.__('ui.ranking');
+            return $genderLabel.' '.__('ui.ranking');
         };
         $panels = [
             ['key' => 'boy', 'title' => $homeRankingTitle('boy'), 'theme' => 'blue'],

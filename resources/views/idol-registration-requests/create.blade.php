@@ -26,7 +26,6 @@
                 </div>
             </div>
 
-            @php($selectedGroupType = old('group_type', in_array(old('request_type', 'boy'), ['boy', 'girl'], true) ? old('request_type', 'boy') : ''))
             <div class="idol-request-fields-grid idol-request-check-fields-grid">
             <div class="fan-post-create-field idol-request-name-field idol-request-field-full"><label for="idol-request-english-name">{{ __('ui.english_name') }} <span>*</span></label><div><input id="idol-request-english-name" name="english_name" value="{{ old('english_name') }}" maxlength="200" required placeholder="{{ __('ui.enter_english_name') }}"><div class="idol-duplicate-search-controls"><button type="button" data-duplicate-search-url="{{ route('idol-registration.duplicates') }}" data-duplicate-search>{{ __('ui.idol_duplicate_search') }}</button><span>{{ __('ui.idol_duplicate_search_hint') }}</span></div></div></div>
             <section class="idol-duplicate-panel idol-request-field-full is-neutral" data-duplicate-panel data-state="neutral" aria-live="polite">
@@ -46,30 +45,30 @@
             <div class="idol-request-fields-grid">
             @php($defaultSourceLanguage = app()->getLocale())
             @php($sourceLanguage = old('source_language_code', $defaultSourceLanguage))
+            @php($languageNames = ['ko' => __('ui.language_korean'), 'en' => __('ui.language_english'), 'ja' => __('ui.language_japanese'), 'es' => 'Español', 'id' => 'Bahasa Indonesia', 'pt-BR' => 'Português', 'zh-CN' => __('ui.language_chinese_simplified'), 'zh-TW' => __('ui.language_chinese_traditional')])
             <div class="fan-post-create-field idol-request-source-language-field idol-request-field-full">
                 <label for="idol-request-source-language">{{ __('ui.source_language') }} <span>*</span></label>
                 <div>
                     <select id="idol-request-source-language" class="fan-post-sort-select" name="source_language_code" required disabled data-progressive-required>
-                        <option value="" disabled @selected(!in_array($sourceLanguage, ['ko', 'en', 'ja', 'zh-CN', 'zh-TW'], true))>{{ __('ui.source_language_select') }}</option>
+                        <option value="" disabled @selected(!in_array($sourceLanguage, ['ko', 'en', 'ja', 'es', 'id', 'pt-BR', 'zh-CN', 'zh-TW'], true))>{{ __('ui.source_language_select') }}</option>
                         <option value="ko" @selected($sourceLanguage === 'ko')>{{ __('ui.language_korean') }} (KO)</option>
                         <option value="en" @selected($sourceLanguage === 'en')>{{ __('ui.language_english') }} (EN)</option>
                         <option value="ja" @selected($sourceLanguage === 'ja')>{{ __('ui.language_japanese') }} (JA)</option>
+                        <option value="es" @selected($sourceLanguage === 'es')>Español (ES)</option>
+                        <option value="id" @selected($sourceLanguage === 'id')>Bahasa Indonesia (ID)</option>
+                        <option value="pt-BR" @selected($sourceLanguage === 'pt-BR')>Português (PT-BR)</option>
                         <option value="zh-CN" @selected($sourceLanguage === 'zh-CN')>{{ __('ui.language_chinese_simplified') }} (ZH-CN)</option>
                         <option value="zh-TW" @selected($sourceLanguage === 'zh-TW')>{{ __('ui.language_chinese_traditional') }} (ZH-TW)</option>
                     </select>
                     <small>{{ __('ui.source_language_help') }}</small>
                 </div>
             </div>
-            <div class="fan-post-create-field idol-request-name-field idol-request-field-full"><label for="idol-request-name">{{ __('ui.name_korean') }}</label><div><input id="idol-request-name" name="name" value="{{ old('name') }}" maxlength="200" placeholder="{{ __('ui.enter_korean_name') }}"></div></div>
-            <div class="fan-post-create-field idol-request-field-full" data-individual-only data-group-field>
+            <div class="fan-post-create-field idol-request-name-field idol-request-field-full" data-localized-name-field @if($sourceLanguage === 'en') hidden @endif><label for="idol-request-name" data-localized-name-label data-label-template="{{ __('ui.name_in_language_optional', ['language' => ':language']) }}">{{ __('ui.name_in_language_optional', ['language' => $languageNames[$sourceLanguage] ?? __('ui.language_english')]) }}</label><div><input id="idol-request-name" name="name" value="{{ old('name') }}" maxlength="200" @disabled($sourceLanguage === 'en')></div></div>
+            <div class="idol-request-person-details idol-request-field-full" data-individual-only>
+            <div class="fan-post-create-field"><label for="idol-request-position">{{ __('ui.profile_label_position') }}</label><div><input id="idol-request-position" name="position" value="{{ old('position') }}" maxlength="200" placeholder="{{ __('ui.position_example') }}"></div></div>
+            <div class="fan-post-create-field"><label for="idol-request-agency">{{ __('ui.profile_label_agency') }}</label><div><input id="idol-request-agency" name="agency" value="{{ old('agency') }}" maxlength="200" placeholder="{{ __('ui.enter_agency') }}"></div></div>
+            <div class="fan-post-create-field" data-group-field>
                 <div class="idol-request-group-selects" data-group-selects data-search-url="{{ route('idol-registration.groups') }}" data-selected-group="{{ $selectedGroup->idx ?? '' }}" data-loading="{{ __('ui.group_search_loading') }}" data-empty="{{ __('ui.group_search_empty') }}" data-error="{{ __('ui.group_search_error') }}">
-                    <label for="idol-request-group-type">{{ __('ui.idol_group_type_label') }}
-                        <select id="idol-request-group-type" class="fan-post-sort-select" name="group_type" data-group-type>
-                            <option value="" @selected($selectedGroupType === '')>{{ __('ui.select_idol_group_type') }}</option>
-                            <option value="boy" @selected($selectedGroupType === 'boy')>{{ __('ui.boy_group') }}</option>
-                            <option value="girl" @selected($selectedGroupType === 'girl')>{{ __('ui.girl_group') }}</option>
-                        </select>
-                    </label>
                     <label for="idol-request-group-name">{{ __('ui.idol_group_name_label') }}
                         <select id="idol-request-group-name" class="fan-post-sort-select" name="group_idx" data-group-name disabled>
                             <option value="">{{ __('ui.select_idol_group') }}</option>
@@ -81,15 +80,17 @@
                 </div>
                 <small class="idol-group-search-status" aria-live="polite" data-group-status></small>
             </div>
+            </div>
             <div class="fan-post-create-field" data-individual-only><label for="idol-request-birth-date">{{ __('ui.profile_label_date_of_birth') }}</label><div>@include('partials.localized-date-input', ['id' => 'idol-request-birth-date', 'name' => 'birth_date', 'value' => old('birth_date', ''), 'max' => now()->toDateString(), 'locale' => app()->getLocale(), 'ariaLabel' => __('ui.profile_label_date_of_birth')])</div></div>
             <div class="fan-post-create-field" data-individual-only><label for="idol-request-height">{{ __('ui.height_cm') }}</label><div><input id="idol-request-height" type="number" name="height_cm" value="{{ old('height_cm') }}" min="50" max="300" step="0.1" placeholder="e.g. 178"></div></div>
             <div class="fan-post-create-field" data-individual-only><label for="idol-request-weight">{{ __('ui.weight_kg') }}</label><div><input id="idol-request-weight" type="number" name="weight_kg" value="{{ old('weight_kg') }}" min="10" max="500" step="0.1" placeholder="e.g. 65"></div></div>
             <div class="fan-post-create-field" data-individual-only><label for="idol-request-blood">{{ __('ui.profile_label_blood_type') }}</label><div><select id="idol-request-blood" class="fan-post-sort-select" name="blood_type"><option value="">{{ __('ui.select_blood_type') }}</option>@foreach (['A', 'B', 'AB', 'O'] as $blood)<option value="{{ $blood }}" @selected(old('blood_type') === $blood)>{{ $blood }}</option>@endforeach</select></div></div>
-            <div class="fan-post-create-field"><label for="idol-request-agency">{{ __('ui.profile_label_agency') }}</label><div><input id="idol-request-agency" name="agency" value="{{ old('agency') }}" maxlength="200" placeholder="{{ __('ui.enter_agency') }}"></div></div>
+            <div class="idol-request-group-details idol-request-field-full" data-group-only hidden>
+                <div class="fan-post-create-field"><label for="idol-request-genre">{{ __('ui.profile_label_genre') }}</label><div><input id="idol-request-genre" name="genre" value="{{ old('genre') }}" maxlength="200" placeholder="{{ __('ui.enter_genre') }}"></div></div>
+                <div class="fan-post-create-field"><label for="idol-request-group-agency">{{ __('ui.profile_label_agency') }}</label><div><input id="idol-request-group-agency" name="agency" value="{{ old('agency') }}" maxlength="200" placeholder="{{ __('ui.enter_agency') }}"></div></div>
+                <div class="fan-post-create-field"><label for="idol-request-leader">{{ __('ui.profile_label_leader') }}</label><div><input id="idol-request-leader" name="leader" value="{{ old('leader') }}" maxlength="200" placeholder="{{ __('ui.enter_leader') }}"></div></div>
+            </div>
             <div class="fan-post-create-field idol-request-field-full" data-group-full><label>{{ __('ui.profile_label_debut_dates') }}</label><div>@include('partials.debut-date-inputs', ['debutDateRows' => old('debut_dates', [['country_code' => '', 'debut_date' => '']]), 'idPrefix' => 'idol-request-debut-country', 'namePrefix' => 'debut_dates', 'admin' => false, 'dateInputLang' => app()->getLocale()])<small>{{ __('ui.debut_dates_help') }}</small></div></div>
-            <div class="fan-post-create-field" data-individual-only><label for="idol-request-position">{{ __('ui.profile_label_position') }}</label><div><input id="idol-request-position" name="position" value="{{ old('position') }}" maxlength="200" placeholder="{{ __('ui.position_example') }}"></div></div>
-            <div class="fan-post-create-field" data-group-only hidden><label for="idol-request-genre">{{ __('ui.profile_label_genre') }}</label><div><input id="idol-request-genre" name="genre" value="{{ old('genre') }}" maxlength="200" placeholder="{{ __('ui.enter_genre') }}"></div></div>
-            <div class="fan-post-create-field" data-group-only hidden><label for="idol-request-leader">{{ __('ui.profile_label_leader') }}</label><div><input id="idol-request-leader" name="leader" value="{{ old('leader') }}" maxlength="200" placeholder="{{ __('ui.enter_leader') }}"></div></div>
             <div class="fan-post-create-field idol-request-field-full"><x-social-link-inputs id-prefix="idol-request-sns" :label="__('ui.profile_label_sns')" /></div>
             </div>
 
@@ -101,7 +102,7 @@
                     <div class="fan-post-image-selection" data-image-selection hidden><img alt="{{ __('ui.cropped_profile_image') }}" data-image-preview><div><button type="button" data-crop-open>{{ __('ui.edit_crop') }}</button><button type="button" data-image-remove>{{ __('ui.remove') }}</button></div></div>
                 </div>
             </div>
-            <div class="fan-post-create-field idol-request-introduction-field"><label for="idol-request-content">{{ __('ui.short_introduction') }} <span>*</span></label><div><textarea id="idol-request-content" name="content" maxlength="1000" rows="6" required disabled data-progressive-required placeholder="{{ __('ui.idol_introduction_placeholder') }}">{{ old('content') }}</textarea><output class="fan-post-counter" for="idol-request-content" data-intro-count>{{ mb_strlen(old('content', '')) }}/1000</output></div></div>
+            <div class="fan-post-create-field idol-request-introduction-field"><label for="idol-request-content">{{ __('ui.short_introduction') }}</label><div><textarea id="idol-request-content" name="content" maxlength="1000" rows="6" disabled data-progressive-required placeholder="{{ __('ui.idol_introduction_placeholder') }}">{{ old('content') }}</textarea><output class="fan-post-counter" for="idol-request-content" data-intro-count>{{ mb_strlen(old('content', '')) }}/1000</output></div></div>
 
             <div class="fan-post-create-actions"><button type="submit">{{ __('ui.submit_request') }}</button><a href="{{ route('home') }}">{{ __('ui.cancel') }}</a></div>
             </div>

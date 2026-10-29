@@ -87,6 +87,9 @@ class FanPostController extends Controller
         $randomActivities = app(RandomDummyActivity::class);
         $randomMode = $randomActivities->enabled($request);
         $mediaType = $request->string('media_type')->toString();
+        if ($mediaType === 'youtube' && blank($request->input('youtube_url')) && filled($request->input('content'))) {
+            $mediaType = 'text';
+        }
         if ($randomMode) {
             $request->merge(['language_code' => 'ko']);
         }
@@ -108,7 +111,7 @@ class FanPostController extends Controller
         $validated = $request->validate([
             'idol_idx' => ['required', 'integer', Rule::exists('idols', 'idx')->where('status', 'active')->where('type', $idolType)->where('gender', $idolGender)],
             'title' => ['required', 'string', 'max:100'],
-            'content' => ['required', 'string', 'max:2000'],
+            'content' => [Rule::requiredIf($mediaType === 'text'), 'nullable', 'string', 'max:2000'],
             'language_code' => ['required', 'string', Rule::in(array_keys(FanPostLanguages::all()))],
             'media_type' => ['required', Rule::in(['text', 'image', 'youtube'])],
             'auto_distribute' => ['sometimes', 'boolean'],
@@ -143,7 +146,7 @@ class FanPostController extends Controller
 
         try {
             $reservation = $randomMode ? $randomActivities->reserve($request, 'fan_post_create', $validated['request_key'], [
-                    'idol_idx' => (int) $validated['idol_idx'], 'title' => $validated['title'], 'content' => $validated['content'],
+                    'idol_idx' => (int) $validated['idol_idx'], 'title' => $validated['title'], 'content' => $validated['content'] ?? null,
                     'language_code' => $validated['language_code'], 'media_type' => $mediaType, 'youtube_id' => $youtubeId,
                     'image_hash' => $imageHash, 'tags' => $tags->all(), 'auto_distribute' => $autoDistribute,
                 ]) : null;
@@ -161,7 +164,7 @@ class FanPostController extends Controller
                     'language_code' => $validated['language_code'],
                     'media_type' => $mediaType,
                     'image_path' => $imagePath, 'youtube_video_id' => $mediaType === 'youtube' ? $youtubeId : null,
-                    'content' => $validated['content'], 'status' => $autoDistribute ? 'queued' : 'published',
+                    'content' => $validated['content'] ?? null, 'status' => $autoDistribute ? 'queued' : 'published',
                     'queued_at' => $autoDistribute ? $createdAt : null,
                     'published_at' => $autoDistribute ? null : $createdAt,
                     'view_count' => 0, 'created_at' => $createdAt, 'updated_at' => $createdAt,
@@ -328,7 +331,7 @@ class FanPostController extends Controller
     {
         $member = $request->attributes->get('activityMember');
         $post = DB::table('fan_posts')->where('idx', $idx)->where('member_idx', $member->idx)
-            ->whereNull('deleted_at')->first(['idx']);
+            ->whereNull('deleted_at')->first(['idx', 'media_type']);
         abort_if($post === null, 404);
 
         $allowedFields = ['_token', '_method', 'title', 'content', 'tags'];
@@ -348,7 +351,8 @@ class FanPostController extends Controller
         }
 
         $validated = $request->validate([
-            'title' => ['required', 'string', 'max:100'], 'content' => ['required', 'string', 'max:2000'],
+            'title' => ['required', 'string', 'max:100'],
+            'content' => [Rule::requiredIf($post->media_type === 'text'), 'nullable', 'string', 'max:2000'],
             'tags' => ['sometimes', 'nullable', 'string', 'max:619'],
         ]);
 
@@ -360,7 +364,7 @@ class FanPostController extends Controller
 
         DB::transaction(function () use ($idx, $validated, $tags, $request): void {
             DB::table('fan_posts')->where('idx', $idx)->update([
-                'title' => $validated['title'], 'content' => $validated['content'], 'updated_at' => now(),
+                'title' => $validated['title'], 'content' => $validated['content'] ?? null, 'updated_at' => now(),
             ]);
 
             if ($request->exists('tags')) {

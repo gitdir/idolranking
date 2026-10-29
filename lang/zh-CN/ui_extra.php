@@ -1,6 +1,8 @@
 <?php
 
 return array (
+  'homepage_boy_group_ranking' => '男子组合排行榜',
+  'homepage_girl_group_ranking' => '女子组合排行榜',
   'homepage_ranking_view_all' => '查看全部',
   'random_dummy_vote_mode' => '随机虚拟模式',
   'random_dummy_vote_notice' => '随机选择一名虚拟成员进行投票。任何心之缺失都仅计入此次投票。',
@@ -51,7 +53,7 @@ return array (
   'upload_image_prompt' => '点击上传图片',
   'selected_fan_post_image' => '精选粉丝帖子图片',
   'youtube_url' => 'YouTube网址',
-  'youtube_url_help' => '粘贴一个 YouTube 视频网址。',
+  'youtube_url_help' => '粘贴 YouTube 视频或 Shorts 短视频的网址。',
   'content_placeholder' => '分享你的想法、感受或故事……',
   'tag_placeholder' => '添加标签并按回车键……',
   'tag_help' => '您可以添加多个标签。支持字母、数字、下划线和连字符。',
@@ -390,6 +392,7 @@ return array (
   'social_link_invalid' => '输入有效的HTTP或HTTPS URL，其中不包含登录凭据。',
   'social_links_duplicate' => '每个社交链接都必须是唯一的。',
   'source_language' => '写作语言',
+  'name_in_language_optional' => ':language名称（可选）',
   'source_language_select' => '选择一种语言',
   'source_language_help' => '适用于机构、职位、类型、负责人和介绍文本。更改此设置不会影响您输入的内容。',
   'source_language_invalid' => '选择一种支持的写作语言。',

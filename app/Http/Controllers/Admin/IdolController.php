@@ -367,7 +367,7 @@ class IdolController extends Controller
             'agency' => ['nullable','string','max:200'],
             'position' => $isIndividual ? ['nullable','string','max:200'] : ['nullable'],
             'genre' => ['nullable','string','max:200'], 'leader' => ['nullable','string','max:200'],
-            'sns_links' => ['nullable','array','max:3'],
+            'sns_links' => ['nullable','array','max:10'],
             'sns_links.*' => ['nullable','string','max:2048','url:http,https', static function ($attribute, $value, $fail): void {
                 $parts = parse_url((string) $value);
                 if (is_array($parts) && (isset($parts['user']) || isset($parts['pass']))) {
