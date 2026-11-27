@@ -30,7 +30,7 @@
                             <p class="ranking-stat heart-total"><svg aria-hidden="true"><use href="#icon-heart"/></svg><span class="sr-only">{{ __('ui.hearts_aria') }}</span><span data-vote-total-display="{{ $member['idx'] }}">{{ number_format($member[1]) }}</span></p>
                             @if (($member[2] ?? 0) > 0)
                                 <span class="ranking-stat ranking-row-posts" aria-label="{{ __('ui.fan_posts_count_aria', ['amount' => number_format($member[2])]) }}">
-                                    <svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.7"><rect x="3" y="3" width="18" height="18" rx="3"/><circle cx="8" cy="8" r="1.5"/><path d="m4 17 5-5 4 4 3-3 5 5"/></svg>{{ number_format($member[2]) }}
+                                    <svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.7"><rect x="3" y="3" width="18" height="18" rx="3"/><circle cx="8" cy="8" r="1.5"/><path d="m4 17 5-5 4 4 3-3 5 5"/></svg><span>{{ number_format($member[2]) }}</span>
                                 </span>
                             @endif
                         </div>

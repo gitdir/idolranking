@@ -517,7 +517,7 @@ html.drawer-open { overflow: hidden; }
     .terms-document-section + .terms-document-section { margin-top: 22px; padding-top: 20px; }
     .terms-document-section h2 { font-size: 18px; }
 }
-.rankings { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 15px; }
+.rankings { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; }
 .ranking-panel { min-width: 0; margin-top:15px; padding: 13px 15px 12px; border-radius: 8px; scroll-margin-top: 16px; --panel-accent: #0081ff; background: #edf8ff; }
 .ranking-panel--pink { --panel-accent: #ff2183; background: #fff3f7; }
 .ranking-panel--purple { --panel-accent: #8b35ff; background: #f5f0ff; }
@@ -536,12 +536,14 @@ html.drawer-open { overflow: hidden; }
 .ranking-row-stats { display: flex; align-items: center; justify-content: space-between; gap: 6px; }
 .ranking-stat { display: inline-flex; align-items: center; gap: 4px; margin: 0; font-size: 14px; line-height: 1.2; font-weight: 400; color: var(--muted); font-variant-numeric: tabular-nums; white-space: nowrap; }
 .ranking-stat svg { width: 15px; height: 15px; flex-shrink: 0; }
+.ranking-panel .ranking-stat > span:not(.sr-only) { transform: translateY(1px); }
 @media (min-width: 768px) {
     .ranking-panel .heart-total svg, .ranking-panel .ranking-row-posts svg { width: 17px; height: 17px; }
     .ranking-panel .fan-post-empty { font-size: 14px; }
 }
 .ranking-member h3 { margin: 0 0 5px; font-size: 15px; font-weight: 700; line-height: 1.25; overflow-wrap: anywhere; }
 .heart-total svg { color: var(--pink); }
+.ranking-panel .heart-total svg { margin-left: -2px; }
 .heart-vote { width: 36px; height: 36px; display: grid; place-items: center; border: 0; border-radius: 50%; background: white; padding: 8px; color: var(--pink); }
 .heart-vote svg { width: 21px; height: 21px; }
 .ranking-panel .heart-vote svg, .ranking-page .idol-ranking-vote svg, .idol-detail-vote svg { transform-origin: center; animation: ranking-vote-heartbeat 2s ease-in-out infinite; }
@@ -572,6 +574,7 @@ html.drawer-open { overflow: hidden; }
 .ranking-panel .ranking-list > .ranking-entry + .ranking-entry::before { top: 0; border-top: 1px solid #edf0f4; }
 .ranking-panel .ranking-member h3 { color: #0b214d; font-weight: 800; }
 .ranking-panel .heart-vote { border: 1px solid #ffe1ed; background: linear-gradient(#fff, #fff5f9); box-shadow: 0 2px 4px rgba(255, 33, 131, .16); color: #ff1681; cursor: pointer; }
+.ranking-panel .heart-vote svg { position: relative; top: -1px; left: -1px; }
 .ranking-panel .heart-vote:hover, .ranking-panel .heart-vote:focus-visible { outline: 2px solid #ff9ac4; outline-offset: 2px; background: #ffeaf3; }
 .ranking-panel .top-post-images { --badge-size: 34px; --badge-font-size: 20px; --badge-inset: 6px; }
 @media (max-width: 1279px) { .ranking-panel { padding-inline: 12px; } }
@@ -935,8 +938,8 @@ a.fan-post-image-link, a.post-statistics, .post-preview a { cursor: pointer; tex
 .idol-ranking-badge--3 { background: #dca77d; color: #613c21; }
 img.idol-ranking-badge { display: block; height: auto; aspect-ratio: 536 / 686; border-radius: 0; background: none; object-fit: contain; }
 .ranking-panel img.idol-ranking-badge { top: 1px; left: 1px; width: calc(var(--badge-size) * .7); }
-.ranking-panel .ranking-entry:not(.ranking-entry--first) img.idol-ranking-badge { top: 2px; left: 2px; width: 26px; }
-.ranking-panel .ranking-entry--first img.idol-ranking-badge { top: 2px; left: 2px; width: 28px; }
+.ranking-panel .ranking-entry:not(.ranking-entry--first) img.idol-ranking-badge { top: 0px; left: 0px; width: 26px; }
+.ranking-panel .ranking-entry--first img.idol-ranking-badge { top: 0px; left: 0px; width: 28px; }
 .idol-ranking-info { display: flex; flex-direction: column; flex: 1; gap: 12px; padding: 14px 12px; min-width: 0; }
 .idol-ranking-name { display: flex; align-items: baseline; justify-content: space-between; gap: 6px 10px; flex-wrap: wrap; }
 .idol-ranking-name h2 { margin: 0; font-size: 16px; font-weight: 700; line-height: 1.35; overflow-wrap: anywhere; }
@@ -998,6 +1001,8 @@ img.idol-ranking-badge { display: block; height: auto; aspect-ratio: 536 / 686; 
 .idol-profile-debut-entry { display: flex; flex-wrap: wrap; align-items: center; gap: 2px 6px; }
 .idol-profile-debut-entry time { color: #344563; }
 .country-flag { display: block; width: 18px; height: 13px; flex: 0 0 18px; object-fit: cover; border: 1px solid #e4e9f0; border-radius: 2px; }
+.rankings ~ .fan-posts .post-author-name-link > span { font-size: 12px; }
+.rankings ~ .fan-posts .post-author-name-link .country-flag { width: 19px; height: 14px; flex-basis: 19px; }
 .idol-profile tbody tr:first-child th, .idol-profile tbody tr:first-child td { border-top: 1px solid #e9eff7; }
 .idol-profile tbody tr:last-child th, .idol-profile tbody tr:last-child td { border-bottom: 1px solid #e9eff7; }
 .idol-detail-sidebar { display: grid; gap: 24px; }
@@ -2334,6 +2339,8 @@ html.invite-friends-open { overflow: hidden; }
 
     .fan-posts .post-author-name-link > span { font-size: 15px; }
     .fan-posts .post-author-name-link .country-flag { width: 21px; height: 15px; flex-basis: 21px; transform: none; }
+    .rankings ~ .fan-posts .post-author-name-link > span { font-size: 16px; }
+    .rankings ~ .fan-posts .post-author-name-link .country-flag { width: 22px; height: 16px; flex-basis: 22px; }
     .fan-posts .fan-post-card-language-badge { font-size: 13px; }
     .fan-posts .post-stat { font-size: 14px; }
     .fan-posts .post-stat svg { width: 14px; height: 14px; }
