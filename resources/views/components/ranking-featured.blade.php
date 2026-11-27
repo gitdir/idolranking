@@ -3,7 +3,7 @@
 
 <section class="ranking-featured" aria-labelledby="ranking-featured-name">
     <h2 id="ranking-featured-name" class="sr-only"><a translate="no" href="{{ $detailUrl }}">{{ $idol['name'] }}</a></h2>
-    <div class="ranking-featured-images">
+    <div class="ranking-featured-images" style="--image-count: {{ count($images) }}">
         @foreach ($images as $image)
             <a class="ranking-featured-image-link" href="{{ $detailUrl }}" aria-label="{{ __('ui.popular_rank_details', ['name' => $idol['name']]) }}">
                 <img src="{{ $image }}" width="320" height="320" alt="{{ __('ui.fan_post_image_for', ['name' => $idol['name']]) }}" loading="lazy">

@@ -1,6 +1,7 @@
 <?php
 
 return array (
+  'fan_post_category_other' => 'Otros',
   'homepage_boy_group_ranking' => 'Clasificación de grupos masculinos',
   'homepage_girl_group_ranking' => 'Clasificación de grupos femeninos',
   'homepage_ranking_view_all' => 'Ver todo',

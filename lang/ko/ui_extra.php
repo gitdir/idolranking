@@ -1,6 +1,7 @@
 <?php
 
 return [
+    'fan_post_category_other' => '기타',
     'homepage_boy_group_ranking' => '남자 그룹 랭킹',
     'homepage_girl_group_ranking' => '여자 그룹 랭킹',
     'get_hearts_title' => '하트 받기',

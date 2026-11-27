@@ -10,7 +10,7 @@
         </header>
         <div class="idol-detail-columns">
             <div class="idol-detail-main">
-                <div class="idol-detail-images" aria-label="{{ __('ui.popular_idol_images') }}">
+                <div class="idol-detail-images {{ $idol['monthly_rank'] === 1 ? 'idol-detail-images--first' : '' }}" @if ($idol['monthly_rank'] === 1) style="--image-count: {{ count($idol['popular_images']) }}" @endif aria-label="{{ __('ui.popular_idol_images') }}">
                     @foreach ($idol['popular_images'] as $image)
                         <img src="{{ $image }}" width="320" height="320" alt="{{ __('ui.popular_fan_post', ['name' => $idol['name']]) }}" loading="lazy">
                     @endforeach
@@ -41,7 +41,8 @@
                                 data-reported-label="{{ __('ui.profile_image_already_reported_short') }}"
                                 @if ($idol['profile_image_already_reported']) disabled @endif
                                 aria-haspopup="dialog" aria-controls="idol-image-report-modal">
-                                {{ $idol['profile_image_already_reported'] ? __('ui.profile_image_already_reported_short') : __('ui.report_profile_image') }}
+                                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 17V10a5 5 0 0 1 10 0v7M5 17h14v4H5zM12 1v2M4.2 3.7l1.5 1.5M19.8 3.7l-1.5 1.5M1 10h2m18 0h2"/></svg>
+                                <span data-idol-image-report-label>{{ $idol['profile_image_already_reported'] ? __('ui.profile_image_already_reported_short') : __('ui.report_profile_image') }}</span>
                             </button>
                         @endif
                     </div>

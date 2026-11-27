@@ -1,7 +1,7 @@
 <?php
 
 return array (
-  'report_profile_image' => 'Denunciar imagem de perfil',
+  'report_profile_image' => 'Denunciar imagem',
   'profile_image_already_reported_short' => 'Denunciado',
   'profile_image_report_submitted' => 'Seu relatório de direitos de imagem foi enviado.',
   'profile_image_already_reported' => 'Você já denunciou esta imagem.',

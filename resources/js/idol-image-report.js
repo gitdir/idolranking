@@ -70,7 +70,7 @@ if (buttons.length && dialog) {
             }
             if (activeButton) {
                 activeButton.disabled = true;
-                activeButton.textContent = activeButton.dataset.reportedLabel;
+                activeButton.querySelector('[data-idol-image-report-label]').textContent = activeButton.dataset.reportedLabel;
             }
         } catch {
             error.textContent = window.idolRankingT('report_try_again');

@@ -67,6 +67,7 @@ Thumbs.db
 !/sql/schema/001_initial_schema.sql
 !/sql/schema/partner_banners.sql
 /sql/patches/*
+!/sql/patches/20261128_001_allow_other_fan_posts.sql
 !/sql/patches/20261029_001_add_vote_country_snapshot.sql
 !/sql/patches/20260927_001_add_member_code.sql
 !/sql/patches/20260927_002_add_fan_post_creation_fields.sql

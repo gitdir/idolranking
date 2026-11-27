@@ -17,6 +17,12 @@ final class PublicFanPostList
             ->all();
     }
 
+    public function forOther(string $sort): array
+    {
+        return $this->query($sort)->whereNull('p.idol_idx')->get()
+            ->map(fn (object $post): array => $this->card($post))->all();
+    }
+
     public function byAuthor(int $memberIdx, int $excludeIdx, int $limit = 3): array
     {
         return $this->baseQuery()
@@ -34,9 +40,19 @@ final class PublicFanPostList
             ->all();
     }
 
-    public function paginate(string $sort, int $perPage = 20): LengthAwarePaginator
+    public function paginate(string $sort, int $perPage = 20, ?string $category = null): LengthAwarePaginator
     {
-        $posts = $this->query($sort)->paginate($perPage)->withQueryString();
+        $query = $this->query($sort);
+        if ($category === 'other') {
+            $query->whereNull('p.idol_idx');
+        } elseif ($category !== null) {
+            [$type, $gender] = match ($category) {
+                'boy' => ['individual', 'male'], 'boy_group' => ['group', 'male'],
+                'girl' => ['individual', 'female'], 'girl_group' => ['group', 'female'],
+            };
+            $query->where('i.type', $type)->where('i.gender', $gender);
+        }
+        $posts = $query->paginate($perPage)->withQueryString();
         $posts->through(fn (object $post): array => $this->card($post));
 
         return $posts;
@@ -115,13 +131,13 @@ final class PublicFanPostList
     {
         return DB::table('fan_posts as p')
             ->join('members as m', 'm.idx', '=', 'p.member_idx')
-            ->join('idols as i', 'i.idx', '=', 'p.idol_idx')
+            ->leftJoin('idols as i', 'i.idx', '=', 'p.idol_idx')
             ->where('p.status', 'published')
             ->whereNull('p.deleted_at')
             ->where('m.member_level', '>', 0)
             ->where('m.status', 'active')
             ->whereNull('m.deleted_at')
-            ->where('i.status', 'active');
+            ->where(fn ($query) => $query->whereNull('p.idol_idx')->orWhere('i.status', 'active'));
     }
 
     private function searchQuery(string $keyword, string $sort): Builder

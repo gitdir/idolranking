@@ -11,6 +11,13 @@
                 <div><h2 id="public-fan-posts-title" class="sr-only">{{ __('ui.fan_posts') }}</h2></div>
                 <div class="idol-detail-fan-post-actions member-fan-post-actions fan-post-toolbar">
                     <form method="get" action="{{ route('fan-posts.index') }}">
+                        <label class="sr-only" for="public-fan-post-category">{{ __('ui.request_type') }}</label>
+                        <select id="public-fan-post-category" class="fan-post-sort-select" name="category" onchange="this.form.submit()">
+                            <option value="" @selected($category === null)>{{ __('ui.all') }}</option>
+                            @foreach (['boy' => __('ui.boy'), 'boy_group' => __('ui.boy_group'), 'girl' => __('ui.girl'), 'girl_group' => __('ui.girl_group'), 'other' => __('ui.fan_post_category_other')] as $value => $label)
+                                <option value="{{ $value }}" @selected($category === $value)>{{ $label }}</option>
+                            @endforeach
+                        </select>
                         <label class="sr-only" for="public-fan-post-sort">{{ __('ui.sort_fan_posts') }}</label>
                         <select id="public-fan-post-sort" class="fan-post-sort-select" name="sort" onchange="this.form.submit()">
                             <option value="latest" @selected($sort === 'latest')>{{ __('ui.latest') }}</option>

@@ -36,7 +36,7 @@ class FanPostReportController extends Controller
     public function showPost(int $idx)
     {
         $post = DB::table('fan_posts as p')->join('members as m', 'm.idx', '=', 'p.member_idx')
-            ->join('idols as i', 'i.idx', '=', 'p.idol_idx')->where('p.idx', $idx)
+            ->leftJoin('idols as i', 'i.idx', '=', 'p.idol_idx')->where('p.idx', $idx)
             ->first(['p.*', 'm.nickname', 'i.name as idol_name']);
         abort_if($post === null, 404);
 

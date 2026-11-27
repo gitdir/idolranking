@@ -24,11 +24,11 @@ class BoostFanPostViews extends Command
         $post = DB::table('fan_posts')
             ->where('status', 'published')
             ->whereNull('deleted_at')
-            ->whereExists(function ($query): void {
-                $query->selectRaw('1')
-                    ->from('idols')
-                    ->whereColumn('idols.idx', 'fan_posts.idol_idx')
-                    ->where('idols.status', 'active');
+            ->where(function ($query): void {
+                $query->whereNull('idol_idx')->orWhereExists(function ($idolQuery): void {
+                    $idolQuery->selectRaw('1')->from('idols')
+                        ->whereColumn('idols.idx', 'fan_posts.idol_idx')->where('idols.status', 'active');
+                });
             })
             ->inRandomOrder()
             ->first(['idx']);
@@ -41,11 +41,11 @@ class BoostFanPostViews extends Command
             ->where('idx', $post->idx)
             ->where('status', 'published')
             ->whereNull('deleted_at')
-            ->whereExists(function ($query): void {
-                $query->selectRaw('1')
-                    ->from('idols')
-                    ->whereColumn('idols.idx', 'fan_posts.idol_idx')
-                    ->where('idols.status', 'active');
+            ->where(function ($query): void {
+                $query->whereNull('idol_idx')->orWhereExists(function ($idolQuery): void {
+                    $idolQuery->selectRaw('1')->from('idols')
+                        ->whereColumn('idols.idx', 'fan_posts.idol_idx')->where('idols.status', 'active');
+                });
             })
             ->increment('view_count', random_int(1, 5));
 

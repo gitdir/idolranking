@@ -569,8 +569,14 @@ html.drawer-open { overflow: hidden; }
 .ranking-panel .ranking-list { gap: 0; }
 .ranking-panel .ranking-entry { padding-block: 7px; }
 .ranking-panel .ranking-entry--first { padding-top: 0; padding-bottom: 12px; grid-template-rows: auto auto; }
-.ranking-panel .top-post-images { width: calc(100% * var(--image-count) / 3); height: auto; aspect-ratio: var(--image-count) / 1; grid-template-columns: repeat(var(--image-count), minmax(0, 1fr)); border-radius: 9px; }
+.ranking-panel .top-post-images { width: calc(100% * var(--image-count) / 3); height: auto; aspect-ratio: var(--image-count) / 1; grid-template-columns: repeat(var(--image-count), minmax(0, 1fr)); border-radius: 9px; box-shadow: 0 0 9px rgba(212, 175, 55, .5); }
+.ranking-panel .top-post-images::after { position: absolute; inset: 0; z-index: 1; border: 2px solid #D4AF37; border-radius: inherit; pointer-events: none; content: ''; }
+.ranking-panel .top-post-images::before { position: absolute; inset: 0; z-index: 2; padding: 2px; border-radius: inherit; background: linear-gradient(110deg, transparent 35%, rgba(255, 255, 255, .95) 50%, transparent 65%) 120% 0 / 240% 100% no-repeat; -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0); -webkit-mask-composite: xor; mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0); mask-composite: exclude; animation: ranking-gold-shine 5s ease-in-out infinite; pointer-events: none; content: ''; }
+@keyframes ranking-gold-shine { from { background-position: 120% 0; } to { background-position: -120% 0; } }
+@media (prefers-reduced-motion: reduce) { .ranking-panel .top-post-images::before { animation: none; } }
 .ranking-panel .top-post-images > img:not(.idol-ranking-badge) { width: 100%; height: 100%; min-width: 0; }
+.ranking-panel .top-post-images > img:first-child { border-top-left-radius: 11px; border-bottom-left-radius: 11px; }
+.ranking-panel .top-post-images > img:not(.idol-ranking-badge):nth-last-child(2) { border-top-right-radius: 11px; border-bottom-right-radius: 11px; }
 .ranking-panel .ranking-list > .ranking-entry + .ranking-entry::before { top: 0; border-top: 1px solid #edf0f4; }
 .ranking-panel .ranking-member h3 { color: #0b214d; font-weight: 800; }
 .ranking-panel .heart-vote { border: 1px solid #ffe1ed; background: linear-gradient(#fff, #fff5f9); box-shadow: 0 2px 4px rgba(255, 33, 131, .16); color: #ff1681; cursor: pointer; }
@@ -859,12 +865,17 @@ a.fan-post-image-link, a.post-statistics, .post-preview a { cursor: pointer; tex
 }
 .ranking-featured-layout { display: grid; grid-template-columns: minmax(0, 55fr) minmax(0, 45fr); gap: 20px; align-items: stretch; margin-bottom: 24px; }
 .ranking-featured { min-width: 0; }
-.ranking-featured-images { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 0; }
+.ranking-featured-images { position: relative; display: grid; width: calc(100% * var(--image-count) / 3); grid-template-columns: repeat(var(--image-count), minmax(0, 1fr)); gap: 0; overflow: hidden; border-radius: 14px; box-shadow: 0 0 9px rgba(212, 175, 55, .5); }
+.ranking-featured-images::after { position: absolute; inset: 0; z-index: 1; border: 3px solid #D4AF37; border-radius: inherit; pointer-events: none; content: ''; }
+.ranking-featured-images::before { position: absolute; inset: 0; z-index: 2; padding: 3px; border-radius: inherit; background: linear-gradient(110deg, transparent 35%, rgba(255, 255, 255, .95) 50%, transparent 65%) 120% 0 / 240% 100% no-repeat; -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0); -webkit-mask-composite: xor; mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0); mask-composite: exclude; animation: ranking-gold-shine 5s ease-in-out infinite; pointer-events: none; content: ''; }
+@media (prefers-reduced-motion: reduce) { .ranking-featured-images::before { animation: none; } }
 .ranking-featured-image-link { display: block; min-width: 0; }
 .ranking-featured-images img { display: block; width: 100%; height: auto; aspect-ratio: 1; object-fit: cover; border: 0; box-shadow: none; }
 .ranking-featured-image-link:first-child img { border-radius: 14px 0 0 14px; }
 .ranking-featured-image-link:last-child img { border-radius: 0 14px 14px 0; }
 .ranking-featured-image-link:only-child img { border-radius: 14px; }
+.ranking-featured-images .ranking-featured-image-link:first-child img { border-top-left-radius: 16px; border-bottom-left-radius: 16px; }
+.ranking-featured-images .ranking-featured-image-link:last-child img { border-top-right-radius: 16px; border-bottom-right-radius: 16px; }
 .ranking-featured-stats { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); margin: 20px 0; }
 .ranking-featured-stats > div { display: flex; flex-direction: column-reverse; justify-content: center; align-items: center; min-width: 0; padding: 0 6px; text-align: center; }
 .ranking-featured-stats > div + div { border-left: 1px solid #e7edf5; }
@@ -938,8 +949,8 @@ a.fan-post-image-link, a.post-statistics, .post-preview a { cursor: pointer; tex
 .idol-ranking-badge--3 { background: #dca77d; color: #613c21; }
 img.idol-ranking-badge { display: block; height: auto; aspect-ratio: 536 / 686; border-radius: 0; background: none; object-fit: contain; }
 .ranking-panel img.idol-ranking-badge { top: 1px; left: 1px; width: calc(var(--badge-size) * .7); }
-.ranking-panel .ranking-entry:not(.ranking-entry--first) img.idol-ranking-badge { top: 0px; left: 0px; width: 26px; }
-.ranking-panel .ranking-entry--first img.idol-ranking-badge { top: 0px; left: 0px; width: 28px; }
+.ranking-panel .ranking-entry:not(.ranking-entry--first) img.idol-ranking-badge { top: 1px; left: 1px; width: 26px; }
+.ranking-panel .ranking-entry--first img.idol-ranking-badge { top: 1px; left: 1px; width: 28px; }
 .idol-ranking-info { display: flex; flex-direction: column; flex: 1; gap: 12px; padding: 14px 12px; min-width: 0; }
 .idol-ranking-name { display: flex; align-items: baseline; justify-content: space-between; gap: 6px 10px; flex-wrap: wrap; }
 .idol-ranking-name h2 { margin: 0; font-size: 16px; font-weight: 700; line-height: 1.35; overflow-wrap: anywhere; }
@@ -976,9 +987,15 @@ img.idol-ranking-badge { display: block; height: auto; aspect-ratio: 536 / 686; 
 .idol-detail-columns { display: grid; grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr); gap: 28px; align-items: start; }
 .idol-detail-main, .idol-detail-sidebar { min-width: 0; }
 .idol-detail-images { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 0; }
+.idol-detail-images--first { position: relative; width: calc(100% * var(--image-count) / 3); grid-template-columns: repeat(var(--image-count), minmax(0, 1fr)); gap: 0; overflow: hidden; border-radius: 8px; box-shadow: 0 0 9px rgba(212, 175, 55, .5); }
+.idol-detail-images--first::after { position: absolute; inset: 0; z-index: 1; border: 3px solid #D4AF37; border-radius: inherit; pointer-events: none; content: ''; }
+.idol-detail-images--first::before { position: absolute; inset: 0; z-index: 2; padding: 3px; border-radius: inherit; background: linear-gradient(110deg, transparent 35%, rgba(255, 255, 255, .95) 50%, transparent 65%) 120% 0 / 240% 100% no-repeat; -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0); -webkit-mask-composite: xor; mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0); mask-composite: exclude; animation: ranking-gold-shine 5s ease-in-out infinite; pointer-events: none; content: ''; }
+@media (prefers-reduced-motion: reduce) { .idol-detail-images--first::before { animation: none; } }
 .idol-detail-images img { display: block; width: 100%; height: auto; aspect-ratio: 1 / 1; object-fit: cover; border-radius: 0; }
 .idol-detail-images img:first-child { border-top-left-radius: 8px; border-bottom-left-radius: 8px; }
 .idol-detail-images img:last-child { border-top-right-radius: 8px; border-bottom-right-radius: 8px; }
+.idol-detail-images--first img:first-child { border-top-left-radius: 10px; border-bottom-left-radius: 10px; }
+.idol-detail-images--first img:last-child { border-top-right-radius: 10px; border-bottom-right-radius: 10px; }
 .idol-detail-summary { padding-block: 20px; }
 .idol-detail-metrics { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; margin: 0 0 20px; }
 .idol-detail-metrics > div { display: flex; flex-direction: column; align-items: center; gap: 7px; text-align: center; min-width: 0; }
@@ -1107,7 +1124,7 @@ img.idol-ranking-badge { display: block; height: auto; aspect-ratio: 536 / 686; 
 .fan-detail-recommend:disabled { border-color: #d8ddea; background: #f7f8fb; color: #8895af; cursor: not-allowed; opacity: .68; }
 .fan-detail-recommend[aria-pressed="true"]:disabled { border-color: var(--pink); color: var(--pink); }
 .fan-detail-report { display: inline-flex; align-items: center; justify-content: center; gap: 7px; min-height: 36px; padding: 7px 15px; border: 1px solid #cfd8e8; border-radius: 999px; background: #fff; color: #61749d; font-size: 13px; font-weight: 700; cursor: pointer; }
-.fan-detail-report svg { width: 17px; height: 17px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+.fan-detail-report svg { width: 17px; height: 17px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
 .fan-detail-report:disabled { cursor: default; opacity: .5; }
 .fan-detail-report-success { margin: 11px 0 0; color: #25785c; font-size: 13px; line-height: 1.45; text-align: right; }
 html.fan-post-report-open { overflow: hidden; }
@@ -1131,7 +1148,8 @@ html.fan-post-report-open { overflow: hidden; }
 .fan-post-report-actions button[type="submit"] { border-color: var(--pink); background: var(--pink); color: #fff; }
 .idol-profile-heading { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
 .idol-profile-heading h2 { margin-bottom: 18px; }
-.idol-profile-image-report { flex: 0 0 auto; margin: 0 0 18px; padding: 5px 9px; border: 1px solid #dce5f1; border-radius: 7px; background: #fff; color: #65789d; font: inherit; font-size: 11px; cursor: pointer; }
+.idol-profile-image-report { display: inline-flex; align-items: center; gap: 4px; flex: 0 0 auto; margin: 0 0 18px; padding: 5px 9px; border: 1px solid #dce5f1; border-radius: 7px; background: #fff; color: #65789d; font: inherit; font-size: 11px; cursor: pointer; }
+.idol-profile-image-report svg { width: 12px; height: 12px; transform: translateY(-1px); fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
 .idol-profile-image-report:disabled { cursor: default; opacity: .65; }
 .idol-profile-image-report-success { margin: -8px 0 12px; color: #25785c; font-size: 12px; }
 .idol-image-report-description { margin: -12px 0 18px; color: #60739a; font-size: 13px; line-height: 1.5; }
@@ -1163,6 +1181,8 @@ html.fan-post-report-open { overflow: hidden; }
 .fan-detail-comment-list h3 { flex: 1; min-width: 0; margin: 0 0 6px; font-size: 13px; }
 .fan-detail-comment-list p { margin: 0; white-space: pre-wrap; font-size: 14px; line-height: 1.6; color: #5971a6; }
 .fan-detail-comment-delete, .fan-detail-comment-report { align-self: flex-start; flex-shrink: 0; padding: 2px 0; border: 0; background: none; color: #8a99b8; font-size: 11px; cursor: pointer; }
+.fan-detail-comment-report { display: inline-flex; align-items: center; gap: 3px; }
+.fan-detail-comment-report svg { width: 12px; height: 12px; transform: translateY(-1px); fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
 .fan-detail-comment-delete:hover, .fan-detail-comment-report:hover { color: #c42c69; }
 .fan-detail-comment-delete:disabled, .fan-detail-comment-report:disabled { cursor: wait; opacity: .55; }
 .fan-detail-comments > .number-pagination { width: 100%; margin: 28px auto 2px; justify-content: center; }
@@ -1755,6 +1775,9 @@ body:has(.public-fan-posts-page) { min-width: 0; }
     .fan-post-toolbar form { width: auto; min-width: 0; flex: 1 1 auto; }
     .fan-post-toolbar select { width: 100%; min-width: 0; }
     .fan-post-toolbar .idol-detail-create-post { width: auto; flex: 0 0 auto; padding-inline: 13px; }
+    .public-fan-posts-page .fan-post-toolbar { flex-wrap: wrap; }
+    .public-fan-posts-page .fan-post-toolbar form { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; flex-basis: 100%; }
+    .public-fan-posts-page .fan-post-toolbar .idol-detail-create-post { width: 100%; }
     .public-fan-posts-page .fan-post-empty { padding: 28px 16px; }
 }
 html.change-password-open { overflow: hidden; }
@@ -2218,6 +2241,7 @@ html.invite-friends-open { overflow: hidden; }
 .idol-request-type-row { min-width: 0; }
 .idol-request-type-row > .idol-request-type-options { min-width: 0; }
 .idol-request-type-options { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; }
+.fan-post-create .idol-request-type-options { grid-template-columns: repeat(5, minmax(0, 1fr)); }
 .idol-request-type-options input { position: absolute; width: 1px; height: 1px; min-width: 0; margin: -1px; padding: 0; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0; opacity: 0; pointer-events: none; }
 .idol-request-type-options span { display: grid; place-items: center; min-height: 44px; border: 1px solid #d8e0f2; border-radius: 7px; background: #fff; color: #6578a0; font-size: 13px; font-weight: 700; cursor: pointer; }
 .idol-request-type-options input:checked + span { border-color: #ff2d91; background: #fff0f7; color: #ff2d91; box-shadow: inset 0 0 0 1px #ff2d91; }
@@ -2309,7 +2333,7 @@ html.invite-friends-open { overflow: hidden; }
     .drawer-invite-card small .invite-reward-inline { display: inline-flex; align-items: center; gap: 2px; margin-inline: 2px; vertical-align: middle; white-space: nowrap; }
     .drawer-invite-card small .invite-reward-inline svg { margin: 0; vertical-align: initial; }
     .drawer-invite-chevron { width: 14px; height: 14px; fill: none; stroke: #17366e; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
-    .idol-request-type-options { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .idol-request-type-options, .fan-post-create .idol-request-type-options { grid-template-columns: repeat(2, minmax(0, 1fr)); }
     .idol-request-fields-grid { grid-template-columns: minmax(0, 1fr); gap: 16px; }
     .idol-request-person-details, .idol-request-group-details { grid-template-columns: minmax(0, 1fr); gap: 16px; }
     .idol-debut-date-row { grid-template-columns: minmax(0, 1fr) 32px; }

@@ -1,7 +1,7 @@
 <?php
 
 return array (
-  'report_profile_image' => 'レポートプロフィール画像',
+  'report_profile_image' => '画像を報告',
   'profile_image_already_reported_short' => '報告された',
   'profile_image_report_submitted' => '画像使用権に関する報告書が提出されました。',
   'profile_image_already_reported' => 'この画像は既に報告済みです。',

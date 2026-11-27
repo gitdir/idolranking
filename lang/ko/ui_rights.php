@@ -1,7 +1,7 @@
 <?php
 
 return [
-    'report_profile_image' => '프로필 이미지 신고',
+    'report_profile_image' => '이미지 신고',
     'profile_image_already_reported_short' => '신고 완료',
     'profile_image_report_submitted' => '프로필 이미지 권리 침해 신고가 접수되었습니다.',
     'profile_image_already_reported' => '이 이미지에 대한 신고를 이미 접수했습니다.',

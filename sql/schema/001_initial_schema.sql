@@ -238,7 +238,7 @@ INSERT INTO heart_reward_settings (action_code, action_name, heart_amount, daily
 
 CREATE TABLE fan_posts (
     idx BIGINT UNSIGNED NOT NULL AUTO_INCREMENT COMMENT '팬포스트 ID',
-    idol_idx BIGINT UNSIGNED NOT NULL COMMENT '대상 개인 또는 그룹',
+    idol_idx BIGINT UNSIGNED NULL COMMENT '대상 개인 또는 그룹; Other 팬포스트는 NULL',
     member_idx BIGINT UNSIGNED NOT NULL COMMENT '공개 작성자',
     actor_member_idx BIGINT UNSIGNED NOT NULL COMMENT '최초 실제 로그인 작업자; 수정 시 덮어쓰지 않음',
     media_type VARCHAR(16) NOT NULL DEFAULT 'text' COMMENT 'text, image, or youtube',

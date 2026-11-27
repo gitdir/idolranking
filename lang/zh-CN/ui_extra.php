@@ -1,6 +1,7 @@
 <?php
 
 return array (
+  'fan_post_category_other' => '其他',
   'homepage_boy_group_ranking' => '男子组合排行榜',
   'homepage_girl_group_ranking' => '女子组合排行榜',
   'homepage_ranking_view_all' => '查看全部',

@@ -1,7 +1,7 @@
 <?php
 
 return [
-    'report_profile_image' => 'Report profile image',
+    'report_profile_image' => 'Report image',
     'profile_image_already_reported_short' => 'Reported',
     'profile_image_report_submitted' => 'Your image rights report has been submitted.',
     'profile_image_already_reported' => 'You have already reported this image.',

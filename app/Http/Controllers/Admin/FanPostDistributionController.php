@@ -76,7 +76,7 @@ class FanPostDistributionController extends Controller
     {
         $this->administrator($request);
         $post = DB::table('fan_posts as p')->join('members as m', 'm.idx', '=', 'p.member_idx')
-            ->join('idols as i', 'i.idx', '=', 'p.idol_idx')
+            ->leftJoin('idols as i', 'i.idx', '=', 'p.idol_idx')
             ->where('p.idx', $idx)->where('p.status', 'queued')->whereNull('p.deleted_at')
             ->first(['p.idx', 'p.title', 'p.content', 'p.status', 'p.queued_at', 'p.media_type', 'p.image_path',
                 'p.youtube_video_id', 'm.nickname', 'i.name as idol_name']);

@@ -1,6 +1,7 @@
 <?php
 
 return array (
+  'fan_post_category_other' => 'その他',
   'homepage_boy_group_ranking' => '男子グループランキング',
   'homepage_girl_group_ranking' => '女子グループランキング',
   'homepage_ranking_view_all' => 'すべて表示',

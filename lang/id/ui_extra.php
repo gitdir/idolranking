@@ -1,6 +1,7 @@
 <?php
 
 return array (
+  'fan_post_category_other' => 'Lainnya',
   'homepage_boy_group_ranking' => 'Peringkat Grup Pria',
   'homepage_girl_group_ranking' => 'Peringkat Grup Wanita',
   'homepage_ranking_view_all' => 'Lihat Semua',

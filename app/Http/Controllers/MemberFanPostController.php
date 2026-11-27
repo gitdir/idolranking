@@ -38,11 +38,11 @@ class MemberFanPostController extends Controller
 
         $monthStart = now('UTC')->startOfMonth();
         $query = DB::table('fan_posts as p')
-            ->join('idols as i', 'i.idx', '=', 'p.idol_idx')
+            ->leftJoin('idols as i', 'i.idx', '=', 'p.idol_idx')
             ->where('p.member_idx', $member->idx)
             ->where('p.status', 'published')
             ->whereNull('p.deleted_at')
-            ->where('i.status', 'active')
+            ->where(fn ($query) => $query->whereNull('p.idol_idx')->orWhere('i.status', 'active'))
             ->select(['p.idx', 'p.media_type', 'p.image_path', 'p.youtube_video_id', 'p.content', 'p.view_count', 'p.created_at', 'p.language_code'])
             ->selectSub(
                 DB::table('fan_post_likes as l')
@@ -94,19 +94,19 @@ class MemberFanPostController extends Controller
         ]);
 
         $publishedPosts = DB::table('fan_posts as p')
-            ->join('idols as i', 'i.idx', '=', 'p.idol_idx')
+            ->leftJoin('idols as i', 'i.idx', '=', 'p.idol_idx')
             ->where('p.member_idx', $member->idx)
             ->where('p.status', 'published')
             ->whereNull('p.deleted_at');
-        $publishedPosts->where('i.status', 'active');
+        $publishedPosts->where(fn ($query) => $query->whereNull('p.idol_idx')->orWhere('i.status', 'active'));
         $postCount = (clone $publishedPosts)->count();
         $commentCount = DB::table('fan_post_comments as c')
             ->join('fan_posts as p', 'p.idx', '=', 'c.fan_post_idx')
-            ->join('idols as i', 'i.idx', '=', 'p.idol_idx')
+            ->leftJoin('idols as i', 'i.idx', '=', 'p.idol_idx')
             ->where('p.member_idx', $member->idx)
             ->where('p.status', 'published')
             ->whereNull('p.deleted_at')
-            ->where('i.status', 'active')
+            ->where(fn ($query) => $query->whereNull('p.idol_idx')->orWhere('i.status', 'active'))
             ->where('c.status', 'published')
             ->whereNull('c.deleted_at')
             ->count();

@@ -14,8 +14,12 @@ class PublicFanPostController extends Controller
             $sort = 'latest';
         }
 
-        $fanPosts = $fanPostList->paginate($sort);
+        $category = $request->query('category');
+        if (!in_array($category, ['boy', 'boy_group', 'girl', 'girl_group', 'other'], true)) {
+            $category = null;
+        }
+        $fanPosts = $fanPostList->paginate($sort, 20, $category);
 
-        return view('fan-posts.index', compact('fanPosts', 'sort'));
+        return view('fan-posts.index', compact('fanPosts', 'sort', 'category'));
     }
 }

@@ -1,7 +1,7 @@
 <?php
 
 return array (
-  'report_profile_image' => '报告个人资料图片',
+  'report_profile_image' => '举报图片',
   'profile_image_already_reported_short' => '已报道',
   'profile_image_report_submitted' => '您的图像版权报告已提交。',
   'profile_image_already_reported' => '您已举报过此图片。',

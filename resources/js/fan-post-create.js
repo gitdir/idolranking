@@ -19,6 +19,7 @@ if (form) {
     if (categoryOptions) {
         const categoryInputs = [...categoryOptions.querySelectorAll('[name="idol_category"]')];
         const idolSelect = form.querySelector('[data-idol-select]');
+        const idolField = form.querySelector('[data-idol-field]');
         const dependentFields = form.querySelector('[data-dependent-fields]');
         const setDependentFields = (visible) => {
             dependentFields.hidden = !visible;
@@ -74,8 +75,15 @@ if (form) {
 
         categoryInputs.forEach((input) => input.addEventListener('change', () => {
             if (!input.checked) return;
-            setDependentFields(false);
+            categoryRequest?.abort();
             idolSelect.value = '';
+            idolField.hidden = input.value === 'other';
+            idolSelect.required = input.value !== 'other';
+            setDependentFields(input.value === 'other');
+            if (input.value === 'other') {
+                idolSelect.disabled = true;
+                return;
+            }
             loadCategory(input.value);
         }));
         idolSelect.addEventListener('change', () => {
@@ -84,8 +92,10 @@ if (form) {
         });
         const selectedCategory = categoryInputs.find((input) => input.checked)?.value;
         const hasSelection = Boolean(selectedCategory && idolSelect.value);
-        setDependentFields(Boolean(selectedCategory && hasSelection));
-        if (selectedCategory && idolSelect.options.length <= 1) {
+        idolField.hidden = selectedCategory === 'other';
+        idolSelect.required = selectedCategory !== 'other';
+        setDependentFields(selectedCategory === 'other' || Boolean(selectedCategory && hasSelection));
+        if (selectedCategory && selectedCategory !== 'other' && idolSelect.options.length <= 1) {
             loadCategory(selectedCategory);
         } else if (!selectedCategory) {
             idolSelect.disabled = true;

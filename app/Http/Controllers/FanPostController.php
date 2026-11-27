@@ -26,8 +26,8 @@ class FanPostController extends Controller
 
     public function create(Request $request, HeartRewardManager $heartRewards)
     {
-        $idolCategories = ['boy', 'boy_group', 'girl', 'girl_group'];
-        $category = old('idol_category');
+        $idolCategories = ['boy', 'boy_group', 'girl', 'girl_group', 'other'];
+        $category = old('idol_category', $request->query('idol_category'));
         $preselectedIdolIdx = null;
 
         if ($request->query->has('idol_idx')) {
@@ -49,7 +49,7 @@ class FanPostController extends Controller
         }
 
         $selectedIdolIdx = old('idol_idx', $preselectedIdolIdx);
-        $idols = $category === null ? collect() : $this->activeIdolsForCategory($category);
+        $idols = $category === null || $category === 'other' ? collect() : $this->activeIdolsForCategory($category);
         if ($selectedIdolIdx !== null && !$idols->contains(fn (object $idol): bool => (int) $idol->idx === (int) $selectedIdolIdx)) {
             $selectedIdolIdx = null;
         }
@@ -103,13 +103,15 @@ class FanPostController extends Controller
             'image' => __('ui.image'), 'youtube_url' => __('ui.youtube_url'), 'tags' => __('ui.tags'),
         ];
         $category = $request->validate(
-            ['idol_category' => ['required', Rule::in(['boy', 'boy_group', 'girl', 'girl_group'])]],
+            ['idol_category' => ['required', Rule::in(['boy', 'boy_group', 'girl', 'girl_group', 'other'])]],
             [],
             $fieldNames
         )['idol_category'];
-        [$idolType, $idolGender] = $this->categoryParts($category);
+        [$idolType, $idolGender] = $category === 'other' ? [null, null] : $this->categoryParts($category);
         $validated = $request->validate([
-            'idol_idx' => ['required', 'integer', Rule::exists('idols', 'idx')->where('status', 'active')->where('type', $idolType)->where('gender', $idolGender)],
+            'idol_idx' => $category === 'other'
+                ? ['prohibited']
+                : ['required', 'integer', Rule::exists('idols', 'idx')->where('status', 'active')->where('type', $idolType)->where('gender', $idolGender)],
             'title' => ['required', 'string', 'max:100'],
             'content' => [Rule::requiredIf($mediaType === 'text'), 'nullable', 'string', 'max:2000'],
             'language_code' => ['required', 'string', Rule::in(array_keys(FanPostLanguages::all()))],
@@ -146,7 +148,7 @@ class FanPostController extends Controller
 
         try {
             $reservation = $randomMode ? $randomActivities->reserve($request, 'fan_post_create', $validated['request_key'], [
-                    'idol_idx' => (int) $validated['idol_idx'], 'title' => $validated['title'], 'content' => $validated['content'] ?? null,
+                    'idol_idx' => isset($validated['idol_idx']) ? (int) $validated['idol_idx'] : null, 'title' => $validated['title'], 'content' => $validated['content'] ?? null,
                     'language_code' => $validated['language_code'], 'media_type' => $mediaType, 'youtube_id' => $youtubeId,
                     'image_hash' => $imageHash, 'tags' => $tags->all(), 'auto_distribute' => $autoDistribute,
                 ]) : null;
@@ -159,7 +161,7 @@ class FanPostController extends Controller
                 abort_if($activityMember === null, 422, '사용할 수 있는 활성 더미 회원이 없습니다.');
                 $createdAt = now('UTC');
                 $postIdx = DB::table('fan_posts')->insertGetId([
-                    'idol_idx' => $validated['idol_idx'], 'member_idx' => $activityMember->idx,
+                    'idol_idx' => $validated['idol_idx'] ?? null, 'member_idx' => $activityMember->idx,
                     'actor_member_idx' => $actor->idx, 'title' => $validated['title'],
                     'language_code' => $validated['language_code'],
                     'media_type' => $mediaType,
@@ -291,7 +293,7 @@ class FanPostController extends Controller
     public function edit(Request $request, string $idx)
     {
         $member = $request->attributes->get('activityMember');
-        $post = DB::table('fan_posts as post')->join('idols as idol', 'idol.idx', '=', 'post.idol_idx')
+        $post = DB::table('fan_posts as post')->leftJoin('idols as idol', 'idol.idx', '=', 'post.idol_idx')
             ->where('post.idx', $idx)->where('post.member_idx', $member->idx)->whereNull('post.deleted_at')
             ->first([
                 'post.idx', 'post.idol_idx', 'post.title', 'post.content', 'post.language_code',
@@ -412,9 +414,9 @@ class FanPostController extends Controller
     {
         $record = DB::table('fan_posts as post')
             ->join('members as member', 'member.idx', '=', 'post.member_idx')
-            ->join('idols as idol', 'idol.idx', '=', 'post.idol_idx')
+            ->leftJoin('idols as idol', 'idol.idx', '=', 'post.idol_idx')
             ->where('post.idx', $idx)->whereNull('post.deleted_at')
-            ->where('idol.status', 'active')->where('member.member_level', '>', 0)
+            ->where(fn ($query) => $query->whereNull('post.idol_idx')->orWhere('idol.status', 'active'))->where('member.member_level', '>', 0)
             ->where('member.status', 'active')->whereNull('member.deleted_at')
             ->first(['post.idx', 'post.idol_idx', 'post.status', 'post.title', 'post.language_code', 'post.media_type', 'post.image_path', 'post.youtube_video_id',
                 'post.content', 'post.view_count', DB::raw('COALESCE(post.published_at, post.created_at) as published_at'), 'member.idx as author_idx',
@@ -427,7 +429,7 @@ class FanPostController extends Controller
 
         $recommendationCounts = $this->recommendationCounts($idx);
         $post = [
-            'idx' => (int) $record->idx, 'idol_idx' => (int) $record->idol_idx,
+            'idx' => (int) $record->idx, 'idol_idx' => $record->idol_idx === null ? null : (int) $record->idol_idx,
             'title' => $record->title, 'body' => $record->content, 'language_code' => $record->language_code,
             'country_name' => \App\Support\Countries::localizedName($record->country_code, app()->getLocale()), 'media_type' => $record->media_type,
             'image_url' => \App\Support\ManagedImageStorage::publicUrl($record->image_path),
@@ -451,10 +453,10 @@ class FanPostController extends Controller
 
         $morePosts = $fanPostList->byAuthor((int) $record->author_idx, (int) $idx);
         $trendingPosts = DB::table('fan_posts as trending')
-                ->join('idols as trending_idol', 'trending_idol.idx', '=', 'trending.idol_idx')
+                ->leftJoin('idols as trending_idol', 'trending_idol.idx', '=', 'trending.idol_idx')
                 ->join('members as trending_member', 'trending_member.idx', '=', 'trending.member_idx')
                 ->where('trending.idx', '<>', $idx)->where('trending.status', 'published')->whereNull('trending.deleted_at')
-                ->where('trending_idol.status', 'active')->where('trending_member.member_level', '>', 0)
+                ->where(fn ($query) => $query->whereNull('trending.idol_idx')->orWhere('trending_idol.status', 'active'))->where('trending_member.member_level', '>', 0)
                 ->where('trending_member.status', 'active')->whereNull('trending_member.deleted_at')
                 ->where(function ($query): void {
                     $query->where(fn ($images) => $images->where('trending.media_type', 'image')->whereNotNull('trending.image_path')->where('trending.image_path', '<>', ''))
@@ -478,7 +480,7 @@ class FanPostController extends Controller
         if (!in_array($fanPostSort, ['latest', 'monthly_liked', 'liked', 'commented'], true)) {
             $fanPostSort = 'latest';
         }
-        $posts = $fanPostList->forIdol((int) $post['idol_idx'], $fanPostSort);
+        $posts = $post['idol_idx'] === null ? $fanPostList->forOther($fanPostSort) : $fanPostList->forIdol($post['idol_idx'], $fanPostSort);
 
         $commentsPage = filter_var($request->query('comments_page', 1), FILTER_VALIDATE_INT, [
             'options' => ['min_range' => 1],
@@ -532,11 +534,12 @@ class FanPostController extends Controller
                 ->where('idx', $idx)
                 ->where('status', 'published')
                 ->whereNull('deleted_at')
-                ->whereExists(function ($query) {
-                    $query->selectRaw('1')
-                        ->from('idols')
-                        ->whereColumn('idols.idx', 'fan_posts.idol_idx')
-                        ->where('idols.status', 'active');
+                ->where(function ($query) {
+                    $query->whereNull('idol_idx')->orWhereExists(function ($idolQuery) {
+                        $idolQuery->selectRaw('1')->from('idols')
+                            ->whereColumn('idols.idx', 'fan_posts.idol_idx')
+                            ->where('idols.status', 'active');
+                    });
                 })
                 ->increment('view_count');
 
@@ -625,9 +628,9 @@ class FanPostController extends Controller
 
         $post = DB::table('fan_posts as post')
             ->join('members as member', 'member.idx', '=', 'post.member_idx')
-            ->join('idols as idol', 'idol.idx', '=', 'post.idol_idx')
+            ->leftJoin('idols as idol', 'idol.idx', '=', 'post.idol_idx')
             ->where('post.idx', $idx)->where('post.status', 'published')->whereNull('post.deleted_at')
-            ->where('idol.status', 'active')->where('member.member_level', '>', 0)
+            ->where(fn ($query) => $query->whereNull('post.idol_idx')->orWhere('idol.status', 'active'))->where('member.member_level', '>', 0)
             ->where('member.status', 'active')->whereNull('member.deleted_at')
             ->first(['post.title', 'post.content', 'post.language_code']);
 
@@ -694,9 +697,9 @@ class FanPostController extends Controller
             $saved = DB::transaction(function () use ($idx, $targetLanguage, $currentSourceHash, $translated): bool {
                 $currentPost = DB::table('fan_posts as post')
                     ->join('members as member', 'member.idx', '=', 'post.member_idx')
-                    ->join('idols as idol', 'idol.idx', '=', 'post.idol_idx')
+                    ->leftJoin('idols as idol', 'idol.idx', '=', 'post.idol_idx')
                     ->where('post.idx', $idx)->where('post.status', 'published')->whereNull('post.deleted_at')
-                    ->where('idol.status', 'active')->where('member.member_level', '>', 0)
+                    ->where(fn ($query) => $query->whereNull('post.idol_idx')->orWhere('idol.status', 'active'))->where('member.member_level', '>', 0)
                     ->where('member.status', 'active')->whereNull('member.deleted_at')
                     ->lockForUpdate()->first(['post.title', 'post.content']);
 
@@ -838,13 +841,13 @@ class FanPostController extends Controller
             ->join('fan_posts as post', 'post.idx', '=', 'comment.fan_post_idx')
             ->join('members as comment_author', 'comment_author.idx', '=', 'comment.member_idx')
             ->join('members as author', 'author.idx', '=', 'post.member_idx')
-            ->join('idols as idol', 'idol.idx', '=', 'post.idol_idx')
+            ->leftJoin('idols as idol', 'idol.idx', '=', 'post.idol_idx')
             ->where('comment.idx', $commentIdx)->where('comment.fan_post_idx', $idx)
             ->where('comment.status', 'published')->whereNull('comment.deleted_at')
             ->where('comment_author.member_level', '>', 0)->where('comment_author.status', 'active')->whereNull('comment_author.deleted_at')
             ->where('post.status', 'published')->whereNull('post.deleted_at')
             ->where('author.member_level', '>', 0)->where('author.status', 'active')->whereNull('author.deleted_at')
-            ->where('idol.status', 'active');
+            ->where(fn ($query) => $query->whereNull('post.idol_idx')->orWhere('idol.status', 'active'));
     }
 
     private function validCommentTranslation(string $commentIdx, string $targetLanguage, string $sourceHash): ?object
@@ -1080,8 +1083,8 @@ class FanPostController extends Controller
                 ->lockForUpdate()->first(['idx', 'member_code', 'nickname', 'profile_image_path', 'member_level', 'is_dummy', 'heart_balance']);
             abort_if($currentMember === null, 403);
 
-            $post = DB::table('fan_posts as p')->join('idols as i', 'i.idx', '=', 'p.idol_idx')->where('p.idx', $idx)
-                ->where('p.status', 'published')->whereNull('p.deleted_at')->where('i.status', 'active')
+            $post = DB::table('fan_posts as p')->leftJoin('idols as i', 'i.idx', '=', 'p.idol_idx')->where('p.idx', $idx)
+                ->where('p.status', 'published')->whereNull('p.deleted_at')->where(fn ($query) => $query->whereNull('p.idol_idx')->orWhere('i.status', 'active'))
                 ->lockForUpdate()->first(['p.idx']);
             if ($post === null) {
                 return ['error' => __('ui.fan_post_not_found'), 'status' => 404];
@@ -1289,8 +1292,8 @@ class FanPostController extends Controller
             'details' => ['nullable', 'string', 'max:2000', 'required_if:reason,other'],
         ]);
 
-        $post = DB::table('fan_posts as p')->join('idols as i', 'i.idx', '=', 'p.idol_idx')->where('p.idx', $idx)
-            ->where('p.status', 'published')->whereNull('p.deleted_at')->where('i.status', 'active')
+        $post = DB::table('fan_posts as p')->leftJoin('idols as i', 'i.idx', '=', 'p.idol_idx')->where('p.idx', $idx)
+            ->where('p.status', 'published')->whereNull('p.deleted_at')->where(fn ($query) => $query->whereNull('p.idol_idx')->orWhere('i.status', 'active'))
             ->first(['p.idx', 'p.member_idx']);
         if ($post === null) {
             return response()->json(['success' => false, 'message' => __('ui.fan_post_not_found')], 404);
@@ -1337,13 +1340,13 @@ class FanPostController extends Controller
 
         $comment = DB::table('fan_post_comments as comment')
             ->join('fan_posts as post', 'post.idx', '=', 'comment.fan_post_idx')
-            ->join('idols as idol', 'idol.idx', '=', 'post.idol_idx')
+            ->leftJoin('idols as idol', 'idol.idx', '=', 'post.idol_idx')
             ->join('members as post_author', 'post_author.idx', '=', 'post.member_idx')
             ->join('members as comment_author', 'comment_author.idx', '=', 'comment.member_idx')
             ->where('comment.idx', $commentIdx)->where('comment.fan_post_idx', $idx)
             ->where('comment.status', 'published')->whereNull('comment.deleted_at')
             ->where('post.status', 'published')->whereNull('post.deleted_at')
-            ->where('idol.status', 'active')
+            ->where(fn ($query) => $query->whereNull('post.idol_idx')->orWhere('idol.status', 'active'))
             ->where('post_author.member_level', '>', 0)->where('post_author.status', 'active')->whereNull('post_author.deleted_at')
             ->where('comment_author.member_level', '>', 0)->where('comment_author.status', 'active')->whereNull('comment_author.deleted_at')
             ->first(['comment.idx', 'comment.member_idx']);
@@ -1408,8 +1411,8 @@ class FanPostController extends Controller
             }
             $activityMember = $reservation ? $randomActivities->member($reservation) : $member;
             abort_if($activityMember === null, 422, '사용할 수 있는 활성 더미 회원이 없습니다.');
-            $post = DB::table('fan_posts as p')->join('idols as i', 'i.idx', '=', 'p.idol_idx')->where('p.idx', $idx)
-                ->where('p.status', 'published')->whereNull('p.deleted_at')->where('i.status', 'active')
+            $post = DB::table('fan_posts as p')->leftJoin('idols as i', 'i.idx', '=', 'p.idol_idx')->where('p.idx', $idx)
+                ->where('p.status', 'published')->whereNull('p.deleted_at')->where(fn ($query) => $query->whereNull('p.idol_idx')->orWhere('i.status', 'active'))
                 ->lockForUpdate()->first(['p.idx', 'p.member_idx']);
             if ($post === null) {
                 return null;

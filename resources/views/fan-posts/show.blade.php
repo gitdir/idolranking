@@ -81,7 +81,7 @@
                             data-endpoint="{{ route('fan-post.report', ['idx' => $post['idx']]) }}" data-report-title="{{ __('ui.report_fan_post') }}"
                             data-signed-in="{{ request()->attributes->get('currentMember') ? 'true' : 'false' }}"
                             @disabled($isOwnPost) @if ($isOwnPost) title="{{ __('ui.report_own_post_blocked') }}" @endif>
-                            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 21V4m0 1h11l-2 4 2 4H6"/></svg>
+                            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 17V10a5 5 0 0 1 10 0v7M5 17h14v4H5zM12 1v2M4.2 3.7l1.5 1.5M19.8 3.7l-1.5 1.5M1 10h2m18 0h2"/></svg>
                             <span>{{ __('ui.report') }}</span>
                         </button>
                     </div>
@@ -133,7 +133,7 @@
                                             <button class="fan-detail-comment-report" type="button" data-comment-report-open
                                                 data-endpoint="{{ $comment['report_url'] }}" data-report-title="{{ __('ui.report_comment') }}"
                                                 data-signed-in="{{ request()->attributes->get('currentMember') ? 'true' : 'false' }}"
-                                                aria-haspopup="dialog" aria-controls="fan-post-report-modal">{{ __('ui.report') }}</button>
+                                                aria-haspopup="dialog" aria-controls="fan-post-report-modal"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 17V10a5 5 0 0 1 10 0v7M5 17h14v4H5zM12 1v2M4.2 3.7l1.5 1.5M19.8 3.7l-1.5 1.5M1 10h2m18 0h2"/></svg>{{ __('ui.report') }}</button>
                                         @endif
                                     </div>
                                     @if (\App\Support\FanPostLanguages::canonicalCode($comment['language_code'] ?? null) !== null && \App\Support\FanPostLanguages::canonicalCode($comment['language_code'] ?? null) !== app()->getLocale())
@@ -178,9 +178,9 @@
                             <noscript><button type="submit">{{ __('ui.apply') }}</button></noscript>
                         </form>
                         @if (request()->attributes->get('currentMember'))
-                            <a class="idol-detail-create-post" href="{{ route('fan-post.create', ['idol_idx' => $post['idol_idx']]) }}">{{ __('ui.more_idol_fan_posts') }}</a>
+                            <a class="idol-detail-create-post" href="{{ route('fan-post.create', $post['idol_idx'] === null ? ['idol_category' => 'other'] : ['idol_idx' => $post['idol_idx']]) }}">{{ $post['idol_idx'] === null ? __('ui.create_fan_post') : __('ui.more_idol_fan_posts') }}</a>
                         @else
-                            <button class="idol-detail-create-post" type="button" data-sign-in-open aria-haspopup="dialog" aria-controls="sign-in-modal">{{ __('ui.more_idol_fan_posts') }}</button>
+                            <button class="idol-detail-create-post" type="button" data-sign-in-open aria-haspopup="dialog" aria-controls="sign-in-modal">{{ $post['idol_idx'] === null ? __('ui.create_fan_post') : __('ui.more_idol_fan_posts') }}</button>
                         @endif
                     </div>
                 </div>

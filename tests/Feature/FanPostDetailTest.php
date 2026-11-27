@@ -368,6 +368,43 @@ class FanPostDetailTest extends TestCase
         $this->assertStringContainsString('comment.textContent = translated;', file_get_contents(resource_path('js/fan-post-comment-translation.js')));
     }
 
+    public function test_other_fan_post_has_no_idol_and_keeps_detail_edit_reward_and_image_isolation(): void
+    {
+        $this->database();
+        $this->withSession(['member_idx' => 1])->post('/fan-post', [
+            'idol_category' => 'other', 'title' => 'Other community story',
+            'media_type' => 'youtube', 'youtube_url' => 'https://www.youtube.com/watch?v=dQw4w9WgXcQ',
+        ])->assertRedirect();
+
+        $post = DB::table('fan_posts')->first();
+        $this->assertNull($post->idol_idx);
+        DB::table('fan_post_likes')->insert(['fan_post_idx' => $post->idx, 'member_idx' => 1, 'actor_member_idx' => 1, 'created_at' => now()]);
+        $this->assertDatabaseHas('heart_histories', ['operation_key' => 'fan_post_reward:'.$post->idx]);
+        $this->get('/fan-posts?category=other')->assertOk()
+            ->assertSee('href="'.route('fan-post.show', ['idx' => $post->idx]).'"', false);
+        $this->assertSame([], app(\App\Support\PublicFanPostList::class)->forIdol(1, 'liked'));
+        $this->get(route('fan-post.show', ['idx' => $post->idx]))->assertOk()->assertSee('Other community story');
+        $this->withSession(['member_idx' => 1])->get(route('fan-post.edit', ['idx' => $post->idx]))->assertOk();
+        $this->withSession(['member_idx' => 1])->put('/fan-post/'.$post->idx, [
+            'title' => 'Edited other story', 'content' => 'Updated content',
+        ])->assertRedirect();
+        $this->assertSame('Edited other story', DB::table('fan_posts')->value('title'));
+        $this->assertSame([], app(\App\Support\PublicRanking::class)->popularImages(1, 3));
+    }
+
+    public function test_other_rejects_idol_association_and_existing_category_requires_matching_idol(): void
+    {
+        $this->database();
+        $base = ['title' => 'Category validation', 'media_type' => 'text', 'content' => 'Story'];
+        $this->withSession(['member_idx' => 1])->post('/fan-post', $base + [
+            'idol_category' => 'other', 'idol_idx' => 1,
+        ])->assertSessionHasErrors('idol_idx');
+        $this->withSession(['member_idx' => 1])->post('/fan-post', $base + [
+            'idol_category' => 'boy',
+        ])->assertSessionHasErrors('idol_idx');
+        $this->assertSame(0, DB::table('fan_posts')->count());
+    }
+
     public function test_authenticated_member_can_create_a_youtube_fan_post(): void
     {
         $this->database();

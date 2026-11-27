@@ -1,7 +1,7 @@
 <?php
 
 return array (
-  'report_profile_image' => 'Laporkan gambar profil',
+  'report_profile_image' => 'Laporkan gambar',
   'profile_image_already_reported_short' => 'Dilaporkan',
   'profile_image_report_submitted' => 'Laporan hak citra Anda telah dikirimkan.',
   'profile_image_already_reported' => 'Anda sudah melaporkan gambar ini.',

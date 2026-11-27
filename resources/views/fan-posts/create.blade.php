@@ -21,18 +21,18 @@
             <div class="fan-post-create-field idol-request-type-row">
                 <div class="fan-post-create-label">{{ __('ui.request_type') }} <span>*</span></div>
                 <div class="idol-request-type-options" data-idol-category-options data-idol-category-url="{{ route('fan-post.create.idols') }}" data-group-label="{{ __('ui.group_type') }}" data-idol-choose-category="{{ __('quiz.idol_choose_category') }}" data-idol-choose-option="{{ __('quiz.idol_choose_option') }}" data-idol-loading="{{ __('quiz.idol_loading') }}" data-idol-none-available="{{ __('quiz.idol_none_available') }}" data-idol-options-unavailable="{{ __('quiz.idol_options_unavailable') }}">
-                    @foreach (['boy' => __('ui.boy'), 'boy_group' => __('ui.boy_group'), 'girl' => __('ui.girl'), 'girl_group' => __('ui.girl_group')] as $value => $label)
+                    @foreach (['boy' => __('ui.boy'), 'boy_group' => __('ui.boy_group'), 'girl' => __('ui.girl'), 'girl_group' => __('ui.girl_group'), 'other' => __('ui.fan_post_category_other')] as $value => $label)
                         <label><input type="radio" name="idol_category" value="{{ $value }}" @checked($idolCategory === $value) required><span>{{ $label }}</span></label>
                     @endforeach
                 </div>
             </div>
             @endunless
-            <div class="fan-post-create-field">
+            <div class="fan-post-create-field" data-idol-field @if(($editing && $editingPost['idol_idx'] === null) || (!$editing && $idolCategory === 'other')) hidden @endif>
                 <label for="fan-post-idol">{{ __('ui.idol') }} <span>*</span></label>
                 <div>
                     @if($editing)
                         <select id="fan-post-idol" class="fan-post-sort-select" disabled aria-disabled="true">
-                            <option translate="no" selected>{{ $editingPost['idol_name'] }}{{ $editingPost['idol_type'] === 'group' ? ' ('.__('ui.group_type').')' : '' }}</option>
+                            <option translate="no" selected>{{ $editingPost['idol_name'] ?? __('ui.fan_post_category_other') }}{{ $editingPost['idol_type'] === 'group' ? ' ('.__('ui.group_type').')' : '' }}</option>
                         </select>
                         <small>{{ __('ui.fan_post_edit_fields_immutable') }}</small>
                     @else
@@ -42,7 +42,7 @@
                 </div>
             </div>
             @unless($editing)
-            <div data-dependent-fields @if(!$idolCategory || !$selectedIdolIdx) hidden @endif>
+            <div data-dependent-fields @if(!$idolCategory || ($idolCategory !== 'other' && !$selectedIdolIdx)) hidden @endif>
             @endunless
             <div class="fan-post-create-field">
                 <label for="fan-post-title">{{ __('ui.title') }} <span>*</span></label>

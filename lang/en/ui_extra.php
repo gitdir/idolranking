@@ -1,6 +1,7 @@
 <?php
 
 return [
+    'fan_post_category_other' => 'Other',
     'homepage_boy_group_ranking' => 'Boy Group Ranking',
     'homepage_girl_group_ranking' => 'Girl Group Ranking',
     'homepage_ranking_view_all' => 'View All',
