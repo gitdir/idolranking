@@ -544,13 +544,37 @@ html.drawer-open { overflow: hidden; }
 .heart-total svg { color: var(--pink); }
 .heart-vote { width: 36px; height: 36px; display: grid; place-items: center; border: 0; border-radius: 50%; background: white; padding: 8px; color: var(--pink); }
 .heart-vote svg { width: 21px; height: 21px; }
+.ranking-panel .heart-vote svg, .ranking-page .idol-ranking-vote svg, .idol-detail-vote svg { transform-origin: center; animation: ranking-vote-heartbeat 2s ease-in-out infinite; }
+@keyframes ranking-vote-heartbeat {
+    0%, 100% { transform: scale(1); }
+    50% { transform: scale(1.12); }
+}
+@media (prefers-reduced-motion: reduce) {
+    .ranking-panel .heart-vote svg, .ranking-page .idol-ranking-vote svg, .idol-detail-vote svg { animation: none; }
+}
 .ranking-entry--first { grid-template-columns: minmax(0, 1fr) 36px; grid-template-rows: 77px 42px; row-gap: 5px; margin-bottom: 0; }
 .top-post-images { position: relative; grid-column: 1 / -1; grid-row: 1; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 0; overflow: hidden; height: 77px; }
-.top-post-images img { display: block; width: 100%; height: 77px; object-fit: cover; border-radius: 0; margin: 0; }
-.top-post-images img:first-of-type { border-top-left-radius: 5px; border-bottom-left-radius: 5px; }
-.top-post-images img:last-of-type { border-top-right-radius: 5px; border-bottom-right-radius: 5px; }
+.top-post-images > img:not(.idol-ranking-badge) { display: block; width: 100%; height: 77px; object-fit: cover; border-radius: 0; margin: 0; }
 .ranking-entry--first .ranking-member { grid-column: 1; grid-row: 2; }
 .ranking-entry--first .heart-vote { grid-column: 2; grid-row: 2; }
+
+/* Home ranking cards */
+.ranking-panel { background: #fff; border: 1px solid #e8ebf1; border-radius: 16px; box-shadow: 0 8px 22px rgba(20, 35, 66, .07); padding: 18px 20px 20px; }
+.ranking-panel--pink, .ranking-panel--purple { background: #fff; }
+.ranking-panel .ranking-heading { position: relative; padding-bottom: 15px; margin-bottom: 18px; color: #0b214d; }
+.ranking-panel .ranking-heading::after { position: absolute; bottom: 0; left: 0; right: 0; height: 2px; background: linear-gradient(90deg, var(--panel-accent), transparent); content: ''; }
+.ranking-panel .view-all { color: #ff1681; }
+.ranking-panel .ranking-list { gap: 0; }
+.ranking-panel .ranking-entry { padding-block: 7px; }
+.ranking-panel .ranking-entry--first { padding-top: 0; padding-bottom: 12px; grid-template-rows: auto auto; }
+.ranking-panel .top-post-images { width: calc(100% * var(--image-count) / 3); height: auto; aspect-ratio: var(--image-count) / 1; grid-template-columns: repeat(var(--image-count), minmax(0, 1fr)); border-radius: 9px; }
+.ranking-panel .top-post-images > img:not(.idol-ranking-badge) { width: 100%; height: 100%; min-width: 0; }
+.ranking-panel .ranking-list > .ranking-entry + .ranking-entry::before { top: 0; border-top: 1px solid #edf0f4; }
+.ranking-panel .ranking-member h3 { color: #0b214d; font-weight: 800; }
+.ranking-panel .heart-vote { border: 1px solid #ffe1ed; background: linear-gradient(#fff, #fff5f9); box-shadow: 0 2px 4px rgba(255, 33, 131, .16); color: #ff1681; cursor: pointer; }
+.ranking-panel .heart-vote:hover, .ranking-panel .heart-vote:focus-visible { outline: 2px solid #ff9ac4; outline-offset: 2px; background: #ffeaf3; }
+.ranking-panel .top-post-images { --badge-size: 34px; --badge-font-size: 20px; --badge-inset: 6px; }
+@media (max-width: 1279px) { .ranking-panel { padding-inline: 12px; } }
 
 .fan-posts { margin-top: 20px; }
 .fan-posts > h2 { font-size: 28px; line-height: 1.3; font-weight: 700; margin: 0 0 9px; letter-spacing: -.6px; }
@@ -909,6 +933,8 @@ a.fan-post-image-link, a.post-statistics, .post-preview a { cursor: pointer; tex
 .idol-ranking-badge--1 { background: #ffdb68; color: #6b4900; }
 .idol-ranking-badge--2 { background: #dce3e9; color: #465568; }
 .idol-ranking-badge--3 { background: #dca77d; color: #613c21; }
+img.idol-ranking-badge { display: block; height: auto; aspect-ratio: 536 / 686; border-radius: 0; background: none; object-fit: contain; }
+.ranking-panel img.idol-ranking-badge { top: 1px; left: 1px; width: calc(var(--badge-size) * .7); }
 .idol-ranking-info { display: flex; flex-direction: column; flex: 1; gap: 12px; padding: 14px 12px; min-width: 0; }
 .idol-ranking-name { display: flex; align-items: baseline; justify-content: space-between; gap: 6px 10px; flex-wrap: wrap; }
 .idol-ranking-name h2 { margin: 0; font-size: 16px; font-weight: 700; line-height: 1.35; overflow-wrap: anywhere; }
@@ -956,7 +982,8 @@ a.fan-post-image-link, a.post-statistics, .post-preview a { cursor: pointer; tex
 .idol-detail-metrics svg { width: 20px; height: 20px; flex-shrink: 0; }
 .detail-crown { color: #dba329; transform: translateY(-1px); }
 .detail-heart { color: var(--pink); }
-.idol-detail-vote { min-height: 44px; }
+.idol-detail-vote { min-height: 46px; font-size: 18px; }
+.idol-detail-vote > svg { flex: 0 0 26px; width: 26px; height: 26px; }
 .idol-detail-box { border: 1px solid #e0e8f3; border-radius: 8px; padding: 20px; background: white; }
 .idol-detail-box h2 { margin: 0 0 18px; font-size: 21px; line-height: 1.3; font-weight: 700; }
 .idol-profile table { width: 100%; border-collapse: collapse; table-layout: fixed; font-size: 13px; }
@@ -2243,6 +2270,7 @@ html.invite-friends-open { overflow: hidden; }
 .idol-request-create [hidden] { display: none !important; }
 .social-link-fields { display: grid; justify-items: start; gap: 8px; min-width: 0; }
 .social-link-fields-label { color: #385487; font-size: 13px; font-weight: 700; }
+.idol-request-create .social-link-fields-label { color: #10245a; font-size: 14px; font-weight: 800; }
 .social-link-items { display: grid; gap: 8px; width: 100%; }
 .social-link-input-row { display: flex; align-items: center; gap: 8px; min-width: 0; }
 .social-link-input-row input { flex: 1 1 auto; min-width: 0; min-height: 42px; padding: 9px 12px; border: 1px solid #d8e0f2; border-radius: 7px; background: #fff; color: #17346f; font: inherit; }

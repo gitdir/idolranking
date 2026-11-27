@@ -439,7 +439,7 @@ class FanPostController extends Controller
             'recommendations' => $recommendationCounts['lifetime'],
             'monthly_recommendations' => $recommendationCounts['monthly'],
             'tags' => DB::table('fan_post_tags')->where('fan_post_idx', $idx)->orderBy('idx')->pluck('tag')->all(),
-            'author' => ['idx' => (int) $record->author_idx, 'member_code' => $record->member_code,
+            'author' => ['member_code' => $record->member_code,
                 'nickname' => $record->nickname, 'image_url' => $record->profile_image_path,
                 'language_code' => $record->language_code,
                 'country_code' => $record->country_code,
@@ -503,7 +503,6 @@ class FanPostController extends Controller
                 'comment_reward.idx as reward_history_idx', 'comment_reward.amount as reward_amount'])
             ->map(fn ($comment) => [
                 'idx' => (int) $comment->idx,
-                'member_idx' => (int) $comment->member_idx,
                 'member_code' => $comment->member_code,
                 'nickname' => $comment->nickname,
                 'country_code' => $comment->country_code,
@@ -554,7 +553,7 @@ class FanPostController extends Controller
             'isRecommended' => $isRecommended, 'comments' => $comments, 'fanPostSort' => $fanPostSort,
             'recommendationRequestKey' => bin2hex(random_bytes(32)),
             'randomDummyMode' => app(RandomDummyActivity::class)->enabled($request),
-            'isOwnPost' => $member !== null && (int) $post['author']['idx'] === (int) $member->idx,
+            'isOwnPost' => $member !== null && (int) $record->author_idx === (int) $member->idx,
             'databasePost' => true,
             'seo' => [
                 'title' => $post['title'].' | IDOL RANKING',

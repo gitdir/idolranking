@@ -17,7 +17,7 @@ class HeartVotingTest extends TestCase
         DB::statement('CREATE TABLE admin_activity_logs (idx INTEGER PRIMARY KEY AUTOINCREMENT, actor_member_idx INTEGER, action TEXT, target_type TEXT, target_idx INTEGER, reason TEXT, summary TEXT, created_at TEXT)');
         DB::statement("CREATE TABLE admin_dummy_activity_requests (idx INTEGER PRIMARY KEY AUTOINCREMENT, actor_member_idx INTEGER, member_idx INTEGER, action_code TEXT, request_key TEXT, payload_hash TEXT, result_type TEXT, result_idx INTEGER, created_at TEXT, completed_at TEXT, updated_at TEXT, UNIQUE(actor_member_idx, action_code, request_key))");
         DB::statement("CREATE TABLE idols (idx INTEGER PRIMARY KEY, name TEXT, type TEXT, status TEXT DEFAULT 'active')");
-        DB::statement("CREATE TABLE idol_votes (idx INTEGER PRIMARY KEY AUTOINCREMENT, member_idx INTEGER, actor_member_idx INTEGER, idol_idx INTEGER, heart_amount INTEGER, request_key TEXT, created_at TEXT, UNIQUE (member_idx, request_key))");
+        DB::statement("CREATE TABLE idol_votes (idx INTEGER PRIMARY KEY AUTOINCREMENT, member_idx INTEGER, actor_member_idx INTEGER, idol_idx INTEGER, heart_amount INTEGER, country_code_at_vote TEXT, request_key TEXT, created_at TEXT, UNIQUE (member_idx, request_key))");
         DB::statement("CREATE TABLE heart_histories (idx INTEGER PRIMARY KEY AUTOINCREMENT, member_idx INTEGER, amount INTEGER, balance_after INTEGER, reason TEXT, vote_idx INTEGER UNIQUE, comment_idx INTEGER, reversal_of_history_idx INTEGER, operation_key TEXT, actor_member_idx INTEGER, memo TEXT, created_at TEXT, UNIQUE (member_idx, operation_key))");
 
         DB::table('members')->insert([
@@ -122,6 +122,8 @@ class HeartVotingTest extends TestCase
     public function test_admin_dummy_mode_votes_as_a_dummy_and_can_be_disabled(): void
     {
         $this->database();
+        DB::table('members')->where('idx', 2)->update(['country_code' => 'US']);
+        DB::table('members')->where('idx', 3)->update(['country_code' => 'KR']);
 
         $this->withSession(['member_idx' => 2])->postJson('/votes', [
             'idol_idx' => 10, 'heart_amount' => 5, 'request_key' => 'vote-request-admin-dummy-0001',
@@ -138,9 +140,11 @@ class HeartVotingTest extends TestCase
 
         $this->assertSame(35, (int) DB::table('members')->where('idx', 2)->value('heart_balance'));
         $this->assertSame(20, (int) DB::table('members')->where('idx', 3)->value('heart_balance'));
-        $this->assertDatabaseHas('idol_votes', ['member_idx' => 3, 'actor_member_idx' => 2, 'request_key' => 'vote-request-admin-dummy-0001']);
+        $this->assertDatabaseHas('idol_votes', ['member_idx' => 3, 'actor_member_idx' => 2, 'country_code_at_vote' => 'KR', 'request_key' => 'vote-request-admin-dummy-0001']);
         $this->assertDatabaseHas('idol_votes', ['member_idx' => 2, 'actor_member_idx' => 2, 'request_key' => 'vote-request-admin-self-0001']);
         $this->assertDatabaseHas('idol_votes', ['member_idx' => 3, 'actor_member_idx' => 3]);
+        DB::table('members')->where('idx', 3)->update(['country_code' => 'JP']);
+        $this->assertSame('KR', DB::table('idol_votes')->where('request_key', 'vote-request-admin-dummy-0001')->value('country_code_at_vote'));
     }
 
     public function test_admin_dummy_checkbox_randomly_selects_and_tops_up_a_zero_balance_dummy_once(): void

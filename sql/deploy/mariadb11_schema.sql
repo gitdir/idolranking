@@ -279,6 +279,7 @@ CREATE TABLE `idol_votes` (
   `actor_member_idx` bigint unsigned DEFAULT NULL,
   `idol_idx` bigint unsigned NOT NULL COMMENT '투표 대상 개인 또는 그룹',
   `heart_amount` bigint unsigned NOT NULL COMMENT '실제 사용한 하트 수; 랭킹은 대상별 합계',
+  `country_code_at_vote` char(2) CHARACTER SET ascii COLLATE ascii_bin DEFAULT NULL,
   `request_key` varchar(128) CHARACTER SET ascii COLLATE ascii_bin NOT NULL COMMENT '회원별 동일 투표 요청 재전송 식별키',
   `created_at` datetime(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6) COMMENT '투표 완료 시각',
   PRIMARY KEY (`idx`),

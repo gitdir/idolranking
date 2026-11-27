@@ -12,7 +12,7 @@
             <li class="ranking-entry {{ $loop->first ? 'ranking-entry--first' : '' }}">
                 @if ($loop->first)
                     {{-- Only real public Fan Post media is shown in this image strip. --}}
-                    <a class="top-post-images" href="{{ $detailUrl }}" aria-label="{{ __('ui.popular_rank_details', ['name' => $member[0]]) }}">
+                    <a class="top-post-images" style="--image-count: {{ max(1, min(3, count($panel['images']))) }}" href="{{ $detailUrl }}" aria-label="{{ __('ui.popular_rank_details', ['name' => $member[0]]) }}">
                         @foreach ($panel['images'] as $image)
                             <img src="{{ $image }}" width="320" height="320" alt="{{ __('ui.fan_post_image_for', ['name' => $member[0]]) }}" loading="lazy">
                         @endforeach

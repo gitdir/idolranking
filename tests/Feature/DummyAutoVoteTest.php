@@ -16,7 +16,7 @@ class DummyAutoVoteTest extends TestCase
 
         DB::statement("CREATE TABLE members (idx INTEGER PRIMARY KEY, member_code TEXT, email TEXT, nickname TEXT, country_code TEXT, profile_image_path TEXT, heart_balance INTEGER DEFAULT 0, member_level INTEGER DEFAULT 1, is_dummy INTEGER DEFAULT 0, status TEXT DEFAULT 'active', deleted_at TEXT, favorite_idol_1_idx INTEGER, favorite_idol_2_idx INTEGER, favorite_idol_3_idx INTEGER, created_by_member_idx INTEGER, created_at TEXT, updated_at TEXT)");
         DB::statement("CREATE TABLE idols (idx INTEGER PRIMARY KEY, name TEXT, type TEXT DEFAULT 'individual', status TEXT DEFAULT 'active')");
-        DB::statement("CREATE TABLE idol_votes (idx INTEGER PRIMARY KEY AUTOINCREMENT, member_idx INTEGER, actor_member_idx INTEGER, idol_idx INTEGER, heart_amount INTEGER, request_key TEXT, created_at TEXT, UNIQUE(member_idx, request_key))");
+        DB::statement("CREATE TABLE idol_votes (idx INTEGER PRIMARY KEY AUTOINCREMENT, member_idx INTEGER, actor_member_idx INTEGER, idol_idx INTEGER, heart_amount INTEGER, country_code_at_vote TEXT, request_key TEXT, created_at TEXT, UNIQUE(member_idx, request_key))");
         DB::statement("CREATE TABLE heart_histories (idx INTEGER PRIMARY KEY AUTOINCREMENT, member_idx INTEGER, amount INTEGER, balance_after INTEGER, reason TEXT, vote_idx INTEGER, comment_idx INTEGER, reversal_of_history_idx INTEGER, operation_key TEXT, actor_member_idx INTEGER, memo TEXT, created_at TEXT, UNIQUE(member_idx, operation_key))");
         DB::statement("CREATE TABLE site_settings (setting_key TEXT PRIMARY KEY, setting_value TEXT, updated_by_member_idx INTEGER, updated_at TEXT)");
         DB::statement("CREATE TABLE admin_activity_logs (idx INTEGER PRIMARY KEY AUTOINCREMENT, actor_member_idx INTEGER, action TEXT, target_type TEXT, target_idx INTEGER, reason TEXT, summary TEXT, created_at TEXT)");
@@ -36,6 +36,7 @@ class DummyAutoVoteTest extends TestCase
     public function test_only_enabled_eligible_dummy_votes_once_per_interval_with_audited_hearts(): void
     {
         $this->database();
+        DB::table('members')->where('idx', 2)->update(['country_code' => 'KR']);
         $this->travelTo(\Illuminate\Support\Carbon::parse('2026-10-28 00:00:00', 'UTC'));
 
         Artisan::call('dummy-members:auto-vote');
@@ -51,6 +52,7 @@ class DummyAutoVoteTest extends TestCase
         $vote = DB::table('idol_votes')->first();
         $this->assertNotNull($vote);
         $this->assertSame(2, (int) $vote->member_idx);
+        $this->assertSame('KR', $vote->country_code_at_vote);
         $this->assertSame(10, (int) $vote->idol_idx);
         $this->assertGreaterThanOrEqual(10, (int) $vote->heart_amount);
         $this->assertLessThanOrEqual(50, (int) $vote->heart_amount);

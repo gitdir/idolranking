@@ -60,7 +60,7 @@ class AutoVoteForDummyMembers extends Command
 
             $member = DB::table('members')->where('idx', $candidate->idx)->where('member_level', 1)
                 ->where('is_dummy', 1)->where('status', 'active')->whereNull('deleted_at')
-                ->lockForUpdate()->first(['idx', 'heart_balance', 'favorite_idol_1_idx', 'favorite_idol_2_idx', 'favorite_idol_3_idx']);
+                ->lockForUpdate()->first(['idx', 'heart_balance', 'country_code', 'favorite_idol_1_idx', 'favorite_idol_2_idx', 'favorite_idol_3_idx']);
             if ($member === null) {
                 return;
             }
@@ -94,6 +94,7 @@ class AutoVoteForDummyMembers extends Command
             $voteIdx = DB::table('idol_votes')->insertGetId([
                 'member_idx' => $member->idx, 'actor_member_idx' => null,
                 'idol_idx' => $idolIdx, 'heart_amount' => $amount,
+                'country_code_at_vote' => $member->country_code,
                 'request_key' => 'auto-dummy-vote-'.$minute, 'created_at' => $now,
             ]);
             $balanceAfter = $balance - $amount;

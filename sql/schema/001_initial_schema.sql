@@ -161,6 +161,7 @@ CREATE TABLE idol_votes (
     member_idx BIGINT UNSIGNED NOT NULL COMMENT '직접 로그인해 하트를 사용한 회원',
     idol_idx BIGINT UNSIGNED NOT NULL COMMENT '투표 대상 개인 또는 그룹',
     heart_amount BIGINT UNSIGNED NOT NULL COMMENT '실제 사용한 하트 수; 랭킹은 대상별 합계',
+    country_code_at_vote CHAR(2) CHARACTER SET ascii COLLATE ascii_bin NULL,
     request_key VARCHAR(128) CHARACTER SET ascii COLLATE ascii_bin NOT NULL COMMENT '회원별 동일 투표 요청 재전송 식별키',
     created_at DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6) COMMENT '투표 완료 시각',
     PRIMARY KEY (idx),

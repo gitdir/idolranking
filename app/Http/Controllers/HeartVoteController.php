@@ -55,7 +55,7 @@ class HeartVoteController extends Controller
             } else {
                 $memberQuery->where('member_level', '>', 0);
             }
-            $member = $memberQuery->lockForUpdate()->first(['idx', 'heart_balance']);
+            $member = $memberQuery->lockForUpdate()->first(['idx', 'heart_balance', 'country_code']);
 
             if ($member === null) {
                 abort(401, __('messages.vote_sign_in'));
@@ -120,6 +120,7 @@ class HeartVoteController extends Controller
                 'idol_idx' => $idolIdx,
                 'heart_amount' => $heartAmount,
                 'request_key' => $requestKey,
+                'country_code_at_vote' => $member->country_code,
                 'created_at' => $createdAt,
             ]);
 
