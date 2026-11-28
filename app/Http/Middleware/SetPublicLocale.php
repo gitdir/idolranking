@@ -13,7 +13,10 @@ class SetPublicLocale
     public function handle(Request $request, Closure $next)
     {
         if (! $request->session()->has('locale')) {
-            $request->session()->put('locale', $this->localeForIp($request->ip()));
+            $detectedLocale = $this->localeForIp($request->ip());
+            if ($detectedLocale !== null) {
+                $request->session()->put('locale', $detectedLocale);
+            }
         }
 
         $locale = $request->routeIs('admin.*') ? 'ko' : $request->session()->get('locale', 'en');
@@ -22,13 +25,14 @@ class SetPublicLocale
         return $next($request);
     }
 
-    private function localeForIp(?string $ip): string
+    private function localeForIp(?string $ip): ?string
     {
         if (! is_string($ip) || ! filter_var($ip, FILTER_VALIDATE_IP, FILTER_FLAG_NO_PRIV_RANGE | FILTER_FLAG_NO_RES_RANGE)) {
-            return 'en';
+            return null;
         }
 
-        $countries = ['KR' => 'ko', 'JP' => 'ja', 'ES' => 'es', 'ID' => 'id', 'BR' => 'pt-BR', 'CN' => 'zh-CN', 'US' => 'en'];
+        $countries = ['KR' => 'ko', 'JP' => 'ja', 'ID' => 'id', 'BR' => 'pt-BR', 'CN' => 'zh-CN'];
+        $spanishCountries = ['AR', 'BO', 'CL', 'CO', 'CR', 'CU', 'DO', 'EC', 'ES', 'GQ', 'GT', 'HN', 'MX', 'NI', 'PA', 'PE', 'PR', 'PY', 'SV', 'UY', 'VE'];
 
         try {
             $country = Cache::remember('locale_country:'.hash('sha256', $ip), now()->addDay(), function () use ($ip) {
@@ -39,9 +43,13 @@ class SetPublicLocale
             });
         } catch (\Throwable $exception) {
             report($exception);
-            return 'en';
+            return null;
         }
 
-        return $countries[$country] ?? 'en';
+        if (! is_string($country) || ! preg_match('/^[A-Z]{2}$/', $country)) {
+            return null;
+        }
+
+        return $countries[$country] ?? (in_array($country, $spanishCountries, true) ? 'es' : 'en');
     }
 }

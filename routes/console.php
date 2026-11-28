@@ -37,8 +37,8 @@ Schedule::command('fan-posts:publish-queued')->everyMinute()->name('fan-post-dis
 // 공개되지 않았거나 삭제된 글, 비활성 아이돌의 글은 제외하며 실제 처리 로직은 명령 클래스에 있습니다.
 Schedule::command('fan-posts:boost-views')->everyMinute()->name('fan-post-view-boost')->withoutOverlapping();
 
-// 매분 설정을 확인합니다. 자동투표가 켜져 있으면 설정한 간격마다 최애가 등록된 활성 더미 계정 한 명이 투표합니다.
-// 등록된 활성 최애 중 한 명에게 설정 범위의 하트를 투표하며, 잔액 부족분은 지급 이력에 남깁니다.
+// 매분 설정을 확인합니다. 자동투표가 켜져 있으면 설정한 간격마다 활성 더미 계정 한 명이 투표합니다.
+// 활성 아이돌 또는 그룹 중 무작위 한 명에게 설정 범위의 하트를 투표하며, 잔액 부족분은 지급 이력에 남깁니다.
 // 실제 처리 로직은 app/Console/Commands/AutoVoteForDummyMembers.php에 있습니다.
 Schedule::command('dummy-members:auto-vote')->everyMinute()->name('dummy-member-auto-vote')->withoutOverlapping();
 

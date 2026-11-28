@@ -33,10 +33,13 @@ class DummyAutoVoteTest extends TestCase
         ]);
     }
 
-    public function test_only_enabled_eligible_dummy_votes_once_per_interval_with_audited_hearts(): void
+    public function test_enabled_dummy_without_favorite_votes_for_random_active_idol_once_per_interval(): void
     {
         $this->database();
         DB::table('members')->where('idx', 2)->update(['country_code' => 'KR']);
+        DB::table('members')->where('idx', 2)->update(['favorite_idol_1_idx' => null]);
+        DB::table('members')->where('idx', 3)->update(['status' => 'inactive']);
+        DB::table('idols')->insert(['idx' => 12, 'name' => 'Inactive', 'type' => 'individual', 'status' => 'inactive']);
         $this->travelTo(\Illuminate\Support\Carbon::parse('2026-10-28 00:00:00', 'UTC'));
 
         Artisan::call('dummy-members:auto-vote');
@@ -53,7 +56,7 @@ class DummyAutoVoteTest extends TestCase
         $this->assertNotNull($vote);
         $this->assertSame(2, (int) $vote->member_idx);
         $this->assertSame('KR', $vote->country_code_at_vote);
-        $this->assertSame(10, (int) $vote->idol_idx);
+        $this->assertContains((int) $vote->idol_idx, [10, 11]);
         $this->assertGreaterThanOrEqual(10, (int) $vote->heart_amount);
         $this->assertLessThanOrEqual(50, (int) $vote->heart_amount);
         $this->assertSame(0, (int) DB::table('members')->where('idx', 2)->value('heart_balance'));

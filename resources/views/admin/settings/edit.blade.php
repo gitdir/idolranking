@@ -88,7 +88,7 @@
                 팬포스트 조회수 자동 증가 사용
             </label>
             <h2>더미 계정 자동투표</h2>
-            <p>최애 아이돌이 등록된 활성 더미 계정 한 명을 무작위로 골라, 등록된 최애 중 활성 아이돌 한 명에게 투표합니다. 하트가 부족하면 부족분만 지급하고 이력에 남깁니다.</p>
+            <p>활성 더미 계정 한 명과 활성 아이돌 또는 그룹 한 명을 각각 무작위로 골라 투표합니다. 하트가 부족하면 부족분만 지급하고 이력에 남깁니다.</p>
             <label class="admin-check">
                 <input type="hidden" name="dummy_auto_vote_enabled" value="0">
                 <input type="checkbox" name="dummy_auto_vote_enabled" value="1" @checked((string) old('dummy_auto_vote_enabled', $settings['dummy_auto_vote_enabled'] ?? '0') === '1')>

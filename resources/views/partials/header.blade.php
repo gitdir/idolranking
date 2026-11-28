@@ -197,6 +197,14 @@
                             @if ($isHeaderAdmin)
                                 @include('partials.acting-dummy-selector', ['location' => 'desktop', 'dummyMembers' => $dummyMembers, 'selectedDummyIdx' => $selectedDummyIdx])
                             @endif
+                            <a class="header-account-action" href="{{ route('idol-registration.create') }}" role="menuitem">
+                                <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="8" r="4"/><path d="M4 21c.7-4.2 3.4-6.3 8-6.3s7.3 2.1 8 6.3M19 3v6m-3-3h6"/></svg>
+                                <span translate="no">{{ __('ui.register_idol') }}</span>
+                            </a>
+                            <button class="header-account-action" type="button" data-invite-friends-open data-signed-in="true" aria-haspopup="dialog" aria-controls="invite-friends-dialog" role="menuitem">
+                                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 12v9H4v-9m-2-5h20v5H2Zm10 0v14m0-14H7.5a2.5 2.5 0 1 1 0-5C11 3 12 7 12 7Zm0 0h4.5a2.5 2.5 0 1 0 0-5C13 3 12 7 12 7Z"/></svg>
+                                <span translate="no">{{ __('ui.invite_friends') }}</span>
+                            </button>
                             <a class="header-account-action" href="{{ route('my-page') }}" role="menuitem">
                                 <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="8" r="4"/><path d="M4 21c.7-4.2 3.4-6.3 8-6.3s7.3 2.1 8 6.3"/></svg>
                                 <span translate="no">{{ __('ui.my_page') }}</span>
@@ -213,6 +221,14 @@
                             <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="8" r="4"/><path d="M4 21c.7-4.2 3.4-6.3 8-6.3s7.3 2.1 8 6.3"/></svg>
                         </button>
                         <div id="guest-account-menu" class="header-account-menu guest-account-menu" role="menu" hidden>
+                            <button class="header-account-action" type="button" data-sign-in-open data-sign-in-return-url="{{ route('idol-registration.create') }}" role="menuitem">
+                                <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="8" r="4"/><path d="M4 21c.7-4.2 3.4-6.3 8-6.3s7.3 2.1 8 6.3M19 3v6m-3-3h6"/></svg>
+                                <span translate="no">{{ __('ui.register_idol') }}</span>
+                            </button>
+                            <button class="header-account-action" type="button" data-invite-friends-open data-signed-in="false" data-sign-in-open role="menuitem">
+                                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 12v9H4v-9m-2-5h20v5H2Zm10 0v14m0-14H7.5a2.5 2.5 0 1 1 0-5C11 3 12 7 12 7Zm0 0h4.5a2.5 2.5 0 1 0 0-5C13 3 12 7 12 7Z"/></svg>
+                                <span translate="no">{{ __('ui.invite_friends') }}</span>
+                            </button>
                             <button class="header-account-action" type="button" data-sign-in-open aria-haspopup="dialog" aria-controls="sign-in-modal" role="menuitem">
                                 <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M14 8l4 4-4 4m4-4H8m2 7v2H4V3h6v2"/></svg>
                                 <span translate="no">{{ __('ui.sign_in') }}</span>

@@ -44,37 +44,25 @@ class AutoVoteForDummyMembers extends Command
 
             $candidate = DB::table('members')->where('member_level', 1)->where('is_dummy', 1)
                 ->where('status', 'active')->whereNull('deleted_at')
-                ->where(function ($query): void {
-                    foreach ([1, 2, 3] as $rank) {
-                        $query->orWhereExists(function ($idol) use ($rank): void {
-                            $idol->selectRaw('1')->from('idols')
-                                ->whereColumn('idols.idx', 'members.favorite_idol_'.$rank.'_idx')
-                                ->where('idols.status', 'active')
-                                ->whereIn('idols.type', ['individual', 'group']);
-                        });
-                    }
-                })->inRandomOrder()->first(['idx']);
+                ->inRandomOrder()->first(['idx']);
             if ($candidate === null) {
                 return;
             }
 
             $member = DB::table('members')->where('idx', $candidate->idx)->where('member_level', 1)
                 ->where('is_dummy', 1)->where('status', 'active')->whereNull('deleted_at')
-                ->lockForUpdate()->first(['idx', 'heart_balance', 'country_code', 'favorite_idol_1_idx', 'favorite_idol_2_idx', 'favorite_idol_3_idx']);
+                ->lockForUpdate()->first(['idx', 'heart_balance', 'country_code']);
             if ($member === null) {
                 return;
             }
 
-            $favorites = array_values(array_filter([
-                $member->favorite_idol_1_idx, $member->favorite_idol_2_idx, $member->favorite_idol_3_idx,
-            ], fn ($idx) => $idx !== null));
-            $activeFavorites = DB::table('idols')->whereIn('idx', $favorites)->where('status', 'active')
-                ->whereIn('type', ['individual', 'group'])->pluck('idx')->all();
-            if ($activeFavorites === []) {
+            $idolIdx = DB::table('idols')->where('status', 'active')
+                ->whereIn('type', ['individual', 'group'])->inRandomOrder()->value('idx');
+            if ($idolIdx === null) {
                 return;
             }
 
-            $idolIdx = (int) $activeFavorites[random_int(0, count($activeFavorites) - 1)];
+            $idolIdx = (int) $idolIdx;
             $amount = random_int($minimum, $maximum);
             $balance = (int) $member->heart_balance;
             $shortage = max(0, $amount - $balance);
