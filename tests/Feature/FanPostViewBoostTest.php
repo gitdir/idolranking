@@ -49,13 +49,13 @@ class FanPostViewBoostTest extends TestCase
 
         $this->withSession(['member_idx' => 2])->put(route('admin.settings.update', 'management'), [
             'fan_post_view_boost_enabled' => '1',
-            'dummy_auto_vote_enabled' => '0', 'dummy_auto_vote_interval_minutes' => 5,
+            'dummy_auto_vote_enabled' => '0', 'dummy_auto_create_enabled' => '0', 'dummy_auto_vote_interval_minutes' => 5,
             'dummy_auto_vote_min_hearts' => 10, 'dummy_auto_vote_max_hearts' => 50,
         ])->assertForbidden();
 
         $this->withSession(['member_idx' => 1])->put(route('admin.settings.update', 'management'), [
             'fan_post_view_boost_enabled' => '1',
-            'dummy_auto_vote_enabled' => '0', 'dummy_auto_vote_interval_minutes' => 5,
+            'dummy_auto_vote_enabled' => '0', 'dummy_auto_create_enabled' => '0', 'dummy_auto_vote_interval_minutes' => 5,
             'dummy_auto_vote_min_hearts' => 10, 'dummy_auto_vote_max_hearts' => 50,
         ])->assertRedirect();
         $this->assertDatabaseHas('site_settings', ['setting_key' => 'fan_post_view_boost_enabled', 'setting_value' => '1']);
@@ -69,7 +69,7 @@ class FanPostViewBoostTest extends TestCase
 
         $this->withSession(['member_idx' => 1])->put(route('admin.settings.update', 'management'), [
             'fan_post_view_boost_enabled' => '0',
-            'dummy_auto_vote_enabled' => '0', 'dummy_auto_vote_interval_minutes' => 5,
+            'dummy_auto_vote_enabled' => '0', 'dummy_auto_create_enabled' => '0', 'dummy_auto_vote_interval_minutes' => 5,
             'dummy_auto_vote_min_hearts' => 10, 'dummy_auto_vote_max_hearts' => 50,
         ])->assertRedirect();
         Artisan::call('fan-posts:boost-views');

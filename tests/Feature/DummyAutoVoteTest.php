@@ -46,7 +46,7 @@ class DummyAutoVoteTest extends TestCase
         $this->assertSame(0, DB::table('idol_votes')->count());
 
         $this->withSession(['member_idx' => 1])->put(route('admin.settings.update', 'management'), [
-            'fan_post_view_boost_enabled' => '0', 'dummy_auto_vote_enabled' => '1',
+            'fan_post_view_boost_enabled' => '0', 'dummy_auto_vote_enabled' => '1', 'dummy_auto_create_enabled' => '0',
             'dummy_auto_vote_interval_minutes' => 5, 'dummy_auto_vote_min_hearts' => 10,
             'dummy_auto_vote_max_hearts' => 50,
         ])->assertRedirect();
@@ -70,7 +70,7 @@ class DummyAutoVoteTest extends TestCase
         $this->assertSame(2, DB::table('idol_votes')->count());
 
         $this->withSession(['member_idx' => 1])->put(route('admin.settings.update', 'management'), [
-            'fan_post_view_boost_enabled' => '0', 'dummy_auto_vote_enabled' => '0',
+            'fan_post_view_boost_enabled' => '0', 'dummy_auto_vote_enabled' => '0', 'dummy_auto_create_enabled' => '0',
             'dummy_auto_vote_interval_minutes' => 5, 'dummy_auto_vote_min_hearts' => 10,
             'dummy_auto_vote_max_hearts' => 50,
         ])->assertRedirect();

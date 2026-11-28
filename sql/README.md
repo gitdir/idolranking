@@ -19,6 +19,8 @@ The seed preserves the `watch_ads` reward configuration (50 Hearts, daily limit 
 
 ## Existing databases and future patches
 
+Patch `20261128_002_create_weekly_dummy_member_creations.sql` adds a weekly creation ledger with a unique Seoul Monday date. Apply it before enabling weekly dummy creation in administrator settings. The member and ledger row are created in one transaction; existing member records are unchanged.
+
 Treat `deploy/mariadb11_schema.sql` as the baseline for future production patches. For an existing database, first verify its schema against that baseline and back it up. Apply only new, unapplied forward patches needed after the baseline. Do not replay the legacy schema or historical patches after a fresh installation; those files describe earlier development changes and can duplicate objects already in the deployment snapshot. If an older database differs from the baseline, prepare a reviewed forward patch for its specific differences instead of replaying the historical patch set.
 
 Name new patches `YYYYMMDD_NNN_short_description.sql`, for example `20261014_001_add_member_status_index.sql`. Use the authoring date, increment `NNN` for multiple patches on that date, and keep each patch focused and immutable after release. Write MariaDB 11.8 SQL and keep it compatible with local MySQL 8.4 where practical.

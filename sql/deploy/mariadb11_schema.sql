@@ -141,6 +141,17 @@ CREATE TABLE `members` (
   CONSTRAINT `fk_members_favorite_idol_3_idx` FOREIGN KEY (`favorite_idol_3_idx`) REFERENCES `idols` (`idx`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='회원, 권한, 국가 및 현재 하트 잔액';
 
+CREATE TABLE `weekly_dummy_member_creations` (
+  `idx` bigint unsigned NOT NULL AUTO_INCREMENT,
+  `week_start_date` date NOT NULL COMMENT 'Monday in Asia/Seoul',
+  `member_idx` bigint unsigned DEFAULT NULL COMMENT 'Created operator-managed dummy member',
+  `created_at` datetime(6) NOT NULL,
+  PRIMARY KEY (`idx`),
+  UNIQUE KEY `uq_weekly_dummy_member_creations_week` (`week_start_date`),
+  UNIQUE KEY `uq_weekly_dummy_member_creations_member` (`member_idx`),
+  CONSTRAINT `fk_weekly_dummy_member_creations_member_idx` FOREIGN KEY (`member_idx`) REFERENCES `members` (`idx`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='One audited automatic dummy creation per Seoul week';
+
 CREATE TABLE `partner_banners` (
   `idx` bigint unsigned NOT NULL AUTO_INCREMENT,
   `title` varchar(255) NOT NULL COMMENT 'Admin-only banner title and accessible image text',

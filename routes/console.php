@@ -42,6 +42,9 @@ Schedule::command('fan-posts:boost-views')->everyMinute()->name('fan-post-view-b
 // 실제 처리 로직은 app/Console/Commands/AutoVoteForDummyMembers.php에 있습니다.
 Schedule::command('dummy-members:auto-vote')->everyMinute()->name('dummy-member-auto-vote')->withoutOverlapping();
 
+Schedule::command('dummy-members:create-weekly')->mondays()->at('04:00')
+    ->timezone('Asia/Seoul')->name('dummy-member-weekly-creation')->withoutOverlapping();
+
 // 매주 월요일 00:05 (한국 시간): 지난주의 참여 완료 수 기준 상위 3개 퀴즈를 정산합니다.
 // 각 퀴즈 제작자에게 보상 설정에 따른 하트를 지급하고 결과를 기록합니다.
 // 실제 처리 로직은 app/Console/Commands/SettleQuizWeeklyRanking.php에 있습니다.

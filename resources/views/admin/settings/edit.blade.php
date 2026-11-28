@@ -94,6 +94,21 @@
                 <input type="checkbox" name="dummy_auto_vote_enabled" value="1" @checked((string) old('dummy_auto_vote_enabled', $settings['dummy_auto_vote_enabled'] ?? '0') === '1')>
                 더미 계정 자동투표 사용
             </label>
+            <h2>더미 회원 자동 생성</h2>
+            <p>매주 월요일 오전 4시(한국 시간)에 운영 관리용 더미 회원을 한 명 생성합니다. 일반 회원 통계에는 포함되지 않습니다.</p>
+            <label class="admin-check">
+                <input type="hidden" name="dummy_auto_create_enabled" value="0">
+                <input type="checkbox" name="dummy_auto_create_enabled" value="1" @checked((string) old('dummy_auto_create_enabled', $settings['dummy_auto_create_enabled'] ?? '0') === '1')>
+                더미 회원 자동 생성 사용
+            </label>
+            @if ($weeklyDummyCreations->isNotEmpty())
+                <h3>최근 자동 생성 내역</h3>
+                <ul>
+                    @foreach ($weeklyDummyCreations as $creation)
+                        <li>{{ $creation->week_start_date }} · {{ $creation->nickname }} ({{ $creation->member_code }}) · {{ $creation->created_at }}</li>
+                    @endforeach
+                </ul>
+            @endif
             <div class="admin-auto-vote-fields">
                 <span>매</span>
                 <input type="number" name="dummy_auto_vote_interval_minutes" aria-label="투표 간격 (분)" min="1" max="1440" required value="{{ old('dummy_auto_vote_interval_minutes', $settings['dummy_auto_vote_interval_minutes'] ?? '5') }}">
