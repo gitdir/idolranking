@@ -69,6 +69,8 @@ Thumbs.db
 /sql/patches/*
 !/sql/patches/20261128_001_allow_other_fan_posts.sql
 !/sql/patches/20261128_002_create_weekly_dummy_member_creations.sql
+!/sql/patches/20261128_003_create_community_scraping.sql
+!/sql/patches/20261128_004_add_scrape_collection_method.sql
 !/sql/patches/20261029_001_add_vote_country_snapshot.sql
 !/sql/patches/20260927_001_add_member_code.sql
 !/sql/patches/20260927_002_add_fan_post_creation_fields.sql

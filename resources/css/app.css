@@ -567,7 +567,7 @@ html.drawer-open { overflow: hidden; }
 /* Home ranking cards */
 .ranking-panel { background: #fff; border: 1px solid #e8ebf1; border-radius: 16px; box-shadow: 0 8px 22px rgba(20, 35, 66, .07); padding: 18px 20px 20px; }
 .ranking-panel--pink, .ranking-panel--purple { background: #fff; }
-.ranking-panel .ranking-heading { position: relative; padding-bottom: 15px; margin-bottom: 18px; color: #0b214d; }
+.ranking-panel .ranking-heading { position: relative; padding-bottom: 15px; margin-bottom: 0; color: #0b214d; }
 .ranking-panel .ranking-heading::after { position: absolute; bottom: 0; left: 0; right: 0; height: 2px; background: linear-gradient(90deg, var(--panel-accent), transparent); content: ''; }
 .ranking-panel .view-all { color: #ff1681; }
 .ranking-panel .ranking-list { gap: 0; }
@@ -1876,7 +1876,7 @@ body:has(.password-page--forgot), body:has(.register-page #register-title) { bac
 }
 
 /* Create Fan Post. */
-.fan-post-create { padding: 8px 0 36px; border: 1px solid #f6dceb; border-radius: 12px; background: linear-gradient(135deg, #fff4fa, #fcf6ff); }
+.fan-post-create { margin-top:12px; padding: 8px 0 36px; border: 1px solid #f6dceb; border-radius: 12px; background: linear-gradient(135deg, #fff4fa, #fcf6ff); }
 .fan-post-create .visually-hidden { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0; }
 .fan-post-create-header { padding: 14px 30px 20px; }
 .fan-post-create-header h1 { margin: 0; color: #ff2b91; font-size: 28px; line-height: 1.25; }

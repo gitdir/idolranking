@@ -19,6 +19,10 @@ The seed preserves the `watch_ads` reward configuration (50 Hearts, daily limit 
 
 ## Existing databases and future patches
 
+Patch `20261128_003_create_community_scraping.sql` adds soft-deleted community sources, persisted Seoul-day collection schedules, and permanent import history. Apply it before enabling the administrator's scraping controls. The global and source switches default to OFF; no source is seeded.
+
+Patch `20261128_004_add_scrape_collection_method.sql` adds the per-source `http` or `browser` collection method. Existing sources remain `http`. Apply the patch before selecting Browser in the administrator UI.
+
 Patch `20261128_002_create_weekly_dummy_member_creations.sql` adds a weekly creation ledger with a unique Seoul Monday date. Apply it before enabling weekly dummy creation in administrator settings. The member and ledger row are created in one transaction; existing member records are unchanged.
 
 Treat `deploy/mariadb11_schema.sql` as the baseline for future production patches. For an existing database, first verify its schema against that baseline and back it up. Apply only new, unapplied forward patches needed after the baseline. Do not replay the legacy schema or historical patches after a fresh installation; those files describe earlier development changes and can duplicate objects already in the deployment snapshot. If an older database differs from the baseline, prepare a reviewed forward patch for its specific differences instead of replaying the historical patch set.

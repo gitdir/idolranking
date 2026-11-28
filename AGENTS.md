@@ -4,6 +4,10 @@
 
 Project name: IdolRanking
 
+### Optional browser scraping runtime
+
+Community sources using Browser require Node.js 20+, the `playwright` npm dependency, and Chromium installed for the PHP/Scheduler account (`npx playwright install chromium` on Linux). Windows uses installed Chrome by default. Set `SCRAPER_NODE_PATH` or `SCRAPER_CHROMIUM_PATH` if executables are outside the PHP process PATH. Apply SQL patch `20261128_004_add_scrape_collection_method.sql` before selecting Browser. Production currently has no Node.js, so Browser collection requires separate server setup during an authorized deployment; HTTP collection does not.
+
 IdolRanking is a Laravel-based idol ranking and global fan community web application.
 
 ### Fresh Codex session entry point

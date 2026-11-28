@@ -14,6 +14,7 @@
         <a href="{{ route('admin.settings.edit', 'general') }}" @if ($section === 'general') aria-current="page" @endif>기본 설정</a>
         <a href="{{ route('admin.settings.edit', 'seo') }}" @if ($section === 'seo') aria-current="page" @endif>SEO 설정</a>
         <a href="{{ route('admin.settings.edit', 'management') }}" @if ($section === 'management') aria-current="page" @endif>기능 관리</a>
+        <a href="{{ route('admin.scraping.index') }}">스크래핑</a>
         <a href="{{ route('admin.settings.edit', 'custom-code') }}" @if ($section === 'custom-code') aria-current="page" @endif>추가 코드 설정</a>
     </nav>
 

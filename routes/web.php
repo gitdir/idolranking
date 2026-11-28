@@ -1,6 +1,7 @@
 <?php
 
 use Illuminate\Support\Facades\Route;
+use App\Http\Controllers\Admin\ScrapingController as AdminScrapingController;
 use Illuminate\Http\Request;
 use App\Http\Controllers\RankingController;
 use App\Http\Controllers\LocaleController;
@@ -258,5 +259,13 @@ Route::prefix('admin')->name('admin.')->middleware(RequireAdmin::class)->group(f
     Route::post('/ip-access', [AdminIpAccessController::class, 'store'])->name('ip-access.store');
     Route::patch('/ip-access/{idx}', [AdminIpAccessController::class, 'toggle'])->whereNumber('idx')->name('ip-access.toggle');
     Route::get('/settings/{section?}', [AdminSettingsController::class, 'edit'])->where('section', 'general|seo|management|custom-code')->name('settings.edit');
+    Route::get('/settings/scraping', [AdminScrapingController::class, 'index'])->name('scraping.index');
+    Route::put('/settings/scraping/global', [AdminScrapingController::class, 'global'])->name('scraping.global');
+    Route::post('/settings/scraping/sources', [AdminScrapingController::class, 'save'])->name('scraping.sources.store');
+    Route::put('/settings/scraping/sources/{idx}', [AdminScrapingController::class, 'save'])->whereNumber('idx')->name('scraping.sources.update');
+    Route::delete('/settings/scraping/sources/{idx}', [AdminScrapingController::class, 'delete'])->whereNumber('idx')->name('scraping.sources.delete');
+    Route::post('/settings/scraping/sources/{idx}/test', [AdminScrapingController::class, 'test'])->whereNumber('idx')->name('scraping.sources.test');
+    Route::post('/settings/scraping/sources/{idx}/collect', [AdminScrapingController::class, 'collectNow'])->whereNumber('idx')->name('scraping.sources.collect');
+    Route::post('/settings/scraping/sources/{idx}/import-html', [AdminScrapingController::class, 'importHtml'])->whereNumber('idx')->name('scraping.sources.import-html');
     Route::put('/settings/{section}', [AdminSettingsController::class, 'update'])->where('section', 'general|seo|management|custom-code')->name('settings.update');
 });

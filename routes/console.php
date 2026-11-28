@@ -32,6 +32,7 @@ Schedule::call(function (): void {
 // 매분: 관리자가 설정한 게시 시간·간격·최대 게시 수에 따라 대기열에서 가장 오래된 Fan Post를 공개합니다.
 // 삭제된 게시물은 건너뛰며, 실제 처리 로직은 app/Console/Commands/PublishQueuedFanPosts.php에 있습니다.
 Schedule::command('fan-posts:publish-queued')->everyMinute()->name('fan-post-distribution')->withoutOverlapping();
+Schedule::command('fan-posts:collect-communities')->everyMinute()->name('community-scraping')->withoutOverlapping();
 
 // 매분(관리 설정에서 켠 경우): 공개된 팬포스트 전체 중 하나를 무작위로 골라 조회수를 1~5 올립니다.
 // 공개되지 않았거나 삭제된 글, 비활성 아이돌의 글은 제외하며 실제 처리 로직은 명령 클래스에 있습니다.
