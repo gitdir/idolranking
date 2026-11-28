@@ -62,7 +62,7 @@ class CommunityScraper
             $response = Http::withOptions([
                 'allow_redirects' => false, 'proxy' => '',
                 'curl' => [CURLOPT_RESOLVE => ["{$host}:{$port}:{$ip}"]],
-            ])->withHeaders(['User-Agent' => 'IdolRankingEditorialBot/1.0', 'Accept' => 'text/html,image/jpeg,image/png,image/gif'])
+            ])->withHeaders(['User-Agent' => 'IdolRankingEditorialBot/1.0', 'Accept' => 'text/html,image/jpeg,image/png,image/gif,image/webp'])
                 ->connectTimeout(3)->timeout(8)->get($url);
         } catch (ConnectionException $exception) {
             throw new RuntimeException($this->connectionFailure($exception), 0, $exception);
@@ -185,10 +185,15 @@ class CommunityScraper
             : '게시물 링크 선택자에 맞는 수집 후보가 없습니다.';
         foreach ($candidates as $url) {
             if (DB::table('scrape_imports')->where('normalized_identifier', $this->identifier($url))
-                ->where('status', 'imported')->exists()) continue;
+                ->where('status', 'imported')->exists()) {
+                $reason = '후보 게시물이 이미 수집되었습니다: '.$url;
+                continue;
+            }
             try {
-                $post = $this->inspectPost($source, $url);
+                $diagnostic = [];
+                $post = $this->inspectPost($source, $url, null, $diagnostic);
                 if ($post !== null) return compact('candidates') + ['eligible' => $post, 'reason' => null];
+                $reason = $url.' — '.$this->extractionFailureReason($diagnostic);
             } catch (\Throwable $exception) {
                 // An inaccessible candidate must not prevent inspection of the remaining nine.
                 $reason = $exception instanceof RuntimeException ? $exception->getMessage() : '상세 페이지 연결 또는 추출에 실패했습니다.';
@@ -302,16 +307,6 @@ class CommunityScraper
         return 'HTTP 전송에 실패했습니다'.$code.'. 관리자 로그를 확인해 주세요.';
     }
 
-    public function assertImportAllowed(object $source): void
-    {
-        if (! $source->redistribution_permitted) {
-            throw new RuntimeException('이 커뮤니티의 콘텐츠 재배포 허용 여부가 확인되지 않았습니다.');
-        }
-        if ($source->attribution_required) {
-            throw new RuntimeException('공개 출처 표기가 필요한 커뮤니티의 게시물은 등록할 수 없습니다.');
-        }
-    }
-
     public function previewSavedPost(object $source, string $url, string $html): array
     {
         $this->assertPublicUrl($url);
@@ -321,20 +316,42 @@ class CommunityScraper
         if ($html === '' || strlen($html) > self::MAX_HTML_BYTES) {
             throw new RuntimeException('저장한 HTML 파일이 비어 있거나 2MB를 초과합니다.');
         }
-        $post = $this->inspectPost($source, $url, $html);
+        $diagnostic = [];
+        $post = $this->inspectPost($source, $url, $html, $diagnostic);
         return ['candidates' => [$url], 'eligible' => $post,
-            'reason' => $post === null ? '저장한 HTML에서 제목·본문과 유효한 이미지 또는 유튜브 영상을 찾지 못했습니다.' : null];
+            'diagnostic' => $diagnostic,
+            'reason' => $post === null ? $this->extractionFailureReason($diagnostic) : null];
     }
 
-    private function inspectPost(object $source, string $url, ?string $savedHtml = null): ?array
+    private function extractionFailureReason(array $diagnostic): string
+    {
+        $reasons = $diagnostic['reasons'];
+        foreach ($diagnostic['images'] as $image) {
+            $reasons[] = ($image['url'] ?? '이미지 URL 없음').': '.$image['reason'];
+        }
+        return implode(' ', $reasons);
+    }
+
+    private function inspectPost(object $source, string $url, ?string $savedHtml = null, ?array &$diagnostic = null): ?array
     {
         $xpath = $this->document($savedHtml ?? $this->getPage($source, $url));
-        $titleNode = $this->nodes($xpath, $source->title_selector)[0] ?? null;
-        $contentNode = $this->nodes($xpath, $source->content_selector)[0] ?? null;
+        $titles = $this->nodes($xpath, $source->title_selector);
+        $contents = $this->nodes($xpath, $source->content_selector);
+        $videos = $this->nodes($xpath, $source->video_selector ?? '');
+        $images = $this->nodes($xpath, $source->image_selector ?? '');
+        $diagnostic = ['title_count' => count($titles), 'content_count' => count($contents),
+            'image_count' => count($images), 'video_count' => count($videos), 'images' => [], 'reasons' => []];
+        $titleNode = $titles[0] ?? null;
+        $contentNode = $contents[0] ?? null;
+        if (! $titleNode) $diagnostic['reasons'][] = '제목 선택자에 일치하는 요소가 없습니다.';
+        if (! $contentNode) $diagnostic['reasons'][] = '본문 선택자에 일치하는 요소가 없습니다.';
         if (! $titleNode || ! $contentNode) return null;
         $title = $this->cleanContent($xpath, $titleNode);
-        if ($title === '' || mb_strlen($title) > 90) return null;
-        foreach ($this->nodes($xpath, $source->video_selector ?? '') as $node) {
+        if ($title === '' || mb_strlen($title) > 90) {
+            $diagnostic['reasons'][] = '추출한 제목이 비어 있거나 90자를 초과합니다.';
+            return null;
+        }
+        foreach ($videos as $node) {
             if (! $node instanceof DOMElement) continue;
             $video = $this->absoluteUrl($url, $node->getAttribute('href') ?: $node->getAttribute('src'));
             $id = $video ? YoutubeVideo::id($video) : null;
@@ -342,27 +359,47 @@ class CommunityScraper
                 $content = $this->cleanContent($xpath, $contentNode);
                 return compact('url', 'title', 'content') + ['media_type' => 'youtube', 'youtube_video_id' => $id];
             }
+            $diagnostic['reasons'][] = ($video ?? '동영상 URL 없음').': 지원하지 않는 유튜브 주소입니다.';
         }
-        foreach ($this->nodes($xpath, $source->image_selector ?? '') as $node) {
+        foreach ($images as $node) {
             if (! $node instanceof DOMElement) continue;
             $metadata = strtolower($node->getAttribute('alt'));
-            if ($this->excludedElement($node) || preg_match('/logo|avatar|advert|banner|emoji|icon|tracking|pixel|광고/i', $metadata)) continue;
+            if ($this->excludedElement($node) || preg_match('/logo|avatar|advert|banner|emoji|icon|tracking|pixel|광고/i', $metadata)) {
+                $diagnostic['images'][] = ['url' => null, 'reason' => '장식 또는 광고 이미지로 제외했습니다.'];
+                continue;
+            }
             $imageUrl = $this->absoluteUrl($url, $node->getAttribute('src') ?: $node->getAttribute('data-src'));
-            if ($imageUrl === null) continue;
-            if (preg_match('~(?:^|[/_.-])(logo|avatar|banner|advert|emoji|icon|tracking|pixel)(?:[/_.-]|$)~i', parse_url($imageUrl, PHP_URL_PATH) ?? '')) continue;
-            if (parse_url($imageUrl, PHP_URL_HOST) !== parse_url($source->listing_url, PHP_URL_HOST)) continue;
+            if ($imageUrl === null) {
+                $diagnostic['images'][] = ['url' => null, 'reason' => '이미지 URL을 해석할 수 없습니다.'];
+                continue;
+            }
+            if (preg_match('~(?:^|[/_.-])(logo|avatar|banner|advert|emoji|icon|tracking|pixel)(?:[/_.-]|$)~i', parse_url($imageUrl, PHP_URL_PATH) ?? '')) {
+                $diagnostic['images'][] = ['url' => $imageUrl, 'reason' => '장식 또는 광고 이미지로 제외했습니다.'];
+                continue;
+            }
             try {
                 $bytes = $this->get($imageUrl, self::MAX_IMAGE_BYTES);
                 $mime = (new \finfo(FILEINFO_MIME_TYPE))->buffer($bytes);
                 $info = getimagesizefromstring($bytes);
-                if (! in_array($mime, ['image/jpeg', 'image/png', 'image/gif'], true)
-                    || ! $info || $info[0] < 200 || $info[1] < 200) continue;
+                if (! in_array($mime, ['image/jpeg', 'image/png', 'image/gif', 'image/webp'], true)) {
+                    $diagnostic['images'][] = ['url' => $imageUrl, 'reason' => '지원하지 않는 이미지 형식입니다: '.$mime];
+                    continue;
+                }
+                if (! $info || $info[0] < 200 || $info[1] < 200) {
+                    $diagnostic['images'][] = ['url' => $imageUrl, 'reason' => '이미지가 손상되었거나 200px 미만입니다.'];
+                    continue;
+                }
+                $diagnostic['images'][] = ['url' => $imageUrl, 'reason' => '유효한 이미지입니다.'];
                 $content = $this->cleanContent($xpath, $contentNode);
                 return compact('url', 'title', 'content', 'bytes', 'mime') + ['media_type' => 'image'];
             } catch (\Throwable $exception) {
+                $diagnostic['images'][] = ['url' => $imageUrl, 'reason' => $this->diagnosticError($exception)];
                 continue;
             }
         }
+        $diagnostic['reasons'][] = $images || $videos
+            ? '선택자 추출은 완료됐지만 다운로드 및 미디어 검증을 통과한 항목이 없습니다.'
+            : '이미지와 유튜브 선택자에 일치하는 요소가 없습니다.';
         return null;
     }
 

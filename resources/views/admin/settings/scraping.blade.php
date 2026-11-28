@@ -4,7 +4,7 @@
 
 @section('content')
 <div class="admin-scraping">
-    <header class="admin-page-heading"><div><h1>스크래핑</h1><p>재배포가 허용된 커뮤니티의 미디어 게시물을 관리합니다.</p></div></header>
+    <header class="admin-page-heading"><div><h1>스크래핑</h1><p>등록한 커뮤니티의 미디어 게시물을 관리합니다.</p></div></header>
     <nav class="admin-settings-tabs" aria-label="관리 설정">
         <a href="{{ route('admin.settings.edit', 'general') }}">기본 설정</a>
         <a href="{{ route('admin.settings.edit', 'seo') }}">SEO 설정</a>
@@ -51,13 +51,25 @@
                             <form method="post" action="{{ route('admin.scraping.sources.collect', $source->idx) }}" data-scraping-action="collect">@csrf <button class="admin-scraping-button admin-scraping-button--primary" type="submit">지금 바로 수집</button></form>
                             <form method="post" action="{{ route('admin.scraping.sources.delete', $source->idx) }}" onsubmit="return confirm('이 커뮤니티를 삭제하시겠습니까? 수집 이력은 보존됩니다.')">@csrf @method('delete') <button class="admin-scraping-button admin-scraping-button--danger" type="submit">삭제</button></form>
                         </div><div class="admin-scraping-inline-result" data-scraping-result role="status" aria-live="polite" hidden></div>
-                        <details class="admin-scraping-html-import"><summary>저장한 HTML 가져오기</summary>
+                        <details class="admin-scraping-html-import" @if ((session('scraping_html_diagnostic')['source_idx'] ?? null) == $source->idx) open @endif><summary>저장한 HTML 가져오기</summary>
                             <form method="post" enctype="multipart/form-data" action="{{ route('admin.scraping.sources.import-html', $source->idx) }}">
                                 @csrf
                                 <label>원본 게시물 URL<input type="url" name="post_url" required placeholder="https://example.com/post/123"></label>
                                 <label>브라우저에서 저장한 HTML<input type="file" name="html_file" accept=".html,.htm,text/html" required></label>
                                 <button class="admin-scraping-button" type="submit">HTML 가져오기</button>
                             </form>
+                            @php($htmlDiagnostic = session('scraping_html_diagnostic'))
+                            @if (($htmlDiagnostic['source_idx'] ?? null) == $source->idx)
+                                <div class="admin-scraping-inline-result" role="status">
+                                    <p>HTML 추출: 제목 {{ $htmlDiagnostic['details']['title_count'] }}개, 본문 {{ $htmlDiagnostic['details']['content_count'] }}개, 이미지 {{ $htmlDiagnostic['details']['image_count'] }}개, 유튜브 {{ $htmlDiagnostic['details']['video_count'] }}개</p>
+                                    @foreach ($htmlDiagnostic['details']['images'] as $image)
+                                        <p>{{ $image['url'] ?? 'URL 없음' }} — {{ $image['reason'] }}</p>
+                                    @endforeach
+                                    @foreach ($htmlDiagnostic['details']['reasons'] as $reason)
+                                        <p>{{ $reason }}</p>
+                                    @endforeach
+                                </div>
+                            @endif
                         </details></td>
                     </tr>
                     <tr id="scraping-edit-{{ $source->idx }}" class="admin-scraping-edit-row" @if (old('_scraping_source_idx') !== (string) $source->idx) hidden @endif><td colspan="7">

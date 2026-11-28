@@ -66,10 +66,6 @@ class ScrapingController extends Controller
         $source = $idx === null ? null : DB::table('scrape_sources')->where('idx', $idx)->whereNull('deleted_at')->first();
         if ($idx !== null) abort_if($source === null, 404);
         $data['collection_method'] = $data['collection_method'] ?? ($source->collection_method ?? 'http');
-        // Form input cannot grant redistribution permission. A changed board URL needs fresh review.
-        $sameUrl = $source !== null && $source->listing_url === $data['listing_url'];
-        $data['redistribution_permitted'] = $sameUrl ? (int) $source->redistribution_permitted : 0;
-        $data['attribution_required'] = $sameUrl ? (int) $source->attribution_required : 1;
         if (blank($data['image_selector'] ?? null) && blank($data['video_selector'] ?? null)) {
             throw ValidationException::withMessages(['image_selector' => '이미지 또는 유튜브 선택자를 하나 이상 입력해 주세요.']);
         }

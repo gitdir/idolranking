@@ -16,7 +16,7 @@ class CommunityScrapingTest extends TestCase
     {
         if (! in_array('sqlite', \PDO::getAvailableDrivers(), true)) $this->markTestSkipped('pdo_sqlite is required.');
         DB::statement('CREATE TABLE site_settings (setting_key TEXT PRIMARY KEY, setting_value TEXT)');
-        DB::statement('CREATE TABLE scrape_sources (idx INTEGER PRIMARY KEY, name TEXT, listing_url TEXT, collection_method TEXT DEFAULT "http", post_link_selector TEXT, title_selector TEXT, content_selector TEXT, image_selector TEXT, video_selector TEXT, is_enabled INTEGER, redistribution_permitted INTEGER, attribution_required INTEGER, created_at TEXT, updated_at TEXT, deleted_at TEXT)');
+        DB::statement('CREATE TABLE scrape_sources (idx INTEGER PRIMARY KEY, name TEXT, listing_url TEXT, collection_method TEXT DEFAULT "http", post_link_selector TEXT, title_selector TEXT, content_selector TEXT, image_selector TEXT, video_selector TEXT, is_enabled INTEGER, redistribution_permitted INTEGER DEFAULT 0, attribution_required INTEGER DEFAULT 1, created_at TEXT, updated_at TEXT, deleted_at TEXT)');
         DB::statement('CREATE TABLE scrape_days (idx INTEGER PRIMARY KEY AUTOINCREMENT, source_idx INTEGER, collect_date TEXT, scheduled_at TEXT, finished_at TEXT, fan_post_idx INTEGER, status TEXT, failure_reason TEXT, UNIQUE(source_idx, collect_date))');
         DB::statement('CREATE TABLE scrape_imports (idx INTEGER PRIMARY KEY AUTOINCREMENT, source_idx INTEGER, original_url TEXT, normalized_identifier TEXT UNIQUE, collected_at TEXT, status TEXT, fan_post_idx INTEGER, dummy_member_idx INTEGER, failure_reason TEXT)');
         DB::statement('CREATE TABLE members (idx INTEGER PRIMARY KEY, member_code TEXT, email TEXT, nickname TEXT, country_code TEXT, profile_image_path TEXT, heart_balance INTEGER DEFAULT 0, member_level INTEGER, is_dummy INTEGER, status TEXT, deleted_at TEXT)');
@@ -210,7 +210,7 @@ class CommunityScrapingTest extends TestCase
         $this->assertDatabaseCount('fan_posts', 1);
     }
 
-    public function test_form_cannot_grant_redistribution_permission(): void
+    public function test_form_ignores_obsolete_approval_fields(): void
     {
         $this->database();
         DB::table('members')->insert(['idx' => 1, 'member_code' => 'AdminCode001', 'nickname' => 'Admin', 'member_level' => 10, 'is_dummy' => 0, 'status' => 'active']);
@@ -279,7 +279,7 @@ class CommunityScrapingTest extends TestCase
         $this->assertDatabaseCount('scrape_imports', 0);
     }
 
-    public function test_unverified_source_can_be_tested_but_cannot_publish_manually_or_on_schedule(): void
+    public function test_source_with_obsolete_approval_flags_can_publish_manually(): void
     {
         $this->database();
         DB::table('members')->insert(['idx' => 1, 'member_code' => 'AdminCode001', 'nickname' => 'Admin', 'member_level' => 10, 'is_dummy' => 0, 'status' => 'active']);
@@ -293,15 +293,20 @@ class CommunityScrapingTest extends TestCase
         DB::table('site_settings')->where('setting_key', 'scraping_enabled')->update(['setting_value' => '0']);
         $this->travelTo(Carbon::parse('2026-11-30 04:00:00', 'Asia/Seoul'));
         $this->withSession($session)->post(route('admin.scraping.sources.collect', 1))
-            ->assertSessionHasErrors('scraping');
-        $this->assertDatabaseHas('scrape_days', ['source_idx' => 1, 'status' => 'failed', 'failure_reason' => '이 커뮤니티의 콘텐츠 재배포 허용 여부가 확인되지 않았습니다.']);
-        $this->assertDatabaseCount('fan_posts', 0);
+            ->assertSessionHas('admin_success', '팬포스트 1건을 수집해 바로 등록했습니다.');
+        $this->assertDatabaseHas('scrape_days', ['source_idx' => 1, 'status' => 'imported']);
+        $this->assertDatabaseCount('fan_posts', 1);
+    }
 
-        DB::table('site_settings')->where('setting_key', 'scraping_enabled')->update(['setting_value' => '1']);
-        $this->travelTo(Carbon::parse('2026-12-01 23:59:00', 'Asia/Seoul'));
+    public function test_source_with_obsolete_approval_flags_can_publish_on_schedule(): void
+    {
+        $this->database();
+        DB::table('scrape_sources')->where('idx', 1)->update(['redistribution_permitted' => 0, 'attribution_required' => 1]);
+        $this->app->instance(CommunityScraper::class, $this->fakeScraper());
+        $this->travelTo(Carbon::parse('2026-11-30 23:59:00', 'Asia/Seoul'));
         Artisan::call('fan-posts:collect-communities');
-        $this->assertDatabaseHas('scrape_days', ['source_idx' => 1, 'collect_date' => '2026-12-01', 'status' => 'failed']);
-        $this->assertDatabaseCount('fan_posts', 0);
+        $this->assertDatabaseHas('scrape_days', ['source_idx' => 1, 'collect_date' => '2026-11-30', 'status' => 'imported']);
+        $this->assertDatabaseCount('fan_posts', 1);
     }
 
     public function test_diagnostic_resolves_relative_and_protocol_relative_media_urls(): void
@@ -355,6 +360,79 @@ class CommunityScrapingTest extends TestCase
         $this->withSession($session)->post(route('admin.scraping.sources.import-html', 1), $form)
             ->assertSessionHas('admin_success', '오늘 수집이 이미 완료되었습니다.');
         $this->assertDatabaseCount('fan_posts', 1);
+    }
+
+    public function test_saved_fmkorea_html_reports_image_failures_and_imports_webp(): void
+    {
+        $this->database();
+        Storage::fake('public');
+        DB::table('scrape_sources')->where('idx', 1)->update([
+            'listing_url' => 'https://www.fmkorea.com/girlgroup',
+            'title_selector' => '.rd_hd .np_18px_span',
+            'content_selector' => '.rd_body article .xe_content',
+            'image_selector' => '.rd_body article .xe_content img',
+            'video_selector' => null,
+        ]);
+        $image = imagecreatetruecolor(300, 300);
+        ob_start(); imagewebp($image); $webp = ob_get_clean(); imagedestroy($image);
+        $scraper = new class($webp) extends CommunityScraper {
+            public function __construct(private string $webp) {}
+            public function assertPublicUrl(string $url): void {}
+            protected function get(string $url, int $limit): string
+            {
+                if (str_contains($url, 'first.jpg.webp')) throw new \RuntimeException('HTTP 403 응답');
+                if (str_contains($url, 'second.jpg.webp')) return $this->webp;
+                throw new \RuntimeException('예상하지 못한 URL');
+            }
+        };
+        $this->app->instance(CommunityScraper::class, $scraper);
+        $url = 'https://www.fmkorea.com/10603389648';
+        $html = '<div class="rd_hd"><span class="np_18px_span">261128 사쿠라 인스타</span></div>'
+            .'<div class="rd_body"><article><div class="xe_content">'
+            .'<p>https://www.instagram.com/example/</p>'
+            .'<img src="//image.fmkorea.com/first.jpg.webp">'
+            .'<img src="//image.fmkorea.com/second.jpg.webp">'
+            .'</div></article></div>';
+
+        $result = $scraper->previewSavedPost(DB::table('scrape_sources')->first(), $url, $html);
+        $this->assertSame([1, 1, 2], array_map(fn ($key) => $result['diagnostic'][$key],
+            ['title_count', 'content_count', 'image_count']));
+        $this->assertSame('https://image.fmkorea.com/first.jpg.webp', $result['diagnostic']['images'][0]['url']);
+        $this->assertSame('HTTP 403 응답', $result['diagnostic']['images'][0]['reason']);
+        $this->assertSame('image/webp', $result['eligible']['mime']);
+
+        $this->travelTo(Carbon::parse('2026-11-30 04:00:00', 'Asia/Seoul'));
+        $path = tempnam(sys_get_temp_dir(), 'scrape-html-');
+        try {
+            file_put_contents($path, $html);
+            $this->assertSame(0, Artisan::call('fan-posts:collect-communities', [
+                '--source' => '1', '--now' => true, '--post-url' => $url, '--html-file' => $path,
+            ]));
+        } finally {
+            unlink($path);
+        }
+        $post = DB::table('fan_posts')->first();
+        $this->assertSame('[운영 편집] 261128 사쿠라 인스타', $post->title);
+        $this->assertStringEndsWith('.webp', $post->image_path);
+        Storage::disk('public')->assertExists(substr($post->image_path, strlen('storage/')));
+    }
+
+    public function test_failed_image_download_reports_its_url_and_reason(): void
+    {
+        $this->database();
+        $scraper = new class extends CommunityScraper {
+            public function assertPublicUrl(string $url): void {}
+            protected function get(string $url, int $limit): string
+            {
+                throw new \RuntimeException('HTTP 403 응답');
+            }
+        };
+        $html = '<h1>제목</h1><article><img src="//cdn.example.com/photo.jpg.webp"></article>';
+        $result = $scraper->previewSavedPost(DB::table('scrape_sources')->first(), 'https://example.com/post/1', $html);
+
+        $this->assertNull($result['eligible']);
+        $this->assertSame(1, $result['diagnostic']['image_count']);
+        $this->assertStringContainsString('https://cdn.example.com/photo.jpg.webp: HTTP 403 응답', $result['reason']);
     }
 
     public function test_browser_method_uses_rendered_html_with_existing_selectors(): void

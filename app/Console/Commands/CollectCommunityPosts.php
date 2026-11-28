@@ -17,7 +17,7 @@ class CollectCommunityPosts extends Command
         {--html-file= : Saved public post HTML file}
         {--post-url= : Original public post URL for saved HTML}';
 
-    protected $description = 'Collect at most one permitted media Fan Post per community per Seoul day';
+    protected $description = 'Collect at most one media Fan Post per community per Seoul day';
 
     public function handle(CommunityScraper $scraper): int
     {
@@ -73,18 +73,22 @@ class CollectCommunityPosts extends Command
                 }
                 $result = $html === null ? $scraper->preview($source)
                     : $scraper->previewSavedPost($source, $postUrl, $html);
+                if ($html !== null && app()->bound('session')) {
+                    session()->flash('scraping_html_diagnostic', [
+                        'source_idx' => $source->idx, 'details' => $result['diagnostic'],
+                    ]);
+                }
                 $post = $result['eligible'];
                 if ($post === null) {
-                    $reason = $result['reason'] ?? '최근 후보 10건에 가져올 수 있는 미디어 게시물이 없습니다.';
+                    $reason = mb_substr($result['reason'] ?? '최근 후보 10건에 가져올 수 있는 미디어 게시물이 없습니다.', 0, 500);
                     $updated = DB::table('scrape_days')->where('idx', $day->idx)->where('status', 'processing')
                         ->update(['status' => 'skipped', 'finished_at' => now('UTC'), 'failure_reason' => $reason]);
                     if ($updated) $this->recordFailure($source, $today->toDateString(), 'skipped', $reason);
                     continue;
                 }
-                $scraper->assertImportAllowed($source);
                 $imagePath = null;
                 if ($post['media_type'] === 'image') {
-                    $extension = ['image/jpeg' => 'jpg', 'image/png' => 'png', 'image/gif' => 'gif'][$post['mime']];
+                    $extension = ['image/jpeg' => 'jpg', 'image/png' => 'png', 'image/gif' => 'gif', 'image/webp' => 'webp'][$post['mime']];
                     $stored = 'fan-posts/'.Str::random(40).'.'.$extension;
                     if (! Storage::disk('public')->put($stored, $post['bytes'])) {
                         Storage::disk('public')->delete($stored);
